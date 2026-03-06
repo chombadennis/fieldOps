@@ -8,9 +8,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "FieldOps - Construction Cost and Revenue Analysis",
   description: "Professional field operations and project management platform",
-  icons: {
-    icon: "/favicon.svg",
-  },
 };
 
 export default function RootLayout({
