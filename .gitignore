@@ -16,6 +16,7 @@ yarn-error.log*
 # IDE
 .idea/
 .vscode/
+.idx/
 
 # OS
 .DS_Store
