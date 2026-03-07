@@ -4,9 +4,13 @@ pandas
 openpyxl
 SQLAlchemy
 psycopg2-binary
-google-generativeai
+google-genai
 python-dotenv
 firebase-admin
 httpx
 google-cloud-aiplatform
 python-multipart
+slowapi
+redis
+anthropic
+openai

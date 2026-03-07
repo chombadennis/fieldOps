@@ -1,16 +1,9 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from ..db.database import Base
+from .base import CustomBase
 
-class Project(Base):
-    __tablename__ = "projects"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-
-    activities = relationship("Activity", back_populates="project")
-
-class Activity(Base):
+class Activity(Base, CustomBase):
     __tablename__ = "activities"
 
     id = Column(Integer, primary_key=True, index=True)

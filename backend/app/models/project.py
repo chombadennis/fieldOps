@@ -1,11 +1,14 @@
-from sqlalchemy import Column, Integer, String, Date
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Text
+from sqlalchemy.orm import relationship
+from ..db.database import Base
+from .base import CustomBase
 
-Base = declarative_base()
-
-class Project(Base):
+class Project(Base, CustomBase):
     __tablename__ = 'projects'
-    project_id = Column(Integer, primary_key=True)
-    name = Column(String)
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    description = Column(Text, nullable=True)
     start_date = Column(Date)
     end_date = Column(Date)
+
+    activities = relationship("Activity", back_populates="project")

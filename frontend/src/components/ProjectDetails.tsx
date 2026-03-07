@@ -1,12 +1,14 @@
-import React from 'react';
+import { Project } from "@/models/project";
 
-const ProjectDetails: React.FC = () => {
+interface ProjectDetailsProps {
+  project: Project;
+}
+
+export default function ProjectDetails({ project }: ProjectDetailsProps) {
   return (
-    <div>
-      <h2>Project Details</h2>
-      {/* Logic to display project details */}
-    </div>
+    <header className="bg-white shadow-md rounded-lg p-6">
+      <h1 className="text-3xl font-bold text-gray-800">{project.name}</h1>
+      <p className="mt-2 text-gray-600">{project.description}</p>
+    </header>
   );
-};
-
-export default ProjectDetails;
+}

@@ -20,8 +20,8 @@ export default function LandingPage() {
           The all-in-one platform for modern builders. Manage bids, track progress, and coordinate teams with precision and ease.
         </p>
         <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
-          <Link href="/dashboard" className="w-full sm:w-auto bg-crimson-violet-600 text-white font-bold py-4 px-10 rounded-xl hover:bg-crimson-violet-700 transition-all transform hover:-translate-y-1 shadow-xl">
-            Go to Dashboard
+          <Link href="/sign-up" className="w-full sm:w-auto bg-crimson-violet-600 text-white font-bold py-4 px-10 rounded-xl hover:bg-crimson-violet-700 transition-all transform hover:-translate-y-1 shadow-xl">
+            Get Started
           </Link>
           <Link href="#how-it-works" className="w-full sm:w-auto bg-white border-2 border-dark-teal-600 text-dark-teal-600 font-bold py-4 px-10 rounded-xl hover:bg-dark-teal-50 transition-all">
             See How It Works
@@ -124,7 +124,7 @@ export default function LandingPage() {
             Join hundreds of construction firms scaling their operations with FieldOps.
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
-            <Link href="#" className="bg-white text-crimson-violet-600 font-bold py-4 px-10 rounded-xl hover:bg-gray-100 transition-colors shadow-lg">
+            <Link href="/sign-up" className="bg-white text-crimson-violet-600 font-bold py-4 px-10 rounded-xl hover:bg-gray-100 transition-colors shadow-lg">
               Start Free Trial
             </Link>
             <Link href="#" className="border-2 border-white/30 hover:bg-white/10 text-white font-bold py-4 px-10 rounded-xl transition-colors">

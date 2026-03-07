@@ -6,24 +6,28 @@ This document outlines the technical blueprint for the Construction Cost and Rev
 
 ## 2. Tech Stack
 
-The platform is built using a modern web stack, containerized within a reproducible development environment.
+The platform is built using a modern web stack, featuring a reproducible development environment for local coding and a containerized deployment strategy for production.
 
 - **Frontend:**
   - **Framework:** Next.js (with React)
   - **Language:** TypeScript
   - **Authentication:** Firebase Authentication
   - **Styling:** Tailwind CSS
-  - **API Communication:** Next.js API Routes acting as a proxy.
 
 - **Backend:**
   - **Framework:** FastAPI
   - **Language:** Python
   - **AI Service:** Google Cloud Vertex AI (with a Gemini model)
-  - **Core Logic:** A library like `pandas` will be used for parsing Excel files and data manipulation before sending it to the AI.
+  - **Caching:** Redis
+  - **Core Logic:** A library like `pandas` will be used for parsing Excel files and data manipulation.
 
 - **Development Environment:**
   - **Manager:** Nix
-  - **Configuration:** A single `.idx/dev.nix` file will define all packages, dependencies, and environment variables for both the frontend and backend, ensuring a consistent and reproducible setup.
+  - **Configuration:** A single `.idx/dev.nix` file defines all packages (Python, Node.js, Redis), ensuring a consistent local setup for all developers.
+
+- **Deployment:**
+  - **Containerization:** Docker
+  - **Strategy:** The backend will be packaged into a Docker container for portable, scalable deployment on hosting services like Render, Google Cloud Run, or AWS Fargate.
 
 ## 3. Project Structure
 
@@ -32,32 +36,28 @@ The project is organized as a monorepo to simplify development and management.
 ```
 /
 ├── .idx/
-│   └── dev.nix       # Single source of truth for the development environment
+│   └── dev.nix       # Source of truth for the development environment
 ├── frontend/         # Next.js application
-│   ├── src/
-│   │   └── app/
-│   │       ├── api/        # API routes (proxy to the backend)
-│   │       ├── components/ # React components
-│   │       └── page.tsx    # Main application page
-│   ├── package.json
 │   └── ...
 ├── backend/          # FastAPI application
-│   ├── main.py       # Main FastAPI application file
+│   ├── app/          # Core application logic
+│   ├── Dockerfile    # Instructions to containerize the backend for production
 │   └── requirements.txt
 └── blueprint.md      # This file
 ```
 
 ## 4. Architecture and Data Flow
 
-The application follows a classic client-server architecture, with a key modification in the communication flow to enhance security and simplify development.
+The application follows a classic client-server architecture.
 
 1.  **Authentication:** The user signs in or registers using **Firebase Authentication** in the **Next.js frontend**.
-2.  **File Upload:** The authenticated user selects a BOQ file in the frontend.
-3.  **Frontend to Proxy:** The frontend sends the file along with the user's ID token to a **Next.js API route** (e.g., `/api/upload`).
-4.  **Proxy to Backend:** The Next.js API route forwards the request to the **Python FastAPI backend**. The ID token is passed in the `Authorization` header.
-5.  **Backend Authentication & Processing:**
+2.  **File Upload:** The authenticated user selects and uploads a BOQ file.
+3.  **Frontend to Backend:** The frontend sends the file directly to the **Python FastAPI backend**, including the user's Firebase ID token in the `Authorization` header for security.
+4.  **Backend Processing:**
     - The **FastAPI backend** verifies the Firebase ID token to ensure the request is from an authenticated user.
-    - It uses `pandas` to parse the uploaded Excel file.
-    - It then sends the extracted data to a **Gemini model on Google Cloud Vertex AI** for analysis.
-6.  **Response to Frontend:** The analysis from Vertex AI is received by the backend, which then sends the result back through the same chain: FastAPI -> Next.js API Route -> Next.js Frontend.
-7.  **Display Report:** The frontend receives the analysis data and renders a comprehensive report.
+    - It generates a unique key for the request and checks for a cached result in **Redis**.
+    - **If a cached result is found,** it is returned immediately.
+    - **If not cached,** the backend uses `pandas` to parse the file and sends the extracted data to a **Gemini model on Google Cloud Vertex AI** for analysis.
+    - The new result is stored in **Redis** using the request key before being sent back.
+5.  **Response to Frontend:** The analysis is sent back to the Next.js frontend.
+6.  **Display Report:** The frontend receives the analysis data and renders a comprehensive report.
