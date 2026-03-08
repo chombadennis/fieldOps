@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api'; // Use the proxy
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const uploadFile = (file: File) => {
   const formData = new FormData();
@@ -9,17 +9,17 @@ export const uploadFile = (file: File) => {
 };
 
 export const createProject = async (project: { name: string; description: string }) => {
-  const response = await axios.post(`${API_URL}/projects/`, project);
+  const response = await axios.post(`${API_URL}/projects`, project);
   return response.data;
 };
 
 export const getProject = async (projectId: string) => {
-  const response = await axios.get(`${API__URL}/projects/${projectId}`);
+  const response = await axios.get(`${API_L_URL}/projects/${projectId}`);
   return response.data;
 };
 
 export const getProjects = async () => {
-  const response = await axios.get(`${API_URL}/projects/`);
+  const response = await axios.get(`${API_URL}/projects`);
   return response.data;
 };
 

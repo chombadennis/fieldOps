@@ -15,14 +15,14 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/projects/", response_model=schemas.project.Project)
+@router.post("/projects", response_model=schemas.project.Project)
 def create_project(project: schemas.project.ProjectCreate, db: Session = Depends(get_db)):
     """
     Create a new project.
     """
     return crud.create_project(db=db, project=project)
 
-@router.get("/projects/", response_model=List[schemas.project.Project])
+@router.get("/projects", response_model=List[schemas.project.Project])
 def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
     Retrieve all projects.

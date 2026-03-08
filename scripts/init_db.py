@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 load_dotenv()
 
 from backend.app.db.database import engine, Base
-from backend.app.models import models # Import the models
+# The models are now loaded via the __init__.py in the models directory
 
 def init_db():
     print("Creating database tables...")
