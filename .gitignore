@@ -21,3 +21,16 @@ yarn-error.log*
 
 # OS
 .DS_Store
+
+# Credentials (CRITICAL: DO NOT REMOVE)
+*.json
+!package.json
+!tsconfig.json
+!turborepo.json
+!plugin.json
+
+# Test Artifacts/Scraps
+plan.txt
+tmp/
+*.log
+backend/drop_all.py

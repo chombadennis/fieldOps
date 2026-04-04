@@ -30,7 +30,9 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from app.db.database import Base
 from app.models.project import Project
-from app.models.activity import Activity
+from app.models.boq_item import BoqItem
+from app.models.production_report import ProductionReport
+from app.models.reported_activity import ReportedActivity
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

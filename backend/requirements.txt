@@ -9,9 +9,13 @@ python-dotenv
 firebase-admin
 httpx
 google-cloud-aiplatform
+google-auth
+google-auth-oauthlib
 python-multipart
 slowapi
 redis
 anthropic
 openai
 alembic
+pydantic-settings
+pypdf
