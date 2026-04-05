@@ -23,16 +23,20 @@ class ExtractedBoqItem(BaseModel):
     amount: float = Field(default=0.0)
 
 class BoqExtractionList(BaseModel):
-    project_metadata: Optional[dict] = Field(None, description="Metadata like project_name, client, date.")
+    project_metadata: Optional[dict] = Field(None, description="Metadata like project_title, client, location, date.")
     boq_items: List[ExtractedBoqItem]
+    confidence_score: float = Field(default=1.0, description="Confidence score from 0.0 to 1.0 based on extraction clarity.")
 
 # --- 2. The Extraction Logic ---
-async def _extract_single_chunk(text: str, file_path: str = None, mime_type: str = None) -> dict:
+async def _extract_single_chunk(text: str, file_path: str = None, mime_type: str = None, prev_state: str = None, force_pro: bool = False) -> dict:
     schema_json = BoqExtractionList.model_json_schema()
+    
+    state_injection = f"\n--- PREVIOUS CONTEXT ---\n{prev_state}\n" if prev_state else ""
     
     prompt = f"""
     You are an expert Construction Quantity Surveyor and Data Extraction AI. 
     Analyze this Bill of Quantities (BOQ) data with extreme precision.
+    {state_injection}
     
     CRITICAL EXTRACTION RULES:
     1. **Description Merging**: BOQ data often spans multiple lines. If a row continues a description from the previous line (even if on a new page), COMBINE them into one single `description` string.
@@ -48,6 +52,10 @@ async def _extract_single_chunk(text: str, file_path: str = None, mime_type: str
     5. **Numerical Integrity**: Extract quantities, rates, and amounts as floats. Remove any 'Ksh', 'Shs', or commas.
     6. **Project Metadata**: If this is a Title/Cover page, extract: project_title, client, location, and date.
     
+    **ATTENTION HINTS** (Fix #3):
+    - Focus strictly on **Structural Headers** (e.g., 'BILL NO. 1', 'ELEMENTS', 'SUBSECTIONS') and **Line Item rows** (rows containing units like m3, m2, kg, nr, lm or numeric quantities).
+    - Ignore non-data "Page Noise" like page numbers, document dates, copyright notices, and decorative title text.
+    
     Return DATA STRICTLY as VALID JSON matching this schema:
     {json.dumps(schema_json, indent=2)}
     
@@ -57,7 +65,7 @@ async def _extract_single_chunk(text: str, file_path: str = None, mime_type: str
     ---
     """
 
-    response = await generate_text(prompt, file_path, mime_type)
+    response = await generate_text(prompt, file_path, mime_type, force_pro=force_pro)
     if "error" in response:
         return {"error": response["error"]}
 
@@ -70,6 +78,13 @@ async def _extract_single_chunk(text: str, file_path: str = None, mime_type: str
         
         validated_data = BoqExtractionList.model_validate_json(cleaned_text.strip())
         final_dict = validated_data.model_dump()
+        
+        # --- Fix #5: Confidence-Based Fallback ---
+        conf = final_dict.get("confidence_score", 1.0)
+        if conf < 0.85 and not response.get("is_fallback"):
+            logger.warning(f"⚠️ Low Confidence ({conf}). Triggering deep-scan with Gemini Pro...")
+            return await _extract_single_chunk(text, file_path, mime_type, prev_state, force_pro=True)
+            
         return {"extracted_data": final_dict, "source": response.get("model")}
     except Exception as e:
         logger.error(f"Failed to parse AI response: {e}")
@@ -145,8 +160,16 @@ async def get_ai_extraction(text: str, file_path: str = None, mime_type: str = N
                     with os.fdopen(fd, 'wb') as tmp: 
                          tmp.write(page_data)
                     
+                    # 4.1 Construct Context State (Fix #1: State Injection)
+                    prev_state_str = None
+                    if all_boq_items:
+                        # Find the last header and last item encountered so far
+                        last_header = next((item['description'] for item in reversed(all_boq_items) if item.get('row_category') == 'HEADER'), "Unknown")
+                        last_item_num = next((item['bill_item_number'] for item in reversed(all_boq_items) if item.get('bill_item_number')), "None")
+                        prev_state_str = f"Latest Header: {last_header}, Last Item No: {last_item_num}"
+
                     instruction_text = f"Page {i + 1} of {total_pages}. Analyze this page."
-                    chunk_result = await _extract_single_chunk(instruction_text, temp_chunk_path, mime_type)
+                    chunk_result = await _extract_single_chunk(instruction_text, temp_chunk_path, mime_type, prev_state=prev_state_str)
                     
                     if "error" in chunk_result:
                         logger.error(f"Failed Page {i + 1}. Error: {chunk_result.get('error')}")
@@ -165,6 +188,10 @@ async def get_ai_extraction(text: str, file_path: str = None, mime_type: str = N
                             await redis_client.set(cache_key, json.dumps(chunk_result), ex=86400)
                             logger.info(f"🎯 CACHED: Saved {len(items_found)} items for Page {i+1}")
                         except: pass
+                    
+                    # 5.1 BREATHING ROOM: Short pause to avoid 429 Resource Exhausted on multi-page PDF
+                    import asyncio
+                    await asyncio.sleep(3)
                 finally:
                     if os.path.exists(temp_chunk_path): os.remove(temp_chunk_path)
             

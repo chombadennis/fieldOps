@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  # This is the memory cache for your AI Extraction results
+  redis:
+    image: redis:alpine
+    container_name: fieldops_redis_lab
+    ports:
+      - "6379:6379"
+    restart: always
+    # This ensures your results are saved to disk even if Docker restarts
+    command: redis-server --appendonly yes

@@ -112,6 +112,11 @@ async def parse_boq_with_ai(
                     if metadata.get("client"): project.client_name = metadata.get("client")
                     if metadata.get("date"): project.report_date = metadata.get("date")
                 
+                # --- Overwrite Safety: Purge Old BOQ Items Before Saving New ---
+                logger.info(f"Purging old BOQ items for Project {project_id} to prepare for fresh upload...")
+                db.query(BoqItem).filter(BoqItem.project_id == project_id).delete()
+                db.flush() # Ensure the deletion is acknowledged before inserting new records
+                
                 boq_list = ai_result["extracted_data"]["boq_items"]
                 id_map = {}
                 
