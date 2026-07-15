@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     GOOGLE_CLOUD_PROJECT_ID: str
     GOOGLE_CLOUD_LOCATION: str
     GOOGLE_CREDENTIALS_JSON: str
+    GOOGLE_CREDENTIALS_JSON_2: Optional[str] = None
 
     # --- Redis Cache Configuration ---
     REDIS_HOST: str = "localhost"

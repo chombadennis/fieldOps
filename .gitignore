@@ -34,3 +34,6 @@ plan.txt
 tmp/
 *.log
 backend/drop_all.py
+
+# Private Documentation
+backend/README.md

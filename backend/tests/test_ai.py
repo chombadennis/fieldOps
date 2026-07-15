@@ -31,8 +31,7 @@ async def run_ai_test():
 
     # --- Monkeypatching for this test run ---
     # We will force the use of the known-good models to confirm the fix.
-    # SWITCHING TO 1.5-FLASH BECAUSE 2.0-FLASH IS AT LIMIT 0
-    ai_client.GEMINI_PRIMARY_MODEL = 'gemini-2.5-flash'
+    ai_client.GEMINI_PRIMARY_MODEL = 'gemini-3.5-flash'
     ai_client.GEMINI_FALLBACK_MODEL = 'gemini-2.5-pro'
     print(f"Primary model set to: {ai_client.GEMINI_PRIMARY_MODEL}")
     print(f"Fallback model set to: {ai_client.GEMINI_FALLBACK_MODEL}")
@@ -40,17 +39,29 @@ async def run_ai_test():
 
     prompt = "This is a direct test of the AI client from a script. Respond with a simple confirmation, like 'Test successful'."
     
-    response = await ai_client.generate_text(prompt)
-
+    # 1. Test Primary Model (Flash)
+    print("-> Testing Primary Model (Flash)...")
+    response = await ai_client.generate_text(prompt, force_pro=False)
     if response and not response.get("error"):
-        print("🟢 AI Test Successful!")
-        print(f"   Model Used: {response.get('model')}")
-        print(f"   AI Response: '{response.get('text')}'")
+        print("🟢 Primary Model (Flash) Connection Successful!")
+        print(f"   Model: {response.get('model')}")
+        print(f"   Response: '{response.get('text').strip()}'")
     else:
-        print("🔴 AI Test Failed.")
+        print("🔴 Primary Model (Flash) Connection Failed.")
         print(f"   Error: {response.get('error', 'An unknown error occurred.')}")
         
-    print("--- End of AI Connection Test ---")
+    # 2. Test Fallback Model (Pro)
+    print("\n-> Testing Fallback Model (Pro)...")
+    response_pro = await ai_client.generate_text(prompt, force_pro=True)
+    if response_pro and not response_pro.get("error"):
+        print("🟢 Fallback Model (Pro) Connection Successful!")
+        print(f"   Model: {response_pro.get('model')}")
+        print(f"   Response: '{response_pro.get('text').strip()}'")
+    else:
+        print("🔴 Fallback Model (Pro) Connection Failed.")
+        print(f"   Error: {response_pro.get('error', 'An unknown error occurred.')}")
+        
+    print("\n--- End of AI Connection Test ---")
 
 if __name__ == "__main__":
     asyncio.run(run_ai_test())

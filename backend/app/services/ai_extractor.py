@@ -39,7 +39,9 @@ async def _extract_single_chunk(text: str, file_path: str = None, mime_type: str
     {state_injection}
     
     CRITICAL EXTRACTION RULES:
-    1. **Description Merging**: BOQ data often spans multiple lines. If a row continues a description from the previous line (even if on a new page), COMBINE them into one single `description` string.
+    1. **Description Merging**: BOQ data often spans multiple lines. 
+       - If a row continues a description from the previous line (even if on a new page), COMBINE them into one single `description` string.
+       - If a description starts with an introductory text block ending in a preposition (e.g., 'laid on top of', 'suitable for', 'consisting of') and is completed by a line item below it, merge the introductory text block directly into the line item's description instead of creating a separate empty HEADER.
     2. **Structural Headers**: 
        - Identify major sections (e.g., 'ELEMENT NO. 1', 'SUBSTRUCTURES', 'CONCRETE WORKS').
        - Set `row_category` = 'HEADER'.
