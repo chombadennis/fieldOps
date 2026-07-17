@@ -31,6 +31,19 @@ class Settings(BaseSettings):
     # --- PostgreSQL Database Configuration ---
     DATABASE_URL: str
 
+    # --- Encryption and OAuth settings ---
+    ENCRYPTION_KEY: Optional[str] = None
+    
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: Optional[str] = None
+    
+    MICROSOFT_CLIENT_ID: Optional[str] = None
+    MICROSOFT_CLIENT_SECRET: Optional[str] = None
+    MICROSOFT_REDIRECT_URI: Optional[str] = None
+
+    FRONTEND_URL: str = "http://localhost:3001"
+
     # --- Model Configuration ---
     model_config = SettingsConfigDict(
         # Locate the .env file in the PROJECT ROOT (three folders up from here)

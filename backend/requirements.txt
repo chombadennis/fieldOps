@@ -19,3 +19,4 @@ openai
 alembic
 pydantic-settings
 pypdf
+cryptography

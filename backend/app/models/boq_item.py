@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB
 import sqlalchemy.orm
 from sqlalchemy.orm import relationship
 from ..db.database import Base
@@ -8,7 +9,7 @@ class BoqItem(Base, CustomBase):
     __tablename__ = 'boq_items'
     
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
+    boq_id = Column(Integer, ForeignKey('boq_documents.id', ondelete="CASCADE"), nullable=False)
     
     # --- NEW: HIERARCHY SUPPORT ---
     # This allows recursive parenting: Bill -> Element -> Sub-heading -> Item
@@ -22,6 +23,12 @@ class BoqItem(Base, CustomBase):
     
     # Mapping field for External Specifications (e.g. Roads, Bridges, Building Works spec code)
     mapping_code = Column(String, index=True, nullable=True)
+    
+    # Mapping for cloud spreadsheets (Google Sheets, Excel on OneDrive)
+    sheet_row_index = Column(Integer, nullable=True, default=None)
+    sheet_id = Column(String, nullable=True, default=None)
+    sheet_name = Column(String, nullable=True, default=None)
+    values_map = Column(JSONB, nullable=True, default=None)
     # ------------------------------
 
     # Core BOQ Fields from the AI
@@ -33,6 +40,6 @@ class BoqItem(Base, CustomBase):
     amount = Column(Float, nullable=False, default=0.0)
     
     # Relationships
-    project = relationship("Project", back_populates="boq_items")
+    boq_document = relationship("BoqDocument", back_populates="boq_items")
     children = relationship("BoqItem", backref=sqlalchemy.orm.backref('parent', remote_side=[id]))
     reported_activities = relationship("ReportedActivity", back_populates="boq_item", cascade="all, delete-orphan")

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException, Request, Form, Depends
+from typing import Optional
 from sqlalchemy.orm import Session
 from ..db.database import get_db
 from ..models.project import Project
@@ -22,6 +23,7 @@ router = APIRouter()
 async def parse_boq_with_ai(
     request: Request, 
     project_id: int = Form(...), 
+    boq_name: Optional[str] = Form(None),
     file: UploadFile = File(...)
 ):
     """
@@ -30,20 +32,34 @@ async def parse_boq_with_ai(
     and returns the saved result.
     """
     from ..db.database import SessionLocal # Import for manual session management
+    from ..models.boq_document import BoqDocument
 
-    # 0. Validate Project Exists BEFORE we do expensive AI work
-    # We open a SHORT-LIVED connection here and close it immediately.
-    with SessionLocal() as db:
-        project = db.query(Project).filter(Project.id == project_id).first()
-        if not project:
-            raise HTTPException(status_code=404, detail=f"Project with ID {project_id} not found in the database. Cannot attach BOQ.")
-    
     # 1. Validate File Type NOW ALLOWS PDFs!
     if not file.filename.endswith(('.xls', '.xlsx', '.pdf')):
         raise HTTPException(status_code=400, detail="Invalid file type. Only Excel (.xls, .xlsx) or PDF (.pdf) files are accepted.")
 
     try:
         contents = await file.read()
+        file_hash = hashlib.sha256(contents).hexdigest()
+
+        # 0. Validate Project Exists & Check Limits/Duplicates BEFORE we do expensive AI work
+        with SessionLocal() as db:
+            project = db.query(Project).filter(Project.id == project_id).first()
+            if not project:
+                raise HTTPException(status_code=404, detail=f"Project with ID {project_id} not found in the database. Cannot attach BOQ.")
+            
+            # Count existing BOQs
+            boq_count = db.query(BoqDocument).filter(BoqDocument.project_id == project_id).count()
+            if boq_count >= 5:
+                raise HTTPException(status_code=400, detail="Limit reached: A project can have up to 5 BOQ documents.")
+            
+            # Check for duplicate file hash
+            duplicate = db.query(BoqDocument).filter(
+                BoqDocument.project_id == project_id,
+                BoqDocument.file_hash == file_hash
+            ).first()
+            if duplicate:
+                raise HTTPException(status_code=400, detail="This BOQ file has already been uploaded for this project.")
         
         # 2. Caching Logic (Async - Redis should be started via Docker!)
         redis_client = request.app.state.redis
@@ -112,17 +128,23 @@ async def parse_boq_with_ai(
                     if metadata.get("client"): project.client_name = metadata.get("client")
                     if metadata.get("date"): project.report_date = metadata.get("date")
                 
-                # --- Overwrite Safety: Purge Old BOQ Items Before Saving New ---
-                logger.info(f"Purging old BOQ items for Project {project_id} to prepare for fresh upload...")
-                db.query(BoqItem).filter(BoqItem.project_id == project_id).delete()
-                db.flush() # Ensure the deletion is acknowledged before inserting new records
+                # Create the BoqDocument container
+                doc_name = boq_name or file.filename or "Main BOQ"
+                boq_doc = BoqDocument(
+                    project_id=project_id,
+                    name=doc_name,
+                    file_hash=file_hash,
+                    origin="file_upload"
+                )
+                db.add(boq_doc)
+                db.flush()  # obtain boq_doc.id
                 
                 boq_list = ai_result["extracted_data"]["boq_items"]
                 id_map = {}
                 
                 for item in boq_list:
                     db_item = BoqItem(
-                        project_id=project_id,
+                        boq_id=boq_doc.id,
                         bill_item_number=item.get("bill_item_number"),
                         description=item.get("description", ""),
                         row_category=item.get("row_category", "LINE_ITEM"),
