@@ -39,19 +39,29 @@ class SyncRequest(BaseModel):
 # --- OAuth Authorization Redirect URLs ---
 
 @router.get("/integrations/google/auth-url")
-def google_auth_url(project_id: int):
+def google_auth_url(project_id: int, active_tab: Optional[str] = None, pmo_sub_tab: Optional[str] = None):
     """
-    Returns the Google Sheets OAuth consent URL for a specific project.
+    Returns the Google Sheets OAuth consent URL for a specific project, encoding tab context in state.
     """
-    url = get_google_auth_url(project_id)
+    state_str = str(project_id)
+    if active_tab:
+        state_str += f":{active_tab}"
+        if pmo_sub_tab:
+            state_str += f":{pmo_sub_tab}"
+    url = get_google_auth_url(project_id, state_str)
     return {"url": url}
 
 @router.get("/integrations/onedrive/auth-url")
-def onedrive_auth_url(project_id: int):
+def onedrive_auth_url(project_id: int, active_tab: Optional[str] = None, pmo_sub_tab: Optional[str] = None):
     """
-    Returns the Microsoft Graph OAuth consent URL for a specific project.
+    Returns the Microsoft Graph OAuth consent URL for a specific project, encoding tab context in state.
     """
-    url = get_onedrive_auth_url(project_id)
+    state_str = str(project_id)
+    if active_tab:
+        state_str += f":{active_tab}"
+        if pmo_sub_tab:
+            state_str += f":{pmo_sub_tab}"
+    url = get_onedrive_auth_url(project_id, state_str)
     return {"url": url}
 
 # --- OAuth Callbacks ---
@@ -59,23 +69,25 @@ def onedrive_auth_url(project_id: int):
 @router.get("/integrations/google/callback")
 async def google_callback(
     code: str,
-    state: str,  # This contains our project_id
+    state: str,  # Contains project_id[:active_tab][:pmo_sub_tab]
     db: Session = Depends(get_db)
 ):
     """
     Handles Google OAuth redirect, exchanges code for refresh token, and redirects back to dashboard.
     """
+    parts = state.split(":")
     try:
-        project_id = int(state)
-    except ValueError:
+        project_id = int(parts[0])
+    except (ValueError, IndexError):
         raise HTTPException(status_code=400, detail="Invalid project_id state parameter.")
         
+    active_tab = parts[1] if len(parts) > 1 else None
+    pmo_sub_tab = parts[2] if len(parts) > 2 else None
+
     try:
         tokens = await exchange_google_code_for_tokens(code)
         refresh_token = tokens.get("refresh_token")
         if not refresh_token:
-            # Note: Google only sends the refresh_token during the *first* consent approval.
-            # If re-authenticating, users may need to revoke permissions first, or we check if we already have it.
             existing = db.query(ProjectIntegration).filter(
                 ProjectIntegration.project_id == project_id,
                 ProjectIntegration.provider == "google_sheets"
@@ -90,28 +102,39 @@ async def google_callback(
         else:
             refresh_token = encrypt_token(refresh_token)
             
-        # Redirect to frontend dashboard with success parameters
-        # We can store the tokens temporarily in the DB or session
         frontend_url = f"{settings.FRONTEND_URL}/dashboard/{project_id}?oauth_provider=google_sheets&refresh_token={refresh_token}"
+        if active_tab:
+            frontend_url += f"&active_tab={active_tab}"
+            if pmo_sub_tab:
+                frontend_url += f"&pmo_sub_tab={pmo_sub_tab}"
         return RedirectResponse(url=frontend_url)
     except Exception as e:
         logger.exception("Google OAuth Callback Failed:")
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard/{project_id}?error={str(e)}")
+        err_frontend_url = f"{settings.FRONTEND_URL}/dashboard/{project_id}?error={str(e)}"
+        if active_tab:
+            err_frontend_url += f"&active_tab={active_tab}"
+            if pmo_sub_tab:
+                err_frontend_url += f"&pmo_sub_tab={pmo_sub_tab}"
+        return RedirectResponse(url=err_frontend_url)
 
 @router.get("/integrations/onedrive/callback")
 async def onedrive_callback(
     code: str,
-    state: str,  # Contains project_id
+    state: str,  # Contains project_id[:active_tab][:pmo_sub_tab]
     db: Session = Depends(get_db)
 ):
     """
     Handles OneDrive OAuth redirect, exchanges code for refresh token, and redirects to dashboard.
     """
+    parts = state.split(":")
     try:
-        project_id = int(state)
-    except ValueError:
+        project_id = int(parts[0])
+    except (ValueError, IndexError):
         raise HTTPException(status_code=400, detail="Invalid project_id state parameter.")
         
+    active_tab = parts[1] if len(parts) > 1 else None
+    pmo_sub_tab = parts[2] if len(parts) > 2 else None
+
     try:
         tokens = await exchange_onedrive_code_for_tokens(code)
         refresh_token = tokens.get("refresh_token")
@@ -128,20 +151,31 @@ async def onedrive_callback(
             refresh_token = encrypt_token(refresh_token)
             
         frontend_url = f"{settings.FRONTEND_URL}/dashboard/{project_id}?oauth_provider=onedrive&refresh_token={refresh_token}"
+        if active_tab:
+            frontend_url += f"&active_tab={active_tab}"
+            if pmo_sub_tab:
+                frontend_url += f"&pmo_sub_tab={pmo_sub_tab}"
         return RedirectResponse(url=frontend_url)
     except Exception as e:
         logger.exception("OneDrive OAuth Callback Failed:")
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard/{project_id}?error={str(e)}")
+        err_frontend_url = f"{settings.FRONTEND_URL}/dashboard/{project_id}?error={str(e)}"
+        if active_tab:
+            err_frontend_url += f"&active_tab={active_tab}"
+            if pmo_sub_tab:
+                err_frontend_url += f"&pmo_sub_tab={pmo_sub_tab}"
+        return RedirectResponse(url=err_frontend_url)
+
 
 @router.get("/integrations/list-files")
 async def list_cloud_files(
     provider: str,
     refresh_token: str,
-    folder_id: Optional[str] = None
+    folder_id: Optional[str] = None,
+    filter_type: Optional[str] = "spreadsheets"
 ):
     """
     Given an encrypted refresh token and optional folder_id, fetches access token,
-    and returns a list of subfolders and compatible spreadsheet files inside that folder.
+    and returns a list of subfolders and files inside that folder, filtered by type.
     """
     from ..utils.security import decrypt_token
     import httpx
@@ -159,19 +193,22 @@ async def list_cloud_files(
             raise HTTPException(status_code=400, detail=f"Failed to refresh Google token: {str(e)}")
             
         parent_id = folder_id if folder_id else "root"
-        q = (
-            f"'{parent_id}' in parents and ("
-            "mimeType='application/vnd.google-apps.folder' or "
-            "mimeType='application/vnd.google-apps.spreadsheet' or "
-            "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or "
-            "mimeType='application/vnd.ms-excel'"
-            ") and trashed = false"
-        )
+        if filter_type == "all":
+            q = f"'{parent_id}' in parents and trashed = false"
+        else:
+            q = (
+                f"'{parent_id}' in parents and ("
+                "mimeType='application/vnd.google-apps.folder' or "
+                "mimeType='application/vnd.google-apps.spreadsheet' or "
+                "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or "
+                "mimeType='application/vnd.ms-excel'"
+                ") and trashed = false"
+            )
         
         # URL encode the query
         import urllib.parse
         encoded_q = urllib.parse.quote(q)
-        url = f"https://www.googleapis.com/drive/v3/files?q={encoded_q}&fields=files(id,name,mimeType)"
+        url = f"https://www.googleapis.com/drive/v3/files?q={encoded_q}&fields=files(id,name,mimeType,webViewLink)"
         headers = {"Authorization": f"Bearer {access_token}"}
         
         async with httpx.AsyncClient() as client:
@@ -181,12 +218,27 @@ async def list_cloud_files(
             files = res.json().get("files", [])
             
             mapped = []
+            EXCLUDED_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.ico', '.heic', '.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.mp3', '.wav', '.aac', '.flac', '.m4a')
             for f in files:
-                is_folder = f.get("mimeType") == "application/vnd.google-apps.folder"
+                mime_type = f.get("mimeType", "")
+                name = f.get("name", "")
+                is_folder = mime_type == "application/vnd.google-apps.folder"
+                is_google_sheet = mime_type == "application/vnd.google-apps.spreadsheet"
+                
+                # Filter out image, video, and audio files
+                if not is_folder:
+                    if mime_type.startswith("image/") or mime_type.startswith("video/") or mime_type.startswith("audio/"):
+                        continue
+                    if name.lower().endswith(EXCLUDED_EXTENSIONS):
+                        continue
+
                 mapped.append({
                     "id": f["id"],
-                    "name": f["name"],
-                    "type": "folder" if is_folder else "file"
+                    "name": name,
+                    "type": "folder" if is_folder else "file",
+                    "mime_type": mime_type,
+                    "is_google_sheet": is_google_sheet,
+                    "web_url": f.get("webViewLink")
                 })
             return mapped
             
@@ -210,41 +262,80 @@ async def list_cloud_files(
             items = res.json().get("value", [])
             
             files_list = []
+            EXCLUDED_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.ico', '.heic', '.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.mp3', '.wav', '.aac', '.flac', '.m4a')
             for item in items:
                 is_folder = "folder" in item
                 is_file = "file" in item
                 name = item.get("name", "")
+                web_url = item.get("webUrl")
                 
                 if is_folder:
                     files_list.append({
                         "id": item["id"],
                         "name": name,
-                        "type": "folder"
+                        "type": "folder",
+                        "web_url": web_url
                     })
-                elif is_file and (name.lower().endswith(".xlsx") or name.lower().endswith(".xls")):
-                    files_list.append({
-                        "id": item["id"],
-                        "name": name,
-                        "type": "file"
-                    })
+                else:
+                    if name.lower().endswith(EXCLUDED_EXTENSIONS):
+                        continue
+                    is_spreadsheet = name.lower().endswith(".xlsx") or name.lower().endswith(".xls") or name.lower().endswith(".csv") or name.lower().endswith(".ods")
+                    if filter_type == "all" or (is_file and is_spreadsheet):
+                        files_list.append({
+                            "id": item["id"],
+                            "name": name,
+                            "type": "file",
+                            "web_url": web_url
+                        })
                 
             return files_list
-            
     else:
         raise HTTPException(status_code=400, detail="Unsupported provider.")
+
+
+@router.post("/integrations/convert-google-file")
+async def convert_google_file(
+    provider: str,
+    refresh_token: str,
+    file_id: str
+):
+    """
+    Converts an Excel spreadsheet stored in Google Drive into native Google Sheets format.
+    """
+    if provider != "google_sheets":
+        raise HTTPException(status_code=400, detail="Conversion is only supported for Google Drive files.")
+
+    from ..utils.security import decrypt_token
+    from ..services.integrations.google_sheets import refresh_google_access_token, convert_excel_to_google_sheet
+
+    try:
+        decrypted = decrypt_token(refresh_token)
+        access_token = await refresh_google_access_token(decrypted)
+        result = await convert_excel_to_google_sheet(file_id, access_token)
+        return {
+            "status": "success",
+            "id": result.get("id"),
+            "name": result.get("name"),
+            "web_url": result.get("webViewLink")
+        }
+    except Exception as e:
+        logger.error(f"Google file conversion error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/integrations/list-sheets")
 async def list_cloud_sheets(
     provider: str,
     refresh_token: str,
-    spreadsheet_id: str
+    spreadsheet_id: str,
+    check_headers: bool = True
 ):
     """
-    Retrieves the sheets in a spreadsheet and does a quick pre-scan to check for BOQ headers.
+    Retrieves the sheets in a spreadsheet.
+    When check_headers=True (default, BoQ context), also fetches first rows and scans for BOQ column structure.
+    When check_headers=False (IPC/Budget/Department), skips the header scan entirely for performance.
     """
     from ..utils.security import decrypt_token
-    from ..services.integrations.sync_service import auto_map_columns
     
     try:
         decrypted = decrypt_token(refresh_token)
@@ -265,22 +356,25 @@ async def list_cloud_sheets(
         try:
             sheets = await get_google_spreadsheet_sheets(spreadsheet_id, access_token)
         except Exception as e:
-            err_msg = str(e)
-            if "must not be an Office file" in err_msg or "FAILED_PRECONDITION" in err_msg:
+            err_msg = str(e).lower()
+            if "must not be an office file" in err_msg or "failed_precondition" in err_msg or "invalid_argument" in err_msg or "invalid argument" in err_msg:
                 raise HTTPException(
                     status_code=400,
-                    detail="This is a Microsoft Excel file (.xlsx) stored in Google Drive. Google Sheets API does not support reading raw Office formats directly. To resolve this: open the file in Google Drive on the web, click 'File' > 'Save as Google Sheets', and select the newly created Google Sheets file in FieldOps."
+                    detail="This is a raw file (e.g. CSV or Excel) stored in Google Drive, which Google Sheets cannot read directly. To resolve this: open the file in Google Drive on the web, click 'File' > 'Save as Google Sheets', and select the newly created Google Sheets file in FieldOps."
                 )
-            raise HTTPException(status_code=500, detail=f"Failed to fetch worksheets: {err_msg}")
+            raise HTTPException(status_code=500, detail=f"Failed to fetch worksheets: {str(e)}")
 
-        sheet_names = [s["name"] for s in sheets]
-        
-        rows_dict = await get_google_sheets_batch_first_rows(spreadsheet_id, sheet_names, access_token)
-        
-        for s in sheets:
-            rows = rows_dict.get(s["name"], [])
-            header_idx, _ = auto_map_columns(rows)
-            s["has_headers"] = header_idx != -1
+        if check_headers:
+            from ..services.integrations.sync_service import auto_map_columns
+            sheet_names = [s["name"] for s in sheets]
+            rows_dict = await get_google_sheets_batch_first_rows(spreadsheet_id, sheet_names, access_token)
+            for s in sheets:
+                rows = rows_dict.get(s["name"], [])
+                header_idx, _ = auto_map_columns(rows)
+                s["has_headers"] = header_idx != -1
+        else:
+            for s in sheets:
+                s["has_headers"] = False
             
         return sheets
         
@@ -295,15 +389,28 @@ async def list_cloud_sheets(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to refresh Microsoft token: {str(e)}")
             
-        sheets = await get_onedrive_sheets(spreadsheet_id, access_token)
-        sheet_names = [s["name"] for s in sheets]
-        
-        rows_dict = await get_onedrive_sheets_first_rows(spreadsheet_id, sheet_names, access_token)
-        
-        for s in sheets:
-            rows = rows_dict.get(s["name"], [])
-            header_idx, _ = auto_map_columns(rows)
-            s["has_headers"] = header_idx != -1
+        try:
+            sheets = await get_onedrive_sheets(spreadsheet_id, access_token)
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "itemnotfound" in err_msg or "badrequest" in err_msg or "onedrive sheets fetch error" in err_msg:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Microsoft OneDrive integration can only read native Excel Workbooks (.xlsx). The file you selected (e.g. CSV) is not supported. Please open the file in OneDrive, click 'File' > 'Save As' > 'Download a Copy' (or convert it online), ensure it is saved as an Excel Workbook (.xlsx) in your Drive, and then select the new file."
+                )
+            raise HTTPException(status_code=500, detail=f"Failed to fetch OneDrive worksheets: {str(e)}")
+
+        if check_headers:
+            from ..services.integrations.sync_service import auto_map_columns
+            sheet_names = [s["name"] for s in sheets]
+            rows_dict = await get_onedrive_sheets_first_rows(spreadsheet_id, sheet_names, access_token)
+            for s in sheets:
+                rows = rows_dict.get(s["name"], [])
+                header_idx, _ = auto_map_columns(rows)
+                s["has_headers"] = header_idx != -1
+        else:
+            for s in sheets:
+                s["has_headers"] = False
             
         return sheets
         
@@ -343,7 +450,8 @@ def save_integration(
     """
     existing = db.query(ProjectIntegration).filter(
         ProjectIntegration.project_id == project_id,
-        ProjectIntegration.provider == provider
+        ProjectIntegration.provider == provider,
+        ProjectIntegration.spreadsheet_id == spreadsheet_id
     ).first()
     
     if not existing and not refresh_token:
@@ -385,7 +493,27 @@ async def trigger_sync_import(
         raise HTTPException(status_code=404, detail="Integration not found.")
         
     await run_initial_import(db, integration_id)
-    return {"status": "success", "message": "Spreadsheet sync completed successfully."}
+
+    # Return validation result so the frontend knows if items were saved or preview-only
+    from ..models.boq_document import BoqDocument
+    boq_doc = db.query(BoqDocument).filter(
+        BoqDocument.integration_id == integration.id
+    ).order_by(BoqDocument.id.desc()).first()
+
+    preview_only = boq_doc.preview_only if boq_doc else False
+    return {
+        "status": "success",
+        "preview_only": preview_only,
+        "validation_status": boq_doc.validation_status if boq_doc else None,
+        "validation_score": boq_doc.validation_score if boq_doc else None,
+        "validation_issues": boq_doc.validation_issues if boq_doc else [],
+        "validation_summary": boq_doc.validation_summary if boq_doc else None,
+        "message": (
+            "Workbook linked for preview only. It does not meet the BoQ structure requirements and has not been saved to the database."
+            if preview_only else
+            "Spreadsheet sync completed successfully. Items saved to database."
+        ),
+    }
 
 @router.delete("/integrations/{integration_id}")
 def delete_integration(integration_id: int, db: Session = Depends(get_db)):
@@ -410,8 +538,9 @@ async def check_integration_update(integration_id: int, db: Session = Depends(ge
         
     res_data = {"has_updates": False, "new_sheets": []}
     
+    # If never synced yet, return no updates — the badge would be misleading.
+    # The "Sync Workbook" button handles the first-import case.
     if not integration.last_synced_at:
-        res_data["has_updates"] = True
         return res_data
         
     try:
@@ -465,12 +594,18 @@ async def check_integration_update(integration_id: int, db: Session = Depends(ge
             last_synced = integration.last_synced_at.replace(tzinfo=datetime.timezone.utc)
             res_data["has_updates"] = modified_dt > last_synced + datetime.timedelta(seconds=5)
             
-        # Detect new sheets
+        # Detect new sheets — exclude already-dismissed ones
+        dismissed_raw = integration.dismissed_sheets
+        try:
+            dismissed_set = set(json.loads(dismissed_raw)) if dismissed_raw else set()
+        except Exception:
+            dismissed_set = set()
+            
         new_sheets = []
         for s in remote_sheets:
             s_id = s.get("id")
             s_name = s.get("name")
-            if s_id not in selected_ids and s_name not in selected_names:
+            if s_id not in selected_ids and s_name not in selected_names and s_name not in dismissed_set:
                 new_sheets.append(s_name)
         res_data["new_sheets"] = new_sheets
         
@@ -478,6 +613,28 @@ async def check_integration_update(integration_id: int, db: Session = Depends(ge
         logger.error(f"Error checking integration updates: {e}")
         
     return res_data
+
+@router.post("/integrations/{integration_id}/dismiss-sheets")
+async def dismiss_new_sheets(integration_id: int, sheet_names: list[str], db: Session = Depends(get_db)):
+    """
+    Persistently marks the given sheet tab names as 'dismissed' so they are excluded
+    from the new_sheets list in future check-update polls. Called when the user clicks
+    'Clear Alert' or saves configuration without adding the sheet.
+    """
+    import json
+    integration = db.query(ProjectIntegration).filter(ProjectIntegration.id == integration_id).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found.")
+    
+    try:
+        existing = set(json.loads(integration.dismissed_sheets)) if integration.dismissed_sheets else set()
+    except Exception:
+        existing = set()
+        
+    existing.update(sheet_names)
+    integration.dismissed_sheets = json.dumps(list(existing))
+    db.commit()
+    return {"status": "ok", "dismissed_sheets": list(existing)}
 
 @router.get("/integrations/{integration_id}/open")
 async def open_integration_file(integration_id: int, db: Session = Depends(get_db)):
@@ -524,6 +681,62 @@ async def open_integration_file(integration_id: int, db: Session = Depends(get_d
     # Fallback to general provider homepage
     fallback_url = "https://docs.google.com" if integration.provider == "google_sheets" else "https://onedrive.live.com"
     return RedirectResponse(url=fallback_url)
+
+@router.get("/integrations/{integration_id}/embed-url")
+async def get_integration_embed_url(
+    integration_id: int,
+    mode: str = "edit",
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieves a formatted embeddable URL for Google Sheets or OneDrive/SharePoint.
+    """
+    integration = db.query(ProjectIntegration).filter(ProjectIntegration.id == integration_id).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found.")
+
+    if mode not in ("edit", "view"):
+        raise HTTPException(status_code=400, detail="Invalid mode. Must be 'edit' or 'view'.")
+
+    try:
+        decrypted = decrypt_token(integration.refresh_token)
+
+        if integration.provider == "google_sheets":
+            from ..services.integrations.embed_service import get_google_embed_url
+            embed_url = await get_google_embed_url(integration.spreadsheet_id, mode)
+            return {"url": embed_url}
+
+        elif integration.provider == "onedrive":
+            import httpx
+            from ..services.integrations.onedrive import refresh_onedrive_access_token
+            from ..services.integrations.embed_service import get_onedrive_embed_url
+            
+            access_token = await refresh_onedrive_access_token(decrypted)
+            
+            # Fetch webUrl from MS Graph
+            url = f"https://graph.microsoft.com/v1.0/me/drive/items/{integration.spreadsheet_id}?select=webUrl"
+            headers = {"Authorization": f"Bearer {access_token}"}
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, headers=headers)
+                if resp.status_code != 200:
+                    raise HTTPException(
+                        status_code=resp.status_code, 
+                        detail=f"Microsoft Graph API error while fetching webUrl: {resp.text}"
+                    )
+                web_url = resp.json().get("webUrl")
+                if not web_url:
+                    raise HTTPException(status_code=500, detail="No webUrl found for the spreadsheet in Microsoft Graph.")
+            
+            embed_url = await get_onedrive_embed_url(web_url, mode)
+            return {"url": embed_url}
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported provider.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to generate embed URL:")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/integrations/{integration_id}/sheets")
 async def get_active_integration_sheets(integration_id: int, db: Session = Depends(get_db)):

@@ -10,6 +10,11 @@ class ProjectIntegration(BaseModel):
     sheet_name: str
     boq_name: Optional[str] = None
     last_synced_at: Optional[datetime] = None
+    preview_only: Optional[bool] = False
+    validation_status: Optional[str] = None
+    validation_score: Optional[float] = None
+    validation_issues: Optional[List[str]] = None
+    validation_summary: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -21,7 +26,13 @@ class BoqDocument(BaseModel):
     name: str
     file_hash: str
     origin: Optional[str] = "file_upload"
+    integration_id: Optional[int] = None
     created_at: Optional[datetime] = None
+    preview_only: Optional[bool] = False
+    validation_status: Optional[str] = None
+    validation_score: Optional[float] = None
+    validation_issues: Optional[List[str]] = None
+    validation_summary: Optional[str] = None
 
     class Config:
         from_attributes = True

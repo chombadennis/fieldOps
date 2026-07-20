@@ -73,13 +73,17 @@ export const deleteProject = async (projectId: string) => {
   return response.data;
 };
 
-export const getGoogleAuthUrl = async (projectId: string) => {
-  const response = await apiClient.get(`/integrations/google/auth-url?project_id=${projectId}`);
+export const getGoogleAuthUrl = async (projectId: string | number, activeTab?: string, pmoSubTab?: string) => {
+  const response = await apiClient.get('/integrations/google/auth-url', {
+    params: { project_id: projectId, active_tab: activeTab, pmo_sub_tab: pmoSubTab }
+  });
   return response.data;
 };
 
-export const getOneDriveAuthUrl = async (projectId: string) => {
-  const response = await apiClient.get(`/integrations/onedrive/auth-url?project_id=${projectId}`);
+export const getOneDriveAuthUrl = async (projectId: string | number, activeTab?: string, pmoSubTab?: string) => {
+  const response = await apiClient.get('/integrations/onedrive/auth-url', {
+    params: { project_id: projectId, active_tab: activeTab, pmo_sub_tab: pmoSubTab }
+  });
   return response.data;
 };
 
@@ -99,6 +103,7 @@ export const listCloudSheets = async (params: {
   provider: string;
   refresh_token: string;
   spreadsheet_id: string;
+  check_headers?: boolean;
 }) => {
   const response = await apiClient.get('/integrations/list-sheets', { params });
   return response.data;
@@ -115,20 +120,44 @@ export const deleteIntegration = async (integrationId: number) => {
 };
 
 export const checkIntegrationUpdate = async (integrationId: number) => {
-  const response = await apiClient.get(`/integrations/${integrationId}/check-update`);
+  try {
+    const response = await apiClient.get(`/integrations/${integrationId}/check-update`);
+    return response.data;
+  } catch (err: any) {
+    if (err.response && err.response.status === 404) {
+      return { has_updates: false, new_sheets: [] };
+    }
+    throw err;
+  }
+};
+
+export const dismissIntegrationSheets = async (integrationId: number, sheetNames: string[]) => {
+  const response = await apiClient.post(`/integrations/${integrationId}/dismiss-sheets`, sheetNames);
   return response.data;
 };
+
 
 export const listActiveIntegrationSheets = async (integrationId: number) => {
   const response = await apiClient.get(`/integrations/${integrationId}/sheets`);
   return response.data;
 };
 
-export const listCloudFiles = async (provider: string, refreshToken: string, folderId?: string) => {
+export const listCloudFiles = async (provider: string, refreshToken: string, folderId?: string, filterType?: string) => {
   const response = await apiClient.get('/integrations/list-files', {
-    params: { provider, refresh_token: refreshToken, folder_id: folderId }
+    params: { provider, refresh_token: refreshToken, folder_id: folderId, filter_type: filterType }
   });
   return response.data;
+};
+
+export const convertGoogleCloudFile = async (provider: string, refreshToken: string, fileId: string) => {
+  const response = await apiClient.post('/integrations/convert-google-file', null, {
+    params: { provider, refresh_token: refreshToken, file_id: fileId }
+  });
+  return response.data;
+};
+
+export const getDocumentStreamUrl = (documentId: number) => {
+  return `${API_URL}/documents/${documentId}/stream`;
 };
 
 export const getBoqItems = async (boqId: number) => {
@@ -145,3 +174,77 @@ export const deleteBoqDocument = async (boqId: number) => {
   const response = await apiClient.delete(`/boqs/${boqId}`);
   return response.data;
 };
+
+export const getIntegrationEmbedUrl = async (integrationId: number, mode: string = 'edit') => {
+  const response = await apiClient.get(`/integrations/${integrationId}/embed-url`, {
+    params: { mode }
+  });
+  return response.data;
+};
+
+// --- Platform & Collaboration APIs ---
+export const getCurrentUser = async (role: string = 'admin') => {
+  const response = await apiClient.get('/users/me', { params: { role } });
+  return response.data;
+};
+
+export const getProjectNotes = async (projectId: string | number, department?: string) => {
+  const response = await apiClient.get(`/projects/${projectId}/notes`, {
+    params: { department }
+  });
+  return response.data;
+};
+
+export const createProjectNote = async (projectId: string | number, note: { content: string; department: string; is_issue?: boolean; priority?: string }) => {
+  const response = await apiClient.post(`/projects/${projectId}/notes`, note);
+  return response.data;
+};
+
+export const getProjectDocuments = async (projectId: string | number, department?: string) => {
+  const response = await apiClient.get(`/projects/${projectId}/documents`, {
+    params: { department }
+  });
+  return response.data;
+};
+
+export const createProjectDocument = async (
+  projectId: string | number,
+  doc: { title: string; file_url: string; department?: string; note_id?: number; file_type?: string; file_size?: number; cloud_file_id?: string; origin?: string; integration_id?: number }
+) => {
+  const response = await apiClient.post(`/projects/${projectId}/documents`, doc);
+  return response.data;
+};
+
+export const getDocumentEmbedUrl = async (documentId: number, mode: string = 'view') => {
+  const response = await apiClient.get(`/documents/${documentId}/embed-url`, {
+    params: { mode }
+  });
+  return response.data;
+};
+
+export const unlinkProjectDocument = async (projectId: string | number, documentId: number) => {
+  const response = await apiClient.post(`/projects/${projectId}/documents/${documentId}/unlink`);
+  return response.data;
+};
+
+export const getProjectBudgets = async (projectId: string | number) => {
+  const response = await apiClient.get(`/projects/${projectId}/budgets`);
+  return response.data;
+};
+
+export const createProjectBudget = async (projectId: string | number, budget: { category: string; amount: number; description?: string }) => {
+  const response = await apiClient.post(`/projects/${projectId}/budgets`, budget);
+  return response.data;
+};
+
+export const getProjectIPCs = async (projectId: string | number) => {
+  const response = await apiClient.get(`/projects/${projectId}/ipcs`);
+  return response.data;
+};
+
+export const createProjectIPC = async (projectId: string | number, ipc: { certificate_number: string; amount_claimed: number; status?: string }) => {
+  const response = await apiClient.post(`/projects/${projectId}/ipcs`, ipc);
+  return response.data;
+};
+
+

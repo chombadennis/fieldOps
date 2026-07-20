@@ -1,0 +1,20 @@
+from sqlalchemy import Column, Integer, String, Text, Boolean, Date, ForeignKey
+from sqlalchemy.orm import relationship
+from ..db.database import Base
+from .base import CustomBase
+
+class Note(Base, CustomBase):
+    __tablename__ = 'notes'
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
+    author_id = Column(Integer, ForeignKey('users.id', ondelete="SET NULL"), nullable=True)
+    department = Column(String, nullable=False, index=True) # e.g. "hr", "legal", "tech", "field_ops", "general"
+    content = Column(Text, nullable=False)
+    is_flagged_issue = Column(Boolean, default=False, nullable=False)
+    follow_up_date = Column(Date, nullable=True)
+
+    # Relationships
+    project = relationship("Project", back_populates="notes")
+    author = relationship("User", back_populates="notes")
+    documents = relationship("Document", back_populates="note", cascade="all, delete-orphan")

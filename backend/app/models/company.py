@@ -11,3 +11,4 @@ class Company(Base, CustomBase):
 
     # Relationships
     projects = relationship("Project", back_populates="company", cascade="all, delete-orphan")
+    users = relationship("User", back_populates="company", cascade="all, delete-orphan")

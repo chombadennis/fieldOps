@@ -22,7 +22,7 @@ from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
 from .limiter import limiter
-from .routes import projects, activities, ai_parser, integrations
+from .routes import projects, activities, ai_parser, integrations, users, notes, documents, financials
 
 # --- Configure Logging ---
 logging.basicConfig(level=logging.INFO)
@@ -85,6 +85,10 @@ app.include_router(projects.router, prefix="/api", tags=["Projects"])
 app.include_router(activities.router, prefix="/api", tags=["Activities"])
 app.include_router(ai_parser.router, prefix="/api", tags=["AI Parser"])
 app.include_router(integrations.router, prefix="/api", tags=["Integrations"])
+app.include_router(users.router, prefix="/api", tags=["Users"])
+app.include_router(notes.router, prefix="/api", tags=["Notes"])
+app.include_router(documents.router, prefix="/api", tags=["Documents"])
+app.include_router(financials.router, prefix="/api", tags=["Financials"])
 
 # --- Root Endpoint ---
 @app.get("/")

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Boolean, Float
 from sqlalchemy.orm import relationship
 from ..db.database import Base
 from .base import CustomBase
@@ -11,7 +11,13 @@ class BoqDocument(Base, CustomBase):
     name = Column(String, nullable=False, index=True)
     file_hash = Column(String, nullable=False, index=True)  # SHA-256 fingerprint
     origin = Column(String, nullable=True, default="file_upload")
+    integration_id = Column(Integer, ForeignKey('project_integrations.id', ondelete="SET NULL"), nullable=True, index=True)
     headers = Column(JSON, nullable=True, default=None)
+    preview_only = Column(Boolean, default=False)
+    validation_status = Column(String, nullable=True)
+    validation_score = Column(Float, nullable=True)
+    validation_issues = Column(JSON, nullable=True)
+    validation_summary = Column(String, nullable=True)
 
     # Relationships
     project = relationship("Project", back_populates="boq_documents")

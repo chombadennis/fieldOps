@@ -52,16 +52,25 @@ export default function Navpanel() {
             </a>
           ))}
         </div>
-        <div className="hidden lg:flex lg:flex-1 lg:justify-end">
+        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:space-x-3">
           <Link
             href="/dashboard"
-            className="text-sm font-semibold leading-6 text-gray-900"
+            className="inline-flex items-center px-3.5 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold rounded-xl text-xs border border-indigo-200 transition"
           >
-            Dashboard
+            Demo Dashboard
           </Link>
-          <a href="#" className="text-sm font-semibold leading-6 text-gray-900 ml-4">
-            Sign Up <span aria-hidden="true">&rarr;</span>
-          </a>
+          <Link
+            href="/login"
+            className="text-xs font-semibold leading-6 text-gray-700 hover:text-gray-900 px-2"
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/sign-up"
+            className="inline-flex items-center px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl text-xs shadow-md transition"
+          >
+            Sign Up <span aria-hidden="true" className="ml-1">&rarr;</span>
+          </Link>
         </div>
       </nav>
       <Dialog

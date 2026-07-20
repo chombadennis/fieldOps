@@ -31,11 +31,15 @@ if config.config_file_name is not None:
 from app.db.database import Base
 from app.models.project import Project
 from app.models.boq_item import BoqItem
-from app.models.production_report import ProductionReport
-from app.models.reported_activity import ReportedActivity
+
 from app.models.project_integration import ProjectIntegration
 from app.models.company import Company
 from app.models.boq_document import BoqDocument
+from app.models.user import User
+from app.models.budget import Budget
+from app.models.ipc import IPC
+from app.models.note import Note
+from app.models.document import Document
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

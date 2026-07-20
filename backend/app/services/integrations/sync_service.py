@@ -1,4 +1,5 @@
 import logging
+import pandas as pd
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -22,6 +23,7 @@ from .onedrive import (
 from .utils import get_selected_sheets
 
 logger = logging.getLogger(__name__)
+from .structured_validation import is_structured_workbook, is_structured_sheet, normalize_headers, ai_assess_boq
 
 def get_column_letter(col_idx: int) -> str:
     """
@@ -149,16 +151,24 @@ async def run_initial_import(request_db: Session, integration_id: int):
         raw_ref = f"{integration.provider}:{integration.spreadsheet_id}:{integration.sheet_name}"
         file_hash = hashlib.sha256(raw_ref.encode()).hexdigest()
         
-        # Check if there is an existing BOQ Document for this integration (by file hash or origin provider)
+        # Check if there is an existing BOQ Document for this integration
+        # Priority: exact integration_id match > file hash match > provider origin match (legacy)
         boq_doc = db.query(BoqDocument).filter(
-            BoqDocument.project_id == integration.project_id,
-            BoqDocument.file_hash == file_hash
+            BoqDocument.integration_id == integration.id
         ).first()
         
         if not boq_doc:
             boq_doc = db.query(BoqDocument).filter(
                 BoqDocument.project_id == integration.project_id,
-                BoqDocument.origin == integration.provider
+                BoqDocument.file_hash == file_hash,
+                BoqDocument.integration_id == None
+            ).first()
+        
+        if not boq_doc:
+            boq_doc = db.query(BoqDocument).filter(
+                BoqDocument.project_id == integration.project_id,
+                BoqDocument.origin == integration.provider,
+                BoqDocument.integration_id == None
             ).first()
         
         boq_name = integration.boq_name or (configured_sheets[0]["name"] if configured_sheets else "Spreadsheet BOQ")
@@ -167,6 +177,11 @@ async def run_initial_import(request_db: Session, integration_id: int):
             # Reuse existing BoqDocument, update its details, and clear old items
             boq_doc.name = boq_name
             boq_doc.file_hash = file_hash
+            boq_doc.integration_id = integration.id  # Upgrade legacy records
+            boq_doc.preview_only = False
+            boq_doc.validation_status = "valid"
+            boq_doc.validation_score = None
+            boq_doc.validation_issues = []
             db.query(BoqItem).filter(BoqItem.boq_id == boq_doc.id).delete()
             db.flush()
         else:
@@ -179,7 +194,8 @@ async def run_initial_import(request_db: Session, integration_id: int):
                 project_id=integration.project_id,
                 name=boq_name,
                 file_hash=file_hash,
-                origin=integration.provider
+                origin=integration.provider,
+                integration_id=integration.id
             )
             db.add(boq_doc)
             db.flush()  # obtain boq_doc.id
@@ -197,11 +213,12 @@ async def run_initial_import(request_db: Session, integration_id: int):
             except Exception as e:
                 logger.error(f"Failed to fetch rows for sheet '{sheet_name}': {e}")
                 continue
-                
+            
             if not rows:
                 logger.warning(f"Sheet '{sheet_name}' is empty or could not be read. Skipping.")
                 continue
-                
+            
+            # Locate the header row first
             header_idx, col_map = auto_map_columns(rows)
             if header_idx == -1:
                 logger.warning(f"Could not locate valid headers in sheet '{sheet_name}'. Falling back to row 0 as header and default column mapping.")
@@ -227,6 +244,41 @@ async def run_initial_import(request_db: Session, integration_id: int):
                     "rate": 4 if len(rows[0]) > 4 else None,
                     "amount": amt_col
                 }
+
+            # Construct DataFrame using the detected header row as columns
+            headers = [str(h).strip() for h in rows[header_idx]]
+            data_rows = rows[header_idx + 1:]
+            
+            # Pad/truncate rows to match headers length
+            cleaned_data_rows = []
+            for r in data_rows:
+                if len(r) < len(headers):
+                    r = list(r) + [""] * (len(headers) - len(r))
+                cleaned_data_rows.append(r[:len(headers)])
+                
+            df = pd.DataFrame(cleaned_data_rows, columns=headers)
+            
+            # Verification check is now the sole validator
+            try:
+                ai_res = await ai_assess_boq(df)
+                if not ai_res.get("valid", True) or ai_res.get("score", 1.0) < 0.75:
+                    boq_doc.preview_only = True
+                    boq_doc.validation_status = "invalid"
+                    boq_doc.validation_score = ai_res.get("score")
+                    boq_doc.validation_issues = ai_res.get("issues", [])
+                    boq_doc.validation_summary = ai_res.get("summary")
+                    integration.last_synced_at = datetime.utcnow()
+                    db.commit()
+                    logger.info(f"Sheet '{sheet_name}' rejected by verification check (score={ai_res.get('score')}). Marking workbook as preview only.")
+                    return
+                else:
+                    boq_doc.validation_status = "valid"
+                    boq_doc.validation_score = ai_res.get("score")
+                    boq_doc.validation_summary = ai_res.get("summary")
+            except Exception as exc:
+                logger.warning(f"Verification check failed for sheet '{sheet_name}': {exc}. Proceeding without check.")
+
+
                 
             # Extract and save sheet headers
             raw_headers = rows[header_idx]

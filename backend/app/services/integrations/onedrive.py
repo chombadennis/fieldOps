@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 MS_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 MS_AUTH_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
 
-def get_onedrive_auth_url(project_id: int) -> str:
+def get_onedrive_auth_url(project_id: int, state: Optional[str] = None) -> str:
     """
     Generate Microsoft Graph OAuth URL.
     """
@@ -18,7 +18,7 @@ def get_onedrive_auth_url(project_id: int) -> str:
         "response_type": "code",
         "scope": "files.readwrite offline_access",
         "response_mode": "query",
-        "state": str(project_id)
+        "state": state if state else str(project_id)
     }
     query = "&".join(f"{k}={httpx.URL(v)}" for k, v in params.items() if v is not None)
     return f"{MS_AUTH_URL}?{query}"

@@ -42,4 +42,4 @@ class BoqItem(Base, CustomBase):
     # Relationships
     boq_document = relationship("BoqDocument", back_populates="boq_items")
     children = relationship("BoqItem", backref=sqlalchemy.orm.backref('parent', remote_side=[id]))
-    reported_activities = relationship("ReportedActivity", back_populates="boq_item", cascade="all, delete-orphan")
+

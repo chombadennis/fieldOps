@@ -1,12 +1,12 @@
 # FieldOps: Construction Cost and Revenue Analysis
 
-FieldOps is a web-based platform designed to streamline the analysis of Bill of Quantities (BOQ) documents for construction professionals. By leveraging AI, the application automates the process of data extraction, cost and revenue analysis, and report generation, enabling users to make faster and more informed decisions.
+FieldOps is a web-based platform designed to streamline the analysis of Bill of Quantities (BOQ) documents for construction professionals. By leveraging AI, the application automates the process of data extraction, and cost and revenue analysis, enabling users to make faster and more informed decisions.
 
 ## Key Features
 
 *   **Effortless BOQ Upload:** Upload your BOQ files in `.xls` or `.xlsx` format.
 *   **AI-Powered Analysis:** Our platform uses Google's Gemini AI model to automatically parse and analyze your documents.
-*   **Comprehensive Reporting:** Receive detailed reports on cost and revenue, presented in a clear and understandable format.
+*   **Comprehensive Data Views:** View detailed analysis on cost and revenue, presented in a clear and understandable format.
 *   **Secure Authentication:** User authentication is handled securely via Firebase.
 
 ## Tech Stack
@@ -43,7 +43,7 @@ This project uses Nix to provide a consistent and reproducible development envir
 
 ### 1. Initial Setup (First-Time Contributors)
 
-If you don't have Nix installed, you must install it first. It's a one-time setup.
+If you don't have Nix installed, you must install it first. It's a one-time setup. 
 
 *   **On macOS or Linux:** Run the official installer from your terminal:
     ```bash

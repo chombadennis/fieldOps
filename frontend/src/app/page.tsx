@@ -19,11 +19,14 @@ export default function LandingPage() {
         <p className="text-lg text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
           The all-in-one platform for modern builders. Manage bids, track progress, and coordinate teams with precision and ease.
         </p>
-        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
-          <Link href="/sign-up" className="w-full sm:w-auto bg-crimson-violet-600 text-white font-bold py-4 px-10 rounded-xl hover:bg-crimson-violet-700 transition-all transform hover:-translate-y-1 shadow-xl">
-            Get Started
+        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+          <Link href="/dashboard" className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold py-4 px-8 rounded-xl hover:from-indigo-500 hover:to-blue-500 transition-all transform hover:-translate-y-1 shadow-xl flex items-center justify-center">
+            Enter Demo Dashboard
           </Link>
-          <Link href="#how-it-works" className="w-full sm:w-auto bg-white border-2 border-dark-teal-600 text-dark-teal-600 font-bold py-4 px-10 rounded-xl hover:bg-dark-teal-50 transition-all">
+          <Link href="/sign-up" className="w-full sm:w-auto bg-white border-2 border-gray-200 text-gray-800 font-bold py-4 px-8 rounded-xl hover:bg-gray-50 transition-all">
+            Sign Up Workspace
+          </Link>
+          <Link href="#how-it-works" className="w-full sm:w-auto bg-white border-2 border-dark-teal-600 text-dark-teal-600 font-bold py-4 px-8 rounded-xl hover:bg-dark-teal-50 transition-all">
             See How It Works
           </Link>
         </div>

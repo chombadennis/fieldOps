@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 
-def get_google_auth_url(project_id: int) -> str:
+def get_google_auth_url(project_id: int, state: Optional[str] = None) -> str:
     """
     Generate Google OAuth URL.
     """
@@ -16,10 +16,10 @@ def get_google_auth_url(project_id: int) -> str:
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": settings.GOOGLE_REDIRECT_URI,
         "response_type": "code",
-        "scope": "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly",
+        "scope": "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
         "access_type": "offline",
         "prompt": "consent",
-        "state": str(project_id)
+        "state": state if state else str(project_id)
     }
     # Formulate string manually or via httpx URL params
     query = "&".join(f"{k}={httpx.URL(v)}" for k, v in params.items() if v is not None)
@@ -67,8 +67,10 @@ async def get_google_sheet_rows(spreadsheet_id: str, sheet_name: str, access_tok
     """
     Get all row values from the spreadsheet.
     """
-    # Read columns A to Z
-    range_name = f"{sheet_name}!A:Z"
+    import urllib.parse
+    # Quoting the sheet name allows fetching the entire grid including all columns to the right.
+    quoted_sheet_name = f"'{sheet_name}'"
+    range_name = urllib.parse.quote(quoted_sheet_name)
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{range_name}"
     headers = {"Authorization": f"Bearer {access_token}"}
     
@@ -146,7 +148,8 @@ async def get_google_sheets_batch_first_rows(
         return {}
         
     import urllib.parse
-    ranges_query = "&".join(f"ranges={urllib.parse.quote(f'{name}!A1:Z15')}" for name in sheet_names)
+    # Fetch rows 1 to 15 without column limits, allowing scanning of columns far to the right.
+    ranges_query = "&".join("ranges=" + urllib.parse.quote(f"'{name}'!1:15") for name in sheet_names)
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values:batchGet?{ranges_query}"
     headers = {"Authorization": f"Bearer {access_token}"}
     
@@ -166,4 +169,27 @@ async def get_google_sheets_batch_first_rows(
                 sheet_name = sheet_names[idx]
                 result[sheet_name] = vr.get("values", [])
         return result
+
+
+async def convert_excel_to_google_sheet(file_id: str, access_token: str) -> Dict[str, Any]:
+    """
+    Converts a raw Excel file (.xlsx/.xls) stored in Google Drive into native Google Sheets format.
+    Uses Google Drive API files.copy with mimeType application/vnd.google-apps.spreadsheet.
+    """
+    url = f"https://www.googleapis.com/drive/v3/files/{file_id}/copy"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    body = {
+        "mimeType": "application/vnd.google-apps.spreadsheet"
+    }
+    
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        response = await client.post(url, headers=headers, json=body)
+        if response.status_code != 200:
+            logger.error(f"Failed to convert Excel file to Google Sheet: {response.text}")
+            raise Exception(f"Google Drive Conversion Error: {response.text}")
+        return response.json()
+
 

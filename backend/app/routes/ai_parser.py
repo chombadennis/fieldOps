@@ -126,7 +126,7 @@ async def parse_boq_with_ai(
                     if metadata.get("project_title"): project.name = metadata.get("project_title")
                     if metadata.get("location"): project.location = metadata.get("location")
                     if metadata.get("client"): project.client_name = metadata.get("client")
-                    if metadata.get("date"): project.report_date = metadata.get("date")
+
                 
                 # Create the BoqDocument container
                 doc_name = boq_name or file.filename or "Main BOQ"

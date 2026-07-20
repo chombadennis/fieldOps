@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Calendar, Eye, Trash2, AlertTriangle, X, Loader2 } from 'lucide-react';
+import { FileText, Calendar, Eye, Trash2, AlertTriangle, X, Loader2, FileWarning, Info } from 'lucide-react';
+
 
 interface BoqDocument {
   id: number;
@@ -10,6 +11,10 @@ interface BoqDocument {
   file_hash: string;
   origin?: string;
   created_at: string;
+  preview_only?: boolean;
+  validation_status?: string | null;
+  validation_score?: number | null;
+  validation_issues?: string[] | null;
 }
 
 interface BoqDocumentListProps {
@@ -88,45 +93,48 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
     );
   };
 
+  const importedDocs = documents.filter(d => !d.preview_only);
+  const previewOnlyDocs = documents.filter(d => d.preview_only);
+
   return (
-    <div className="bg-white shadow-md rounded-2xl p-6 border border-gray-100">
+    <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100">
       <div className="flex items-center space-x-3 mb-6">
         <div className="w-10 h-10 bg-crimson-violet-50 rounded-xl flex items-center justify-center text-crimson-violet-600">
           <FileText className="w-5 h-5" />
         </div>
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Attached Bills of Quantities</h2>
-          <p className="text-xs text-gray-500">Up to 5 documents per project</p>
+          <p className="text-sm text-gray-500 mt-0.5">Up to 5 documents per project</p>
         </div>
       </div>
 
-      {documents.length === 0 ? (
+      {importedDocs.length === 0 ? (
         <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-2xl">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">No BOQs linked yet.</p>
-          <p className="text-xs text-gray-400 mt-1">Upload a PDF/Excel file or link a Google Sheet/OneDrive file to get started.</p>
+          <p className="text-gray-600 text-base font-semibold">No BOQs linked yet.</p>
+          <p className="text-sm text-gray-400 mt-1">Upload a PDF/Excel file or link a Google Sheet/OneDrive file to get started.</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
-          {documents.map((doc) => (
+          {importedDocs.map((doc) => (
             <div key={doc.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 first:pt-0 last:pb-0 group">
-              <div className="flex items-start space-x-3">
-                <div className="p-2.5 bg-gray-50 rounded-xl text-gray-500 group-hover:bg-crimson-violet-50 group-hover:text-crimson-violet-600 transition-colors">
-                  <FileText className="w-5 h-5" />
+              <div className="flex items-start space-x-3.5">
+                <div className="p-3 bg-gray-50 rounded-xl text-gray-500 group-hover:bg-crimson-violet-50 group-hover:text-crimson-violet-600 transition-colors">
+                  <FileText className="w-5.5 h-5.5" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <h4 className="font-bold text-gray-800 truncate max-w-[200px] sm:max-w-[320px]" title={doc.name}>
+                  <div className="flex items-center space-x-2.5">
+                    <h4 className="font-bold text-gray-850 text-base truncate max-w-[200px] sm:max-w-[340px]" title={doc.name}>
                       {doc.name}
                     </h4>
                     {getDocBadge(doc.origin)}
                   </div>
-                  <div className="flex items-center text-xs text-gray-400 mt-1 space-x-3">
-                    <span className="flex items-center">
-                      <Calendar className="w-3.5 h-3.5 mr-1" />
+                  <div className="flex items-center text-xs sm:text-sm text-gray-400 mt-1 space-x-3.5">
+                    <span className="flex items-center font-medium">
+                      <Calendar className="w-4 h-4 mr-1 text-gray-400" />
                       {formatDate(doc.created_at)}
                     </span>
-                    <span className="truncate max-w-[120px] font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">
+                    <span className="truncate max-w-[140px] font-mono text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500">
                       SHA: {doc.file_hash.substring(0, 8)}
                     </span>
                   </div>
@@ -136,7 +144,7 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
               <div className="self-end sm:self-center flex items-center space-x-2 flex-shrink-0">
                 <button
                   onClick={() => onViewItems(doc.id, doc.name)}
-                  className="flex items-center justify-center space-x-2 bg-[#fcfcfc] border border-gray-200 hover:border-crimson-violet-300 text-gray-700 hover:text-crimson-violet-600 font-semibold py-2 px-4 rounded-xl shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100 text-sm"
+                  className="flex items-center justify-center space-x-2 bg-[#fcfcfc] border border-gray-200 hover:border-crimson-violet-300 text-gray-700 hover:text-crimson-violet-600 font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100 text-sm"
                 >
                   <Eye className="w-4 h-4" />
                   <span>View Items</span>
@@ -144,7 +152,7 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
                 {onDeleteDocument && (
                   <button
                     onClick={() => handleDeleteClick(doc)}
-                    className="p-2 border border-red-200 rounded-xl text-red-600 hover:bg-red-50 hover:border-red-300 active:scale-90 transition-all duration-100 shadow-sm"
+                    className="p-2.5 border border-red-200 rounded-xl text-red-600 hover:bg-red-50 hover:border-red-300 active:scale-90 transition-all duration-100 shadow-sm"
                     title="Delete BOQ document"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -155,6 +163,7 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
           ))}
         </div>
       )}
+
 
       {/* Custom Confirmation Modal */}
       {docToDelete && (
