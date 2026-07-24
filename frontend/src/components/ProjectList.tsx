@@ -39,6 +39,21 @@ export default function ProjectList({ projects }: ProjectListProps) {
             <p className="mt-2 text-xs text-gray-500 line-clamp-2 leading-relaxed">
               {project.description || 'No description provided for this construction project workspace.'}
             </p>
+
+            {/* Contracts Display */}
+            {project.contracts && project.contracts.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {project.contracts.map((contract: any) => (
+                  <span 
+                    key={contract.id} 
+                    className="px-2 py-1 bg-gray-50 text-gray-600 border border-gray-200 text-[10px] font-medium rounded-md"
+                    title={contract.name}
+                  >
+                    {contract.contract_type.replace('_', ' ')}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">

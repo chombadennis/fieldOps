@@ -9,6 +9,7 @@ class Document(Base, CustomBase):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
+    contract_id = Column(Integer, ForeignKey('contracts.id', ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String, nullable=False, index=True)
     file_url = Column(String, nullable=True)
     origin = Column(String, default="file_upload", nullable=False) # e.g. "file_upload", "google_drive", "onedrive"
@@ -29,6 +30,7 @@ class Document(Base, CustomBase):
 
     # Relationships
     project = relationship("Project", back_populates="documents")
+    contract = relationship("Contract", back_populates="documents")
     note = relationship("Note", back_populates="documents")
     budget = relationship("Budget", back_populates="documents")
     ipc = relationship("IPC", back_populates="documents")

@@ -9,6 +9,7 @@ class ProjectIntegration(Base, CustomBase):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
+    contract_id = Column(Integer, ForeignKey('contracts.id', ondelete="CASCADE"), nullable=True, index=True)
     provider = Column(String, nullable=False)  # 'google_sheets' or 'onedrive'
     spreadsheet_id = Column(String, nullable=False)
     refresh_token = Column(Text, nullable=False)  # Securely encrypted using Fernet
@@ -16,6 +17,7 @@ class ProjectIntegration(Base, CustomBase):
     boq_name = Column(String, nullable=True, default=None)
     last_synced_at = Column(DateTime, nullable=True)
     dismissed_sheets = Column(Text, nullable=True, default=None)  # JSON list of sheet names user has permanently dismissed
+    module = Column(String, nullable=False, default="boq") # boq, ipc, budget, tech, hr, legal
 
     # Relationships
     project = relationship("Project", back_populates="integrations")

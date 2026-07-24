@@ -8,6 +8,7 @@ class Note(Base, CustomBase):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
+    contract_id = Column(Integer, ForeignKey('contracts.id', ondelete="CASCADE"), nullable=True, index=True)
     author_id = Column(Integer, ForeignKey('users.id', ondelete="SET NULL"), nullable=True)
     department = Column(String, nullable=False, index=True) # e.g. "hr", "legal", "tech", "field_ops", "general"
     content = Column(Text, nullable=False)
@@ -16,5 +17,6 @@ class Note(Base, CustomBase):
 
     # Relationships
     project = relationship("Project", back_populates="notes")
+    contract = relationship("Contract", back_populates="notes")
     author = relationship("User", back_populates="notes")
     documents = relationship("Document", back_populates="note", cascade="all, delete-orphan")

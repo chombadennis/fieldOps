@@ -18,6 +18,7 @@ interface Integration {
   validation_score?: number | null;
   validation_issues?: string[] | null;
   validation_summary?: string | null;
+  module?: string;
 }
 
 interface BoqIntegrationsProps {
@@ -103,9 +104,7 @@ export default function BoqIntegrations({
 
   const visibleIntegrations = integrations.filter(i => {
     if (i.id === deletingId) return false;
-    // Exclude integrations created for non-BoQ platform documents (IPC, Budget, Depts)
-    const isPlatformDoc = documents?.some(d => d.integration_id === i.id);
-    return !isPlatformDoc;
+    return i.module === 'boq';
   });
 
   // Check if spreadsheets are out of sync on load/refresh, and poll every 30 seconds
@@ -467,6 +466,7 @@ export default function BoqIntegrations({
         sheet_name: JSON.stringify(checkedSheets),
         refresh_token: refreshToken === 'existing' ? undefined : refreshToken,
         boq_name: boqName.trim(),
+        module: 'boq',
       });
 
       setModalMessage({ type: 'info', text: 'Spreadsheet linked! Importing data from the cloud…' });

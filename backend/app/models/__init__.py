@@ -1,6 +1,7 @@
 # Centralized exports of all database models to make alembic migrations easier
 from .base import CustomBase
 from .project import Project
+from .contract import Contract
 from .boq_item import BoqItem
 
 from .project_integration import ProjectIntegration

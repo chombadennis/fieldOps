@@ -18,6 +18,7 @@ interface Integration {
   validation_score?: number | null;
   validation_issues?: string[] | null;
   validation_summary?: string | null;
+  module?: string;
 }
 
 interface DocumentIntegrationsProps {
@@ -105,7 +106,11 @@ export default function DocumentIntegrations({
     loadFiles();
   }, [oauthProvider, refreshToken, currentFolderId, moduleContext]);
 
-  const visibleIntegrations = integrations.filter(i => i.id !== deletingId);
+  const expectedModule = moduleContext === 'department' ? departmentName.toLowerCase() : moduleContext;
+  const visibleIntegrations = integrations.filter(i => {
+    if (i.id === deletingId) return false;
+    return i.module === expectedModule;
+  });
 
   // Check if spreadsheets are out of sync on load/refresh, and poll every 30 seconds
   useEffect(() => {
@@ -490,6 +495,7 @@ export default function DocumentIntegrations({
           sheet_name: sheetsNames,
           refresh_token: refreshToken === 'existing' ? undefined : refreshToken,
           boq_name: boqName || selectedFile.name,
+          module: moduleContext === 'department' ? departmentName.toLowerCase() : moduleContext,
         });
         integrationId = savedInt.integration_id;
       }
@@ -554,6 +560,7 @@ export default function DocumentIntegrations({
           sheet_name: targetFile.name,
           refresh_token: refreshToken === 'existing' ? undefined : refreshToken,
           boq_name: targetFile.name,
+          module: moduleContext === 'department' ? departmentName.toLowerCase() : moduleContext,
         });
         integrationId = savedInt.integration_id;
       }

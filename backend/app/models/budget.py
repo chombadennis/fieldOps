@@ -8,12 +8,14 @@ class Budget(Base, CustomBase):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
+    contract_id = Column(Integer, ForeignKey('contracts.id', ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String, nullable=False, index=True)
     amount = Column(Float, nullable=False)
     notes = Column(Text, nullable=True)
 
     # Relationships
     project = relationship("Project", back_populates="budgets")
+    contract = relationship("Contract", back_populates="budgets")
     documents = relationship("Document", back_populates="budget", cascade="all, delete-orphan")
 
     @property

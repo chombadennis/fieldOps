@@ -8,6 +8,7 @@ class ProjectIntegration(BaseModel):
     provider: str
     spreadsheet_id: str
     sheet_name: str
+    module: Optional[str] = "boq"
     boq_name: Optional[str] = None
     last_synced_at: Optional[datetime] = None
     preview_only: Optional[bool] = False
@@ -52,9 +53,12 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(ProjectBase):
     name: Optional[str] = None # Make all fields optional for PUT/PATCH
 
+from .contract import Contract
+
 # --- Schema for reading a project (what the API returns) ---
 class Project(ProjectBase):
     id: int
+    contracts: List[Contract] = []
     integrations: List[ProjectIntegration] = []
     boq_documents: List[BoqDocument] = []
 

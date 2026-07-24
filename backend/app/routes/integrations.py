@@ -441,15 +441,34 @@ def save_integration(
     provider: str,
     spreadsheet_id: str,
     sheet_name: str,
+    contract_id: Optional[int] = Query(None),
     refresh_token: Optional[str] = Query(None),
     boq_name: Optional[str] = Query(None),
+    module: Optional[str] = Query("boq"),
     db: Session = Depends(get_db)
 ):
     """
     Saves or updates a ProjectIntegration record.
     """
+    from ..models.contract import Contract
+
+    # Validate or Default Contract ID
+    if contract_id is not None:
+        contract = db.query(Contract).filter(Contract.id == contract_id, Contract.project_id == project_id).first()
+        if not contract:
+            raise HTTPException(status_code=400, detail=f"Contract with ID {contract_id} does not belong to Project {project_id}.")
+    else:
+        contract = db.query(Contract).filter(Contract.project_id == project_id, Contract.contract_type == "GENERAL").first()
+        if not contract:
+            contract = Contract(project_id=project_id, name="General Contract", contract_type="GENERAL")
+            db.add(contract)
+            db.commit()
+            db.refresh(contract)
+        contract_id = contract.id
+
     existing = db.query(ProjectIntegration).filter(
         ProjectIntegration.project_id == project_id,
+        ProjectIntegration.contract_id == contract_id,
         ProjectIntegration.provider == provider,
         ProjectIntegration.spreadsheet_id == spreadsheet_id
     ).first()
@@ -464,15 +483,19 @@ def save_integration(
             existing.boq_name = boq_name
         if refresh_token:
             existing.refresh_token = refresh_token
+        if module:
+            existing.module = module
         db_integration = existing
     else:
         db_integration = ProjectIntegration(
             project_id=project_id,
+            contract_id=contract_id,
             provider=provider,
             spreadsheet_id=spreadsheet_id,
             sheet_name=sheet_name,
             boq_name=boq_name,
-            refresh_token=refresh_token
+            refresh_token=refresh_token,
+            module=module
         )
         db.add(db_integration)
         

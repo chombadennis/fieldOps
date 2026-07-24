@@ -22,7 +22,7 @@ from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
 from .limiter import limiter
-from .routes import projects, activities, ai_parser, integrations, users, notes, documents, financials
+from .routes import projects, activities, ai_parser, integrations, users, notes, documents, financials, contracts
 
 # --- Configure Logging ---
 logging.basicConfig(level=logging.INFO)
@@ -34,7 +34,14 @@ async def lifespan(app: FastAPI):
     # --- Connect to Redis on startup ---
     logger.info("Connecting to Redis...")
     try:
-        app.state.redis = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0, decode_responses=True)
+        app.state.redis = redis.Redis(
+            host=settings.REDIS_HOST, 
+            port=settings.REDIS_PORT, 
+            db=0, 
+            decode_responses=True,
+            socket_timeout=1.0,
+            socket_connect_timeout=1.0
+        )
         await app.state.redis.ping()
         logger.info("Successfully connected to Redis.")
     except Exception as e:
@@ -82,6 +89,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # --- Include Routers ---
 app.include_router(projects.router, prefix="/api", tags=["Projects"])
+app.include_router(contracts.router, prefix="/api", tags=["Contracts"])
 app.include_router(activities.router, prefix="/api", tags=["Activities"])
 app.include_router(ai_parser.router, prefix="/api", tags=["AI Parser"])
 app.include_router(integrations.router, prefix="/api", tags=["Integrations"])

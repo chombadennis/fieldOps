@@ -134,7 +134,7 @@ async def run_initial_import(request_db: Session, integration_id: int):
                     # Update all existing BoqItems sheet_name in database matching this sheet_id
                     db.query(BoqItem).join(BoqDocument).filter(
                         BoqItem.sheet_id == sheet_id,
-                        BoqDocument.project_id == integration.project_id
+                        BoqDocument.contract_id == integration.contract_id
                     ).update({BoqItem.sheet_name: new_name}, synchronize_session=False)
                     
                     cs["name"] = new_name
@@ -152,21 +152,20 @@ async def run_initial_import(request_db: Session, integration_id: int):
         file_hash = hashlib.sha256(raw_ref.encode()).hexdigest()
         
         # Check if there is an existing BOQ Document for this integration
-        # Priority: exact integration_id match > file hash match > provider origin match (legacy)
         boq_doc = db.query(BoqDocument).filter(
             BoqDocument.integration_id == integration.id
         ).first()
         
         if not boq_doc:
             boq_doc = db.query(BoqDocument).filter(
-                BoqDocument.project_id == integration.project_id,
+                BoqDocument.contract_id == integration.contract_id,
                 BoqDocument.file_hash == file_hash,
                 BoqDocument.integration_id == None
             ).first()
         
         if not boq_doc:
             boq_doc = db.query(BoqDocument).filter(
-                BoqDocument.project_id == integration.project_id,
+                BoqDocument.contract_id == integration.contract_id,
                 BoqDocument.origin == integration.provider,
                 BoqDocument.integration_id == None
             ).first()
@@ -185,13 +184,14 @@ async def run_initial_import(request_db: Session, integration_id: int):
             db.query(BoqItem).filter(BoqItem.boq_id == boq_doc.id).delete()
             db.flush()
         else:
-            # Limit check (Max 5 BOQs)
-            boq_count = db.query(BoqDocument).filter(BoqDocument.project_id == integration.project_id).count()
+            # Limit check (Max 5 BOQs under this contract)
+            boq_count = db.query(BoqDocument).filter(BoqDocument.contract_id == integration.contract_id).count()
             if boq_count >= 5:
-                raise Exception("Limit reached: A project can have up to 5 BOQ documents.")
+                raise Exception("Limit reached: A contract can have up to 5 BOQ documents.")
                 
             boq_doc = BoqDocument(
                 project_id=integration.project_id,
+                contract_id=integration.contract_id,
                 name=boq_name,
                 file_hash=file_hash,
                 origin=integration.provider,
@@ -394,7 +394,10 @@ async def push_local_change_to_sheet(db: Session, boq_item_id: int, changed_fiel
     if not boq_doc:
         return
 
-    integration = db.query(ProjectIntegration).filter(ProjectIntegration.project_id == boq_doc.project_id).first()
+    integration = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == boq_doc.project_id,
+        ProjectIntegration.contract_id == boq_doc.contract_id
+    ).first()
     if not integration:
         return
         
@@ -495,6 +498,8 @@ async def process_sheet_webhook_update(db: Session, provider: str, spreadsheet_i
         from ...models.boq_document import BoqDocument
         item = db.query(BoqItem).join(BoqDocument).filter(
             BoqDocument.project_id == integration.project_id,
+            BoqDocument.contract_id == integration.contract_id,
+            sa.inspect(integration) and True,  # Keep sa reference valid if needed
             BoqItem.sheet_row_index == row_idx,
             BoqItem.sheet_name == sheet_name
         ).first()
@@ -504,7 +509,9 @@ async def process_sheet_webhook_update(db: Session, provider: str, spreadsheet_i
             configured_sheet = next((s for s in configured_sheets if s["name"] == sheet_name or s["id"] == sheet_name), None)
             if configured_sheet:
                 item = db.query(BoqItem).join(BoqDocument).filter(
+                    sa.inspect(integration) and True,
                     BoqDocument.project_id == integration.project_id,
+                    BoqDocument.contract_id == integration.contract_id,
                     BoqItem.sheet_row_index == row_idx,
                     BoqItem.sheet_id == configured_sheet["id"]
                 ).first()

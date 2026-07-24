@@ -9,4 +9,5 @@ export interface Project {
   company_id?: number;
   boq_documents?: any[];
   integrations?: any[];
+  contracts?: any[];
 }

@@ -21,6 +21,7 @@ from sqlalchemy.sql import func
 @router.get("/projects/{project_id}/documents", response_model=List[platform_schemas.Document])
 def get_project_documents(
     project_id: int,
+    contract_id: Optional[int] = None,
     department: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -28,7 +29,20 @@ def get_project_documents(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    from ..models.contract import Contract
+    if contract_id is not None:
+        contract = db.query(Contract).filter(Contract.id == contract_id, Contract.project_id == project_id).first()
+        if not contract:
+            raise HTTPException(status_code=400, detail="Contract does not belong to this project")
+    else:
+        # Fallback to general contract
+        general_contract = db.query(Contract).filter(Contract.project_id == project_id, Contract.contract_type == "GENERAL").first()
+        if general_contract:
+            contract_id = general_contract.id
+
     query = db.query(Document).filter(Document.project_id == project_id, Document.is_linked == True)
+    if contract_id is not None:
+        query = query.filter(Document.contract_id == contract_id)
     if department and department != "All":
         query = query.filter(Document.department == department)
 
@@ -44,17 +58,34 @@ def create_project_document(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Prevent duplicates: check if this file was already linked before
+    from ..models.contract import Contract
+    contract_id = doc_in.contract_id
+    if contract_id is not None:
+        contract = db.query(Contract).filter(Contract.id == contract_id, Contract.project_id == project_id).first()
+        if not contract:
+            raise HTTPException(status_code=400, detail="Contract does not belong to this project")
+    else:
+        general_contract = db.query(Contract).filter(Contract.project_id == project_id, Contract.contract_type == "GENERAL").first()
+        if not general_contract:
+            general_contract = Contract(project_id=project_id, name="General Contract", contract_type="GENERAL")
+            db.add(general_contract)
+            db.commit()
+            db.refresh(general_contract)
+        contract_id = general_contract.id
+
+    # Prevent duplicates: check if this file was already linked before under this contract
     existing_doc = None
     if doc_in.cloud_file_id:
         existing_doc = db.query(Document).filter(
             Document.project_id == project_id,
+            Document.contract_id == contract_id,
             Document.cloud_file_id == doc_in.cloud_file_id
         ).first()
     
     if not existing_doc and doc_in.file_url:
         existing_doc = db.query(Document).filter(
             Document.project_id == project_id,
+            Document.contract_id == contract_id,
             Document.file_url == doc_in.file_url
         ).first()
 
@@ -76,6 +107,7 @@ def create_project_document(
 
     new_doc = Document(
         project_id=project_id,
+        contract_id=contract_id,
         note_id=doc_in.note_id,
         name=doc_in.title,
         file_url=doc_in.file_url,

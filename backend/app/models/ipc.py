@@ -8,6 +8,7 @@ class IPC(Base, CustomBase):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
+    contract_id = Column(Integer, ForeignKey('contracts.id', ondelete="CASCADE"), nullable=True, index=True)
     certificate_number = Column(String, nullable=False, index=True)
     amount_claimed = Column(Float, nullable=False)
     amount_certified = Column(Float, nullable=True)
@@ -16,4 +17,5 @@ class IPC(Base, CustomBase):
 
     # Relationships
     project = relationship("Project", back_populates="ipcs")
+    contract = relationship("Contract", back_populates="ipcs")
     documents = relationship("Document", back_populates="ipc", cascade="all, delete-orphan")

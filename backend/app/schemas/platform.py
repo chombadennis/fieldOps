@@ -31,11 +31,12 @@ class BudgetBase(BaseModel):
     description: Optional[str] = None
 
 class BudgetCreate(BudgetBase):
-    pass
+    contract_id: Optional[int] = None
 
 class Budget(BudgetBase):
     id: int
     project_id: int
+    contract_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
     class Config:
@@ -52,11 +53,12 @@ class IPCBase(BaseModel):
     period_end: Optional[str] = None
 
 class IPCCreate(IPCBase):
-    pass
+    contract_id: Optional[int] = None
 
 class IPC(IPCBase):
     id: int
     project_id: int
+    contract_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
     class Config:
@@ -75,10 +77,12 @@ class DocumentBase(BaseModel):
 
 class DocumentCreate(DocumentBase):
     note_id: Optional[int] = None
+    contract_id: Optional[int] = None
 
 class Document(DocumentBase):
     id: int
     project_id: int
+    contract_id: Optional[int] = None
     note_id: Optional[int] = None
     uploaded_by: Optional[int] = None
     is_linked: bool = True
@@ -97,11 +101,12 @@ class NoteBase(BaseModel):
     priority: Optional[str] = "Normal"  # Low, Normal, High, Urgent
 
 class NoteCreate(NoteBase):
-    pass
+    contract_id: Optional[int] = None
 
 class Note(NoteBase):
     id: int
     project_id: int
+    contract_id: Optional[int] = None
     user_id: Optional[int] = None
     author_name: Optional[str] = "Anonymous"
     created_at: Optional[datetime] = None

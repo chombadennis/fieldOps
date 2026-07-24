@@ -23,16 +23,18 @@ router = APIRouter()
 async def parse_boq_with_ai(
     request: Request, 
     project_id: int = Form(...), 
+    contract_id: Optional[int] = Form(None),
     boq_name: Optional[str] = Form(None),
     file: UploadFile = File(...)
 ):
     """
     Receives a Bill of Quantities (BOQ) file, parses it, extracts structured data using AI,
-    permanently saves it into the PostgreSQL boq_items table under the provided project_id,
+    permanently saves it into the PostgreSQL boq_items table under the provided project_id and contract_id,
     and returns the saved result.
     """
     from ..db.database import SessionLocal # Import for manual session management
     from ..models.boq_document import BoqDocument
+    from ..models.contract import Contract
 
     # 1. Validate File Type NOW ALLOWS PDFs!
     if not file.filename.endswith(('.xls', '.xlsx', '.pdf')):
@@ -42,24 +44,38 @@ async def parse_boq_with_ai(
         contents = await file.read()
         file_hash = hashlib.sha256(contents).hexdigest()
 
-        # 0. Validate Project Exists & Check Limits/Duplicates BEFORE we do expensive AI work
+        # 0. Validate Project and Contract Exist & Check Limits/Duplicates BEFORE we do expensive AI work
         with SessionLocal() as db:
             project = db.query(Project).filter(Project.id == project_id).first()
             if not project:
                 raise HTTPException(status_code=404, detail=f"Project with ID {project_id} not found in the database. Cannot attach BOQ.")
             
-            # Count existing BOQs
-            boq_count = db.query(BoqDocument).filter(BoqDocument.project_id == project_id).count()
+            # Validate or Default Contract ID
+            if contract_id is not None:
+                contract = db.query(Contract).filter(Contract.id == contract_id, Contract.project_id == project_id).first()
+                if not contract:
+                    raise HTTPException(status_code=400, detail=f"Contract with ID {contract_id} does not belong to Project {project_id}.")
+            else:
+                contract = db.query(Contract).filter(Contract.project_id == project_id, Contract.contract_type == "GENERAL").first()
+                if not contract:
+                    contract = Contract(project_id=project_id, name="General Contract", contract_type="GENERAL")
+                    db.add(contract)
+                    db.commit()
+                    db.refresh(contract)
+                contract_id = contract.id
+
+            # Count existing BOQs under this contract
+            boq_count = db.query(BoqDocument).filter(BoqDocument.contract_id == contract_id).count()
             if boq_count >= 5:
-                raise HTTPException(status_code=400, detail="Limit reached: A project can have up to 5 BOQ documents.")
+                raise HTTPException(status_code=400, detail="Limit reached: A contract can have up to 5 BOQ documents.")
             
             # Check for duplicate file hash
             duplicate = db.query(BoqDocument).filter(
-                BoqDocument.project_id == project_id,
+                BoqDocument.contract_id == contract_id,
                 BoqDocument.file_hash == file_hash
             ).first()
             if duplicate:
-                raise HTTPException(status_code=400, detail="This BOQ file has already been uploaded for this project.")
+                raise HTTPException(status_code=400, detail="This BOQ file has already been uploaded for this contract.")
         
         # 2. Caching Logic (Async - Redis should be started via Docker!)
         redis_client = request.app.state.redis
@@ -132,6 +148,7 @@ async def parse_boq_with_ai(
                 doc_name = boq_name or file.filename or "Main BOQ"
                 boq_doc = BoqDocument(
                     project_id=project_id,
+                    contract_id=contract_id,
                     name=doc_name,
                     file_hash=file_hash,
                     origin="file_upload"

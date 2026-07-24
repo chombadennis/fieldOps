@@ -18,6 +18,7 @@ class Project(Base, CustomBase):
 
     # Relationships pointing to the related tables
     company = relationship("Company", back_populates="projects")
+    contracts = relationship("Contract", back_populates="project", cascade="all, delete-orphan")
     boq_documents = relationship("BoqDocument", back_populates="project", cascade="all, delete-orphan")
     integrations = relationship("ProjectIntegration", back_populates="project", cascade="all, delete-orphan")
     budgets = relationship("Budget", back_populates="project", cascade="all, delete-orphan")

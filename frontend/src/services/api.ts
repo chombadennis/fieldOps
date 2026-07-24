@@ -88,14 +88,23 @@ export const getOneDriveAuthUrl = async (projectId: string | number, activeTab?:
 };
 
 export const saveIntegration = async (data: {
-  project_id: number;
+  project_id: string | number;
   provider: string;
   spreadsheet_id: string;
   sheet_name: string;
-  refresh_token?: string;
   boq_name?: string;
+  refresh_token?: string;
+  module?: string;
 }) => {
-  const response = await apiClient.post('/integrations/save', null, { params: data });
+  const q = new URLSearchParams();
+  q.append('project_id', String(data.project_id));
+  q.append('provider', data.provider);
+  q.append('spreadsheet_id', data.spreadsheet_id);
+  q.append('sheet_name', data.sheet_name);
+  if (data.boq_name) q.append('boq_name', data.boq_name);
+  if (data.refresh_token) q.append('refresh_token', data.refresh_token);
+  if (data.module) q.append('module', data.module);
+  const response = await apiClient.post(`/integrations/save?${q.toString()}`);
   return response.data;
 };
 
