@@ -45,15 +45,43 @@ class Budget(BudgetBase):
 # --- IPC Schema ---
 class IPCBase(BaseModel):
     certificate_number: str
-    amount_claimed: float
-    amount_certified: Optional[float] = 0.0
-    status: str = "Draft"  # Draft, Submitted, Certified, Paid
-    issued_date: Optional[str] = None
     period_start: Optional[str] = None
     period_end: Optional[str] = None
+    valuation_date: Optional[str] = None
+    
+    gross_amount_claimed: Optional[float] = 0.0
+    gross_amount_certified: Optional[float] = 0.0
+    total_deductions: Optional[float] = 0.0
+    net_amount_due: Optional[float] = 0.0
+    cumulative_certified: Optional[float] = 0.0
+    
+    status: str = "Draft"  # Draft, Submitted, Certified, Paid
+    payment_status: str = "UNPAID" # UNPAID, PARTIALLY_PAID, PAID
+    unpaid_amount: Optional[float] = 0.0
+    payment_date: Optional[str] = None
+    payment_reference: Optional[str] = None
+    
+    values_map: Optional[dict] = None
 
 class IPCCreate(IPCBase):
     contract_id: Optional[int] = None
+
+class IPCUpdate(BaseModel):
+    certificate_number: Optional[str] = None
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+    valuation_date: Optional[str] = None
+    gross_amount_claimed: Optional[float] = None
+    gross_amount_certified: Optional[float] = None
+    total_deductions: Optional[float] = None
+    net_amount_due: Optional[float] = None
+    cumulative_certified: Optional[float] = None
+    status: Optional[str] = None
+    payment_status: Optional[str] = None
+    unpaid_amount: Optional[float] = None
+    payment_date: Optional[str] = None
+    payment_reference: Optional[str] = None
+    values_map: Optional[dict] = None
 
 class IPC(IPCBase):
     id: int

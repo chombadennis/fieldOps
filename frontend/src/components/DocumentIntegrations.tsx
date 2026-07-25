@@ -1,37 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getGoogleAuthUrl, getOneDriveAuthUrl, saveIntegration, triggerSyncImport, listCloudFiles, listCloudSheets, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, createProjectDocument, convertGoogleCloudFile } from '@/services/api';
+import { getGoogleAuthUrl, getOneDriveAuthUrl, saveIntegration, triggerSyncImport, listCloudFiles, listCloudSheets, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, createProjectDocument, createDecoupledDocument, convertGoogleCloudFile } from '@/services/api';
 import { Folder, FileSpreadsheet, FileText, ChevronRight, ArrowLeft, Loader2, Trash2, AlertTriangle, ExternalLink, X, Unlink, Eye, Sparkles, Paperclip } from 'lucide-react';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 
 
-interface Integration {
-  id: number;
-  provider: string;
-  spreadsheet_id: string;
-  sheet_name: string;
-  boq_name: string | null;
-  last_synced_at: string | null;
-  preview_only?: boolean;
-  validation_status?: string | null;
-  validation_score?: number | null;
-  validation_issues?: string[] | null;
-  validation_summary?: string | null;
-  module?: string;
-}
+import { Integration, DocumentIntegrationsProps } from './integrations/types';
+import ActiveIntegrationsList from './integrations/ActiveIntegrationsList';
+import CloudConnectionCards from './integrations/CloudConnectionCards';
+import CloudConfigModal from './integrations/CloudConfigModal';
 
-interface DocumentIntegrationsProps {
-  projectId: string;
-  integrations: Integration[];
-  onRefresh: () => void;
-  globalLoading: boolean;
-  setGlobalLoading: (loading: boolean) => void;
-  moduleContext: 'ipc' | 'budget' | 'department';
-  departmentName?: string;
-  activeTab?: string;
-  pmoSubTab?: string;
-}
 
 export default function DocumentIntegrations({
   projectId,
@@ -41,8 +20,10 @@ export default function DocumentIntegrations({
   setGlobalLoading,
   moduleContext,
   departmentName = 'General',
+  apiEndpoint,
   activeTab,
   pmoSubTab,
+  titlePrefix,
 }: DocumentIntegrationsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +52,47 @@ export default function DocumentIntegrations({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [activeConfigIntegrationId, setActiveConfigIntegrationId] = useState<number | null>(null);
   const isLoading = loading || globalLoading;
+
+  const getAllowedFormats = () => {
+    if (moduleContext === 'budget' || departmentName === 'Budget') {
+      if (titlePrefix === '[Budget]') return ['.xlsx', '.xls', '.csv'];
+      if (titlePrefix === '[Progress]') return ['.xlsx', '.xls', '.csv'];
+      if (titlePrefix === '[Cost]') return ['.xlsx', '.xls', '.csv', '.pdf'];
+      return ['.xlsx', '.xls', '.csv'];
+    }
+
+    if (pmoSubTab === 'activity_schedule') return ['.xlsx', '.xls', '.csv'];
+    if (pmoSubTab === 'milestone_payments') return ['.pdf', '.doc', '.docx'];
+    if (pmoSubTab === 'rate_schedule') return ['.xlsx', '.xls', '.csv'];
+    if (pmoSubTab === 'reimbursable_costs') return ['.pdf', '.jpg', '.jpeg', '.png'];
+    if (pmoSubTab === 'scheduling') return ['.xlsx', '.xls', '.csv', '.pdf', '.mpp'];
+
+    const lowerDept = (departmentName || '').toLowerCase();
+    if (lowerDept.includes('tech') || lowerDept.includes('engineering')) return ['.pdf', '.dwg', '.jpg', '.png', '.jpeg'];
+    if (lowerDept.includes('field')) return ['.pdf', '.doc', '.docx', '.jpg', '.png', '.jpeg'];
+    if (lowerDept.includes('hr') || lowerDept.includes('legal')) return ['.pdf', '.doc', '.docx', '.xlsx', '.xls'];
+
+    if (moduleContext === 'ipc') return ['.xlsx', '.xls', '.csv'];
+
+    return ['*'];
+  };
+
+  const allowedFormats = getAllowedFormats();
+  const formatGuidelines = allowedFormats.includes('*')
+    ? 'Any document format (PDFs, Word documents, spreadsheets, etc.) can be linked directly.'
+    : `Only ${allowedFormats.join(', ')} files are permitted in this section. Unsupported files are hidden.`;
+
+  const isFileAllowed = (file: any) => {
+    if (file.type === 'folder') return true;
+    if (allowedFormats.includes('*')) return true;
+
+    const fileName = (file.name || '').toLowerCase();
+    if (file.is_google_sheet) {
+      return allowedFormats.includes('.xlsx') || allowedFormats.includes('.xls') || allowedFormats.includes('.csv');
+    }
+
+    return allowedFormats.some(ext => fileName.endsWith(ext));
+  };
 
   // Overlay message inside the config modal (progress / success / error / warning)
   const [modalMessage, setModalMessage] = useState<{ type: 'success' | 'error' | 'info' | 'warning'; text: string } | null>(null);
@@ -433,7 +455,7 @@ export default function DocumentIntegrations({
         const res = await getOneDriveAuthUrl(projectId, activeTab, pmoSubTab);
         url = res.url;
       }
-      
+
       if (popup) {
         popup.location.href = url;
       } else {
@@ -502,15 +524,23 @@ export default function DocumentIntegrations({
 
       const fileExt = selectedFile.name.split('.').pop()?.toUpperCase() || 'Cloud File';
 
-      await createProjectDocument(projectId, {
-        title: boqName || selectedFile.name,
+      const finalTitle = boqName || selectedFile.name;
+
+      const docPayload = {
+        title: titlePrefix ? `${titlePrefix} ${finalTitle}` : finalTitle,
         file_url: selectedFile.web_url || '',
         file_type: isSpreadsheet ? 'Cloud File' : fileExt,
         department: moduleContext === 'department' ? departmentName : moduleContext.toUpperCase(),
         cloud_file_id: selectedFile.id,
         origin: oauthProvider || undefined,
         integration_id: integrationId,
-      });
+      };
+
+      if (apiEndpoint) {
+        await createDecoupledDocument(projectId, apiEndpoint, docPayload);
+      } else {
+        await createProjectDocument(projectId, docPayload);
+      }
 
       setModalMessage({ type: 'success', text: isSpreadsheet ? 'Spreadsheet linked successfully!' : 'Document linked successfully!' });
       onRefresh();
@@ -560,12 +590,12 @@ export default function DocumentIntegrations({
           sheet_name: targetFile.name,
           refresh_token: refreshToken === 'existing' ? undefined : refreshToken,
           boq_name: targetFile.name,
-          module: moduleContext === 'department' ? departmentName.toLowerCase() : moduleContext,
+          module: moduleContext === 'department' ? departmentName?.toLowerCase() : moduleContext,
         });
         integrationId = savedInt.integration_id;
       }
 
-      await createProjectDocument(projectId, {
+      const docPayload2 = {
         title: targetFile.name,
         file_url: targetFile.web_url,
         file_type: targetFile.name.split('.').pop()?.toUpperCase() || 'Cloud File',
@@ -573,7 +603,14 @@ export default function DocumentIntegrations({
         cloud_file_id: targetFile.id,
         origin: oauthProvider || undefined,
         integration_id: integrationId,
-      });
+      };
+
+      if (apiEndpoint) {
+        await createDecoupledDocument(projectId, apiEndpoint, docPayload2);
+      } else {
+        await createProjectDocument(projectId, docPayload2);
+      }
+
       setModalMessage({ type: 'success', text: `Successfully linked '${targetFile.name}' to department documents!` });
       setTimeout(() => {
         setShowConfigModal(false);
@@ -926,8 +963,8 @@ export default function DocumentIntegrations({
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
                         className={`py-2 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${activeEditorId === integration.id
-                            ? 'bg-indigo-650 border-indigo-600 text-white bg-indigo-600 hover:bg-indigo-750'
-                            : 'border-gray-205 border-gray-200 hover:border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                          ? 'bg-indigo-650 border-indigo-600 text-white bg-indigo-600 hover:bg-indigo-750'
+                          : 'border-gray-205 border-gray-200 hover:border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
                           }`}
                         title={activeEditorId === integration.id ? 'Hide inline spreadsheet preview' : 'Open inline spreadsheet preview'}
                       >
@@ -958,8 +995,8 @@ export default function DocumentIntegrations({
                   {/* Per-card sync result */}
                   {syncResultMap[integration.id] && (
                     <div className={`mt-1 rounded-xl px-4 py-3 flex items-start space-x-3 text-sm ${syncResultMap[integration.id]?.type === 'success'
-                        ? 'bg-green-50 border border-green-100 text-green-800'
-                        : 'bg-red-50 border border-red-100 text-red-800'
+                      ? 'bg-green-50 border border-green-100 text-green-800'
+                      : 'bg-red-50 border border-red-100 text-red-800'
                       }`}>
                       {syncResultMap[integration.id]?.type === 'success' ? (
                         <svg className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1012,13 +1049,11 @@ export default function DocumentIntegrations({
             <div className="flex items-center space-x-2 text-amber-800 font-bold mb-1.5">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               <span className="text-sm font-bold">
-                {moduleContext === 'ipc' ? 'Spreadsheet Linking Guidelines' : 'Document Workspace Guidelines'}
+                {moduleContext === 'ipc' ? 'Spreadsheet Linking Guidelines' : 'Workspace Format Requirements'}
               </span>
             </div>
             <p className="text-xs text-amber-850">
-              {moduleContext === 'ipc'
-                ? 'Only Interim Payment Certificate (IPC) spreadsheet files are supported in this tab. Select the spreadsheet workbook to log payment claims and certify works progress.'
-                : 'Any document format (PDFs, Word documents, baseline spreadsheets, CAD drawings) can be linked directly. Linked files will appear in the tab workspace for previewing and collaboration.'}
+              {formatGuidelines}
             </p>
           </div>
 
@@ -1107,12 +1142,12 @@ export default function DocumentIntegrations({
             {/* In-modal overlay: progress / success / error / warning */}
             {modalMessage && (
               <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center p-8 rounded-2xl transition-all duration-300 ${modalMessage.type === 'info'
-                  ? 'bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 text-white shadow-2xl overflow-hidden'
-                  : modalMessage.type === 'success'
-                    ? 'bg-green-50'
-                    : modalMessage.type === 'error'
-                      ? 'bg-red-50'
-                      : 'bg-amber-50/95 backdrop-blur-sm'
+                ? 'bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 text-white shadow-2xl overflow-hidden'
+                : modalMessage.type === 'success'
+                  ? 'bg-green-50'
+                  : modalMessage.type === 'error'
+                    ? 'bg-red-50'
+                    : 'bg-amber-50/95 backdrop-blur-sm'
                 }`}>
                 {modalMessage.type === 'info' ? (
                   <>
@@ -1193,20 +1228,20 @@ export default function DocumentIntegrations({
                       </div>
                     )}
                     <p className={`text-center font-bold text-lg mb-2 ${modalMessage.type === 'success' ? 'text-green-800' :
-                        modalMessage.type === 'error' ? 'text-red-800' : 'text-amber-800'
+                      modalMessage.type === 'error' ? 'text-red-800' : 'text-amber-800'
                       }`}>
                       {modalMessage.type === 'success' ? 'Success!' :
                         modalMessage.type === 'error' ? 'Something went wrong' : 'Workbook Linked as Preview'}
                     </p>
                     <p className={`text-center text-sm mb-8 max-w-sm leading-relaxed ${modalMessage.type === 'success' ? 'text-green-700' :
-                        modalMessage.type === 'error' ? 'text-red-700' : 'text-amber-700'
+                      modalMessage.type === 'error' ? 'text-red-700' : 'text-amber-700'
                       }`}>
                       {modalMessage.text}
                     </p>
                     <button
                       onClick={resetConfigModal}
                       className={`px-10 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md transition-all active:scale-[0.98] ${modalMessage.type === 'success' ? 'bg-green-600 hover:bg-green-700' :
-                          modalMessage.type === 'error' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
+                        modalMessage.type === 'error' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
                         }`}
                     >
                       OK
@@ -1278,69 +1313,73 @@ export default function DocumentIntegrations({
                       </div>
                     ) : (
                       <div className="w-full h-48 border border-gray-200 rounded-xl overflow-y-auto divide-y divide-gray-100 bg-white">
-                        {availableFiles.length === 0 ? (
-                          <div className="h-full flex items-center justify-center text-xs text-gray-400">
-                            No folders or spreadsheet files found in this directory.
+                        {availableFiles.filter(isFileAllowed).length === 0 ? (
+                          <div className="h-full flex flex-col items-center justify-center text-xs text-gray-400 p-6 text-center space-y-2">
+                            <span className="font-semibold text-gray-500">No supported files found in this folder.</span>
+                            <span>{formatGuidelines}</span>
                           </div>
                         ) : (
-                          availableFiles.filter(file => !(oauthProvider === 'onedrive' && file.name.toLowerCase().endsWith('.csv'))).map((file) => {
-                            const isFolder = file.type === 'folder';
-                            const isSelected = spreadsheetId === file.id;
-                            return (
-                              <div
-                                key={file.id}
-                                className={`flex items-center justify-between p-3 transition-all duration-150 ${isSelected
-                                  ? 'bg-emerald-50 text-emerald-950 font-bold border-l-4 border-emerald-500'
-                                  : 'hover:bg-gray-50 text-gray-700 font-medium'
-                                  }`}
-                              >
+                          availableFiles
+                            .filter(isFileAllowed)
+                            .filter(file => !(oauthProvider === 'onedrive' && file.name.toLowerCase().endsWith('.csv')))
+                            .map((file) => {
+                              const isFolder = file.type === 'folder';
+                              const isSelected = spreadsheetId === file.id;
+                              return (
                                 <div
-                                  onClick={() => handleSelectFile(file)}
-                                  className="flex-1 flex items-center space-x-3 min-w-0 cursor-pointer"
+                                  key={file.id}
+                                  className={`flex items-center justify-between p-3 transition-all duration-150 ${isSelected
+                                    ? 'bg-emerald-50 text-emerald-950 font-bold border-l-4 border-emerald-500'
+                                    : 'hover:bg-gray-50 text-gray-700 font-medium'
+                                    }`}
                                 >
-                                  {isFolder ? (
-                                    <Folder className="w-5 h-5 text-amber-500 fill-amber-100 flex-shrink-0" />
-                                  ) : (
-                                    <FileSpreadsheet className={`w-5 h-5 flex-shrink-0 ${isSelected ? 'text-emerald-600' : 'text-gray-400'}`} />
-                                  )}
-                                  <span className="text-xs truncate">{file.name}</span>
-                                  {oauthProvider === 'google_sheets' && !isFolder && (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) && (
-                                    <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200 font-semibold px-1 py-0.5 rounded flex-shrink-0">
-                                      Excel (.xlsx) - Auto-Convert
-                                    </span>
-                                  )}
+                                  <div
+                                    onClick={() => handleSelectFile(file)}
+                                    className="flex-1 flex items-center space-x-3 min-w-0 cursor-pointer"
+                                  >
+                                    {isFolder ? (
+                                      <Folder className="w-5 h-5 text-amber-500 fill-amber-100 flex-shrink-0" />
+                                    ) : (
+                                      <FileSpreadsheet className={`w-5 h-5 flex-shrink-0 ${isSelected ? 'text-emerald-600' : 'text-gray-400'}`} />
+                                    )}
+                                    <span className="text-xs truncate">{file.name}</span>
+                                    {oauthProvider === 'google_sheets' && !isFolder && (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) && (
+                                      <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200 font-semibold px-1 py-0.5 rounded flex-shrink-0">
+                                        Excel (.xlsx) - Auto-Convert
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-2 flex-shrink-0">
+                                    {isFolder ? (
+                                      <ChevronRight
+                                        className="w-4 h-4 text-gray-400 hover:text-indigo-500 cursor-pointer"
+                                        onClick={() => handleFolderClick(file.id, file.name)}
+                                      />
+                                    ) : (
+                                      <>
+                                        {moduleContext === 'department' && file.web_url && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleLinkAsDocument(file);
+                                            }}
+                                            className="px-2.5 py-1 bg-dark-teal-800 hover:bg-dark-teal-900 text-white rounded-lg text-[10px] font-bold shadow-sm transition active:scale-95 flex items-center space-x-1"
+                                            title="Link as Department Document"
+                                          >
+                                            <Paperclip className="w-3.5 h-3.5" />
+                                            <span>Link Document</span>
+                                          </button>
+                                        )}
+                                        {isSelected && (
+                                          <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.5 rounded-md uppercase">Selected</span>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex items-center space-x-2 flex-shrink-0">
-                                  {isFolder ? (
-                                    <ChevronRight 
-                                      className="w-4 h-4 text-gray-400 hover:text-indigo-500 cursor-pointer" 
-                                      onClick={() => handleFolderClick(file.id, file.name)}
-                                    />
-                                  ) : (
-                                    <>
-                                      {moduleContext === 'department' && file.web_url && (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleLinkAsDocument(file);
-                                          }}
-                                          className="px-2.5 py-1 bg-dark-teal-800 hover:bg-dark-teal-900 text-white rounded-lg text-[10px] font-bold shadow-sm transition active:scale-95 flex items-center space-x-1"
-                                          title="Link as Department Document"
-                                        >
-                                          <Paperclip className="w-3.5 h-3.5" />
-                                          <span>Link Document</span>
-                                        </button>
-                                      )}
-                                      {isSelected && (
-                                        <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.5 rounded-md uppercase">Selected</span>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })
+                              );
+                            })
                         )}
                       </div>
                     )}
@@ -1599,12 +1638,12 @@ export default function DocumentIntegrations({
               {/* Score Gauge */}
               <div className="flex flex-col items-center justify-center py-5 bg-indigo-50/40 rounded-2xl border border-indigo-100/50">
                 <div className={`relative flex items-center justify-center w-24 h-24 rounded-full border-4 bg-white shadow-sm transition-colors ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'border-gray-200' :
-                    Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'border-emerald-500' :
-                      Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'border-amber-500' : 'border-red-500'
+                  Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'border-emerald-500' :
+                    Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'border-amber-500' : 'border-red-500'
                   }`}>
                   <span className={`text-2xl font-extrabold ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'text-gray-600' :
-                      Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'text-emerald-600' :
-                        Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'text-amber-600' : 'text-red-650'
+                    Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'text-emerald-600' :
+                      Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'text-amber-600' : 'text-red-650'
                     }`}>
                     {activeAuditIntegration.validation_score !== null && activeAuditIntegration.validation_score !== undefined
                       ? `${Math.round(activeAuditIntegration.validation_score * 100)}%`

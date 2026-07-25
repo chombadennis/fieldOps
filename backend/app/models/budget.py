@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from ..db.database import Base
 from .base import CustomBase
@@ -11,12 +12,15 @@ class Budget(Base, CustomBase):
     contract_id = Column(Integer, ForeignKey('contracts.id', ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String, nullable=False, index=True)
     amount = Column(Float, nullable=False)
+    planned_value = Column(Float, nullable=True)
+    earned_value = Column(Float, nullable=True)
+    actual_cost = Column(Float, nullable=True)
+    values_map = Column(JSONB, nullable=True)
     notes = Column(Text, nullable=True)
 
     # Relationships
     project = relationship("Project", back_populates="budgets")
     contract = relationship("Contract", back_populates="budgets")
-    documents = relationship("Document", back_populates="budget", cascade="all, delete-orphan")
 
     @property
     def category(self):

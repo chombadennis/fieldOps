@@ -23,6 +23,15 @@ from slowapi.errors import RateLimitExceeded
 from .core.config import settings
 from .limiter import limiter
 from .routes import projects, activities, ai_parser, integrations, users, notes, documents, financials, contracts
+from .routes import tech
+from .routes import field_ops
+from .routes import budget
+from .routes import ipc
+from .routes import activity_schedule
+from .routes import milestone_claims
+from .routes import rate_schedule
+from .routes import reimbursable_claims
+from .routes import program_of_works
 
 # --- Configure Logging ---
 logging.basicConfig(level=logging.INFO)
@@ -96,6 +105,15 @@ app.include_router(integrations.router, prefix="/api", tags=["Integrations"])
 app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(notes.router, prefix="/api", tags=["Notes"])
 app.include_router(documents.router, prefix="/api", tags=["Documents"])
+app.include_router(tech.router, prefix='/api', tags=['Tech Documents'])
+app.include_router(field_ops.router, prefix='/api', tags=['Field Ops Documents'])
+app.include_router(budget.router, prefix='/api', tags=['Budget Documents'])
+app.include_router(ipc.router, prefix='/api', tags=['IPC Documents'])
+app.include_router(activity_schedule.router, prefix='/api', tags=['Activity Schedule Documents'])
+app.include_router(milestone_claims.router, prefix='/api', tags=['Milestone Claim Documents'])
+app.include_router(rate_schedule.router, prefix='/api', tags=['Rate Schedule Documents'])
+app.include_router(reimbursable_claims.router, prefix='/api', tags=['Reimbursable Claim Documents'])
+app.include_router(program_of_works.router, prefix='/api', tags=['Program Of Works Documents'])
 app.include_router(financials.router, prefix="/api", tags=["Financials"])
 
 # --- Root Endpoint ---

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..db.database import Base
@@ -25,15 +26,12 @@ class Document(Base, CustomBase):
     unlinked_at = Column(DateTime, nullable=True)
 
     note_id = Column(Integer, ForeignKey('notes.id', ondelete="SET NULL"), nullable=True)
-    budget_id = Column(Integer, ForeignKey('budgets.id', ondelete="SET NULL"), nullable=True)
-    ipc_id = Column(Integer, ForeignKey('ipcs.id', ondelete="SET NULL"), nullable=True)
+    metadata_map = Column(JSONB, nullable=True)
 
     # Relationships
     project = relationship("Project", back_populates="documents")
     contract = relationship("Contract", back_populates="documents")
     note = relationship("Note", back_populates="documents")
-    budget = relationship("Budget", back_populates="documents")
-    ipc = relationship("IPC", back_populates="documents")
 
     @property
     def title(self):

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, Date, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from ..db.database import Base
 from .base import CustomBase
@@ -14,6 +15,7 @@ class Note(Base, CustomBase):
     content = Column(Text, nullable=False)
     is_flagged_issue = Column(Boolean, default=False, nullable=False)
     follow_up_date = Column(Date, nullable=True)
+    values_map = Column(JSONB, nullable=True)
 
     # Relationships
     project = relationship("Project", back_populates="notes")

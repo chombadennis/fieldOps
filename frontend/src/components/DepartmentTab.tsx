@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MessageSquare, Send, AlertTriangle } from 'lucide-react';
 import DocumentIntegrations from '@/components/DocumentIntegrations';
 import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
-import { unlinkProjectDocument } from '@/services/api';
+import { unlinkProjectDocument, unlinkDecoupledDocument } from '@/services/api';
 
 interface Note {
   id: number;
@@ -29,6 +29,7 @@ interface DepartmentTabProps {
   projectId: number;
   departmentName: string;
   departmentKey: string;
+  apiEndpoint?: string;
   description: string;
   colorTheme: string;
   notes: Note[];
@@ -46,6 +47,7 @@ export default function DepartmentTab({
   projectId,
   departmentName,
   departmentKey,
+  apiEndpoint,
   description,
   colorTheme,
   notes = [],
@@ -69,7 +71,11 @@ export default function DepartmentTab({
     setUnlinkingId(documentId);
     if (setGlobalLoading) setGlobalLoading(true);
     try {
-      await unlinkProjectDocument(projectId, documentId);
+      if (apiEndpoint) {
+        await unlinkDecoupledDocument(projectId, apiEndpoint, documentId);
+      } else {
+        await unlinkProjectDocument(projectId, documentId);
+      }
       onRefresh();
     } catch (err) {
       console.error(err);

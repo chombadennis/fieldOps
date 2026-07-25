@@ -2,17 +2,24 @@ import React, { useState } from 'react';
 import { MessageSquare, Send, AlertTriangle, FileCheck } from 'lucide-react';
 import DocumentIntegrations from '@/components/DocumentIntegrations';
 import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
-import { unlinkProjectDocument } from '@/services/api';
+import IpcValuationSheet from '@/components/IpcValuationSheet';
+import { unlinkProjectDocument, unlinkDecoupledDocument, updateProjectIPC } from '@/services/api';
 
 interface IPC {
   id: number;
   certificate_number: string;
-  amount_claimed: number;
-  amount_certified?: number;
+  gross_amount_claimed?: number;
+  gross_amount_certified?: number;
+  total_deductions?: number;
+  net_amount_due?: number;
+  cumulative_certified?: number;
   status: string;
-  issued_date?: string;
+  payment_status: string;
+  unpaid_amount?: number;
+  payment_date?: string;
   period_start?: string;
   period_end?: string;
+  valuation_date?: string;
 }
 
 interface Note {
@@ -66,9 +73,16 @@ export default function IpcsTab({
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
   const [unlinkingId, setUnlinkingId] = useState<number | null>(null);
+  const [selectedIpc, setSelectedIpc] = useState<IPC | null>(null);
+  const [editingNetDueId, setEditingNetDueId] = useState<number | null>(null);
+  const [editingNetDueAmount, setEditingNetDueAmount] = useState<number>(0);
 
-  const totalClaimed = ipcs.reduce((sum, i) => sum + (i.amount_claimed || 0), 0);
-  const totalCertified = ipcs.reduce((sum, i) => sum + (i.amount_certified || 0), 0);
+  // Custom UI Modals
+  const [customAlert, setCustomAlert] = useState<{ title: string, message: string } | null>(null);
+  const [customConfirm, setCustomConfirm] = useState<{ title: string, message: string, onConfirm: () => void } | null>(null);
+
+  const totalClaimed = ipcs.reduce((sum, i) => sum + (i.gross_amount_claimed || 0), 0);
+  const totalCertified = ipcs.reduce((sum, i) => sum + (i.net_amount_due || 0), 0);
 
   const statusBadge = (st: string) => {
     switch (st) {
@@ -87,7 +101,7 @@ export default function IpcsTab({
     setUnlinkingId(documentId);
     if (setGlobalLoading) setGlobalLoading(true);
     try {
-      await unlinkProjectDocument(projectId, documentId);
+      await unlinkDecoupledDocument(projectId, 'ipc', documentId).catch(() => unlinkProjectDocument(projectId, documentId));
       onRefresh();
     } catch (err) {
       console.error(err);
@@ -152,6 +166,7 @@ export default function IpcsTab({
           moduleContext="ipc"
           activeTab="pmo"
           pmoSubTab="ipcs"
+          apiEndpoint="ipc"
         />
       )}
 
@@ -180,27 +195,149 @@ export default function IpcsTab({
               <thead className="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase tracking-wider font-bold">
                 <tr>
                   <th className="px-6 py-4">Certificate #</th>
-                  <th className="px-6 py-4">Amount Claimed</th>
-                  <th className="px-6 py-4">Amount Certified</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Issued Date</th>
+                  <th className="px-6 py-4">Net Amount Due</th>
+                  <th className="px-6 py-4">Unpaid Balance</th>
+                  <th className="px-6 py-4">Approval Status</th>
+                  <th className="px-6 py-4 text-right">Payment Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
                 {ipcs.map((ipc) => (
-                  <tr key={ipc.id} className="hover:bg-gray-50/50 transition">
+                  <tr
+                    key={ipc.id}
+                    onClick={() => {
+                      if (ipc.status === 'Certified' || ipc.status === 'Paid') {
+                        setSelectedIpc(ipc);
+                      } else {
+                        setCustomAlert({
+                          title: "Action Blocked",
+                          message: "You can only open the Valuation Sheet if the IPC is Certified or Paid."
+                        });
+                      }
+                    }}
+                    className={`transition ${ipc.status === 'Certified' || ipc.status === 'Paid' ? 'hover:bg-gray-50/50 cursor-pointer' : 'opacity-80'}`}
+                  >
                     <td className="px-6 py-4 font-extrabold font-lexend text-gray-900">{ipc.certificate_number}</td>
-                    <td className="px-6 py-4 font-bold text-gray-800">${ipc.amount_claimed.toLocaleString()}</td>
-                    <td className="px-6 py-4 font-bold text-emerald-600">
-                      ${(ipc.amount_certified || 0).toLocaleString()}
+                    <td className="px-6 py-4 font-bold text-gray-800" onClick={(e) => e.stopPropagation()}>
+                      {editingNetDueId === ipc.id ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            className="w-24 p-1 text-xs border border-gray-300 rounded font-bold"
+                            value={editingNetDueAmount}
+                            onChange={(e) => setEditingNetDueAmount(Number(e.target.value))}
+                          />
+                          <button
+                            className="text-[10px] bg-dark-teal-600 text-white px-2 py-1 rounded hover:bg-dark-teal-700"
+                            onClick={async () => {
+                              try {
+                                await updateProjectIPC(projectId, ipc.id, { net_amount_due: editingNetDueAmount });
+                                setEditingNetDueId(null);
+                                if (onRefresh) onRefresh();
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="text-[10px] bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300"
+                            onClick={() => setEditingNetDueId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          className="flex items-center space-x-2 group cursor-pointer"
+                          onClick={() => {
+                            setCustomConfirm({
+                              title: "Edit Source of Truth",
+                              message: "WARNING: You are about to edit the original source of truth from the database for this IPC. Do you wish to continue?",
+                              onConfirm: () => {
+                                setEditingNetDueId(ipc.id);
+                                setEditingNetDueAmount(ipc.net_amount_due || 0);
+                              }
+                            });
+                          }}
+                        >
+                          <span>${(ipc.net_amount_due || 0).toLocaleString()}</span>
+                          <span className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-500 transition-opacity">Edit</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${statusBadge(ipc.status)}`}>
-                        {ipc.status}
-                      </span>
+                    <td className="px-6 py-4 font-bold text-red-500">
+                      ${(ipc.unpaid_amount || 0).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <select
+                        className={`px-3 py-1 rounded-full text-[11px] font-bold border outline-none cursor-pointer ${statusBadge(ipc.status)}`}
+                        value={ipc.status}
+                        onChange={async (e) => {
+                          // TODO: Role-Based Authorization Check
+                          // Only authorized internal users (e.g. Project Managers, Admins) should be able to change 
+                          // the status to 'Certified'. Check user role here before allowing the update.
+                          const newStatus = e.target.value;
+
+                          if (newStatus === 'Paid') {
+                            const netDue = ipc.net_amount_due || 0;
+                            const unpaid = ipc.unpaid_amount ?? netDue;
+                            const isFullyPaid = (netDue > 0 && unpaid <= 0) || (netDue === 0 && ipc.payment_status === 'PAID');
+
+                            if (!isFullyPaid) {
+                              setCustomAlert({
+                                title: "Invalid Status Update",
+                                message: "Approval status can only be 'Paid' if the Payment Status is 'FULLY PAID'."
+                              });
+                              return;
+                            }
+                          }
+
+                          try {
+                            await updateProjectIPC(projectId, ipc.id, { status: newStatus });
+                            if (onRefresh) onRefresh();
+                          } catch (err) {
+                            console.error("Failed to update status", err);
+                          }
+                        }}
+                      >
+                        <option value="Draft">Draft</option>
+                        <option value="Submitted">Submitted</option>
+                        <option value="Certified">Certified</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
                     </td>
                     <td className="px-6 py-4 text-right text-xs text-gray-400 font-medium">
-                      {ipc.issued_date ? new Date(ipc.issued_date).toLocaleDateString() : 'Today'}
+                      {(() => {
+                        const netDue = ipc.net_amount_due || 0;
+                        const unpaid = ipc.unpaid_amount ?? netDue;
+
+                        let displayStatus = 'UNPAID';
+                        let badgeClass = 'bg-red-50 text-red-700 border-red-200';
+
+                        if (netDue > 0) {
+                          if (unpaid <= 0) {
+                            displayStatus = 'FULLY PAID';
+                            badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          } else if (unpaid < netDue) {
+                            displayStatus = 'PARTIALLY PAID';
+                            badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                          }
+                        } else {
+                          if (ipc.payment_status === 'PAID') {
+                            displayStatus = 'FULLY PAID';
+                            badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          }
+                        }
+
+                        return (
+                          <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${badgeClass}`}>
+                            {displayStatus}
+                          </span>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))}
@@ -275,9 +412,8 @@ export default function IpcsTab({
             {filteredNotes.map((note) => (
               <div
                 key={note.id}
-                className={`bg-white rounded-3xl p-6 border shadow-sm transition ${
-                  note.is_issue ? 'border-deep-crimson-200 bg-deep-crimson-50/20' : 'border-gray-100'
-                }`}
+                className={`bg-white rounded-3xl p-6 border shadow-sm transition ${note.is_issue ? 'border-deep-crimson-200 bg-deep-crimson-50/20' : 'border-gray-100'
+                  }`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center space-x-2">
@@ -298,6 +434,70 @@ export default function IpcsTab({
           </div>
         )}
       </div>
+
+      {/* IPC Editor Modal */}
+      {selectedIpc && (
+        <IpcValuationSheet
+          ipc={selectedIpc}
+          contractParams={{ vat_rate: 0.16 }}
+          onClose={() => setSelectedIpc(null)}
+          onSave={async (updatedData) => {
+            try {
+              await updateProjectIPC(projectId, selectedIpc.id, updatedData);
+              setSelectedIpc(null);
+              if (onRefresh) onRefresh();
+            } catch (err) {
+              console.error("Failed to update IPC:", err);
+              alert("Failed to save IPC changes. Please try again.");
+            }
+          }}
+        />
+      )}
+      {/* Custom Alert Modal */}
+      {customAlert && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-fade-in text-center border border-gray-100">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold font-lexend text-gray-900 mb-2">{customAlert.title}</h3>
+            <p className="text-sm text-gray-600 font-medium mb-6">{customAlert.message}</p>
+            <button
+              onClick={() => setCustomAlert(null)}
+              className="w-full bg-dark-teal-800 hover:bg-dark-teal-900 text-white font-bold py-3 px-4 rounded-xl transition shadow-md"
+            >
+              Acknowledge
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirm Modal */}
+      {customConfirm && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-fade-in text-center border border-gray-100">
+            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold font-lexend text-gray-900 mb-2">{customConfirm.title}</h3>
+            <p className="text-sm text-gray-600 font-medium mb-6">{customConfirm.message}</p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setCustomConfirm(null)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  customConfirm.onConfirm();
+                  setCustomConfirm(null);
+                }}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl transition shadow-md"
+              >
+                Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

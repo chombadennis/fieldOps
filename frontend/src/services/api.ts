@@ -224,6 +224,21 @@ export const createProjectDocument = async (
   return response.data;
 };
 
+export const getDecoupledDocuments = async (projectId: string | number, endpoint: string) => {
+  const response = await apiClient.get(`/projects/${projectId}/${endpoint}`);
+  return response.data;
+};
+
+export const createDecoupledDocument = async (projectId: string | number, endpoint: string, doc: any) => {
+  const response = await apiClient.post(`/projects/${projectId}/${endpoint}`, doc);
+  return response.data;
+};
+
+export const unlinkDecoupledDocument = async (projectId: string | number, endpoint: string, documentId: number) => {
+  const response = await apiClient.delete(`/projects/${projectId}/${endpoint}/${documentId}`);
+  return response.data;
+};
+
 export const getDocumentEmbedUrl = async (documentId: number, mode: string = 'view') => {
   const response = await apiClient.get(`/documents/${documentId}/embed-url`, {
     params: { mode }
@@ -256,4 +271,7 @@ export const createProjectIPC = async (projectId: string | number, ipc: { certif
   return response.data;
 };
 
-
+export const updateProjectIPC = async (projectId: string | number, ipcId: string | number, data: any) => {
+  const response = await apiClient.put(`/projects/${projectId}/ipc/records/${ipcId}`, data);
+  return response.data;
+};

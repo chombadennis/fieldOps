@@ -25,7 +25,7 @@ import RoleSwitcher, { UserRole, ROLES_CONFIG } from '@/components/RoleSwitcher'
 import BudgetsTab from '@/components/BudgetsTab';
 import IpcsTab from '@/components/IpcsTab';
 import DepartmentTab from '@/components/DepartmentTab';
-import { AlertTriangle, X, FileSpreadsheet, DollarSign, FileCheck, HardHat, Wrench, Users, Scale, Building2 } from 'lucide-react';
+import { AlertTriangle, X, FileSpreadsheet, DollarSign, FileCheck, HardHat, Wrench, Users, Scale, Building2, Calendar } from 'lucide-react';
 
 export default function ProjectDashboardPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
@@ -72,18 +72,37 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
 
   const fetchProjectData = async () => {
     try {
-      const [projData, bData, iData, nData, dData] = await Promise.all([
+      const [
+        projData, bData, iData, nData, 
+        dData, techData, fieldOpsData, activityData, milestoneData, rateData, reimbursableData, programData, ipcDocsData
+      ] = await Promise.all([
         getProject(projectId),
         getProjectBudgets(projectId).catch(() => []),
         getProjectIPCs(projectId).catch(() => []),
         getProjectNotes(projectId).catch(() => []),
-        getProjectDocuments(projectId).catch(() => []),
+        getProjectDocuments(projectId).catch(() => []), // standard documents
+        
+        // Decoupled Documents
+        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'tech')).catch(() => []),
+        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'field_ops')).catch(() => []),
+        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'activity_schedule')).catch(() => []),
+        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'milestone_claims')).catch(() => []),
+        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'rate_schedule')).catch(() => []),
+        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'reimbursable_claims')).catch(() => []),
+        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'program_of_works')).catch(() => []),
+        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'ipc')).catch(() => []),
       ]);
+      
+      const allDocs = [
+        ...dData, ...techData, ...fieldOpsData, ...activityData, 
+        ...milestoneData, ...rateData, ...reimbursableData, ...programData, ...ipcDocsData
+      ];
+      
       setProject(projData);
       setBudgets(bData);
       setIpcs(iData);
       setNotes(nData);
-      setDocuments(dData);
+      setDocuments(allDocs);
       setError(null);
     } catch (err) {
       setError('Failed to fetch project details.');
@@ -166,29 +185,38 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
     { key: 'legal', label: 'Legal', icon: Scale },
   ].filter((t) => visibleTabs.includes(t.key));
 
-  const PMO_SUBTABS = [
-    {
-      key: 'boq',
-      label: 'BoQ & Files',
-      description: 'Bills of Quantities, Excel parsing & cloud files',
-      icon: FileSpreadsheet,
-      badgeCount: project.boq_documents?.length || 0,
-    },
-    {
-      key: 'ipcs',
-      label: 'IPC & Claims',
-      description: 'Interim Payment Certificates & claims',
-      icon: FileCheck,
-      badgeCount: ipcs.length + documents.filter((d) => d.department?.toUpperCase() === 'IPC').length,
-    },
-    {
-      key: 'budgets',
-      label: 'Budget',
-      description: 'Project budget & cost tracking',
-      icon: DollarSign,
-      badgeCount: budgets.length + documents.filter((d) => d.department?.toUpperCase() === 'BUDGET').length,
-    },
-  ];
+  const contractType = project?.contracts?.[0]?.contract_type || 'GENERAL';
+  const contractName = project?.contracts?.[0]?.name || 'General Contract';
+  const contractContext = `(Active Contract: ${contractName} - ${contractType.replace('_', ' ')})`;
+
+  let PMO_SUBTABS = [];
+  if (contractType === 'LUMP_SUM') {
+    PMO_SUBTABS = [
+      { key: 'activity_schedule', label: 'Activity Schedule', description: `Upload Activity Schedule files (Expected: Excel). ${contractContext}`, icon: FileSpreadsheet, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'activity_schedule').length },
+      { key: 'milestone_payments', label: 'Milestone Payments', description: `Upload milestone claims (Expected: PDF/Word). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'milestone_claims').length },
+      { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: budgets.length + documents.filter((d) => d.department?.toUpperCase() === 'BUDGET').length },
+      { key: 'scheduling', label: 'Scheduling & Timeline', description: `Upload Program of Works (Expected: MPP/Excel). ${contractContext}`, icon: Calendar, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'program_of_works').length },
+    ];
+  } else if (contractType === 'COST_PLUS') {
+    PMO_SUBTABS = [
+      { key: 'rate_schedule', label: 'Schedule of Rates', description: `Upload Rate Schedule files (Expected: Excel). ${contractContext}`, icon: FileSpreadsheet, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'rate_schedule').length },
+      { key: 'reimbursable_costs', label: 'Reimbursable Costs', description: `Upload Invoices and Receipts (Expected: PDF/Images). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'reimbursable_claims').length },
+      { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: budgets.length + documents.filter((d) => d.department?.toUpperCase() === 'BUDGET').length },
+      { key: 'scheduling', label: 'Scheduling & Timeline', description: `Upload Program of Works (Expected: MPP/Excel). ${contractContext}`, icon: Calendar, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'program_of_works').length },
+    ];
+  } else {
+    // GENERAL - ALL TABS ACTIVE
+    PMO_SUBTABS = [
+      { key: 'boq', label: 'BoQ & Files', description: `Bills of Quantities (Expected: Excel Workbooks). ${contractContext}`, icon: FileSpreadsheet, badgeCount: project.boq_documents?.length || 0 },
+      { key: 'ipcs', label: 'IPC & Claims', description: `Interim Payment Certificates (Expected: PDF/Excel). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toUpperCase() === 'IPC' || d.department?.toLowerCase() === 'ipc').length },
+      { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: budgets.length + documents.filter((d) => d.department?.toUpperCase() === 'BUDGET').length },
+      { key: 'scheduling', label: 'Scheduling & Timeline', description: `Upload Program of Works (Expected: MPP/Excel). ${contractContext}`, icon: Calendar, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'program_of_works').length },
+      { key: 'activity_schedule', label: 'Activity Schedule', description: `Upload Activity Schedule files (Expected: Excel). ${contractContext}`, icon: FileSpreadsheet, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'activity_schedule').length },
+      { key: 'milestone_payments', label: 'Milestone Payments', description: `Upload milestone claims (Expected: PDF/Word). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'milestone_claims').length },
+      { key: 'rate_schedule', label: 'Schedule of Rates', description: `Upload Rate Schedule files (Expected: Excel). ${contractContext}`, icon: FileSpreadsheet, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'rate_schedule').length },
+      { key: 'reimbursable_costs', label: 'Reimbursable Costs', description: `Upload Invoices and Receipts (Expected: PDF/Images). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'reimbursable_claims').length },
+    ];
+  }
 
   return (
     <main className="container mx-auto p-4 space-y-6">
@@ -390,6 +418,105 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                   setGlobalLoading={setGlobalProcessing}
                 />
               )}
+              {/* PMO Subtab: Activity Schedule */}
+              {pmoSubTab === 'activity_schedule' && (
+                <DepartmentTab
+                  projectId={project.id}
+                  departmentName="Activity Schedule"
+                  departmentKey="activity_schedule"
+                  apiEndpoint="activity_schedule"
+                  description="Upload and link Lump Sum Activity Schedule files. Expected format: Excel Workbooks."
+                  colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
+                  notes={notes}
+                  documents={documents}
+                  onAddNote={handleAddNote}
+                  integrations={project.integrations || []}
+                  onRefresh={fetchProjectData}
+                  globalLoading={globalProcessing}
+                  setGlobalLoading={setGlobalProcessing}
+                  activeTab="pmo"
+                />
+              )}
+
+              {/* PMO Subtab: Milestone Payments */}
+              {pmoSubTab === 'milestone_payments' && (
+                <DepartmentTab
+                  projectId={project.id}
+                  departmentName="Milestone Payments"
+                  departmentKey="milestone_claims"
+                  apiEndpoint="milestone_claims"
+                  description="Upload milestone payment claims and certificates. Expected format: PDF or Word."
+                  colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
+                  notes={notes}
+                  documents={documents}
+                  onAddNote={handleAddNote}
+                  integrations={project.integrations || []}
+                  onRefresh={fetchProjectData}
+                  globalLoading={globalProcessing}
+                  setGlobalLoading={setGlobalProcessing}
+                  activeTab="pmo"
+                />
+              )}
+
+              {/* PMO Subtab: Schedule of Rates */}
+              {pmoSubTab === 'rate_schedule' && (
+                <DepartmentTab
+                  projectId={project.id}
+                  departmentName="Schedule of Rates"
+                  departmentKey="rate_schedule"
+                  apiEndpoint="rate_schedule"
+                  description="Upload Cost-Plus Schedule of Rates. Expected format: Excel Workbooks."
+                  colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
+                  notes={notes}
+                  documents={documents}
+                  onAddNote={handleAddNote}
+                  integrations={project.integrations || []}
+                  onRefresh={fetchProjectData}
+                  globalLoading={globalProcessing}
+                  setGlobalLoading={setGlobalProcessing}
+                  activeTab="pmo"
+                />
+              )}
+
+              {/* PMO Subtab: Reimbursable Costs */}
+              {pmoSubTab === 'reimbursable_costs' && (
+                <DepartmentTab
+                  projectId={project.id}
+                  departmentName="Reimbursable Costs"
+                  departmentKey="reimbursable_claims"
+                  apiEndpoint="reimbursable_claims"
+                  description="Upload daily invoices, receipts, and reimbursable claims. Expected format: PDF or Images."
+                  colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
+                  notes={notes}
+                  documents={documents}
+                  onAddNote={handleAddNote}
+                  integrations={project.integrations || []}
+                  onRefresh={fetchProjectData}
+                  globalLoading={globalProcessing}
+                  setGlobalLoading={setGlobalProcessing}
+                  activeTab="pmo"
+                />
+              )}
+
+              {/* PMO Subtab: Scheduling & Timeline */}
+              {pmoSubTab === 'scheduling' && (
+                <DepartmentTab
+                  projectId={project.id}
+                  departmentName="Program of Works"
+                  departmentKey="program_of_works"
+                  apiEndpoint="program_of_works"
+                  description="Upload master scheduling files and timelines. Expected format: MPP (MS Project), Excel, or PDF."
+                  colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
+                  notes={notes}
+                  documents={documents}
+                  onAddNote={handleAddNote}
+                  integrations={project.integrations || []}
+                  onRefresh={fetchProjectData}
+                  globalLoading={globalProcessing}
+                  setGlobalLoading={setGlobalProcessing}
+                  activeTab="pmo"
+                />
+              )}
             </div>
           </div>
         </div>
@@ -400,8 +527,9 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
         <DepartmentTab
           projectId={project.id}
           departmentName="Engineering & Tech"
-          departmentKey="Tech"
-          description="Technical specs, structural calculations, and engineering issue logs."
+          departmentKey="tech"
+          apiEndpoint="tech"
+          description={`Technical specs, structural calculations, and engineering issue logs. Expected format: PDF, AutoCAD (DWG), or Images. ${contractContext}`}
           colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
           notes={notes}
           documents={documents}
@@ -420,8 +548,9 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
         <DepartmentTab
           projectId={project.id}
           departmentName="Field Operations"
-          departmentKey="Field Operations"
-          description="Site equipment status, weather delays, safety updates, and contractor coordination."
+          departmentKey="field_ops"
+          apiEndpoint="field_ops"
+          description={`Site equipment status, weather delays, safety updates, and contractor coordination. Expected format: PDF, Word, or Images. ${contractContext}`}
           colorTheme="bg-gradient-to-r from-princeton-orange-950 via-princeton-orange-900 to-autumn-leaf-950"
           notes={notes}
           documents={documents}
@@ -441,7 +570,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           projectId={project.id}
           departmentName="Human Resources"
           departmentKey="HR"
-          description="Site staffing rosters, labor compliance, personnel onboarding, and labor issues."
+          description="Site staffing rosters, labor compliance, personnel onboarding, and labor issues. Expected format: PDF, Excel, or Word."
           colorTheme="bg-gradient-to-r from-emerald-950 via-teal-900 to-dark-teal-950"
           notes={notes}
           documents={documents}
@@ -461,7 +590,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           projectId={project.id}
           departmentName="Legal & Compliance"
           departmentKey="Legal"
-          description="Subcontractor contracts, environmental permits, regulatory compliance, and legal notices."
+          description="Subcontractor contracts, environmental permits, regulatory compliance, and legal notices. Expected format: PDF or Word."
           colorTheme="bg-gradient-to-r from-crimson-violet-950 via-deep-crimson-950 to-dark-teal-950"
           notes={notes}
           documents={documents}

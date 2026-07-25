@@ -12,9 +12,18 @@ class Contract(Base, CustomBase):
     contract_type = Column(String, nullable=False, index=True) # e.g. "GENERAL", "UNIT_PRICE", "LUMP_SUM", "COST_PLUS", "DESIGN_BUILD"
     contractor_name = Column(String, nullable=True)
     contract_value = Column(Float, nullable=True)
+    revised_contract_value = Column(Float, nullable=True)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     status = Column(String, default="active", nullable=False)
+    
+    # IPC Configuration Defaults
+    retention_rate = Column(Float, default=0.05, nullable=True)
+    max_retention_limit = Column(Float, nullable=True)
+    vat_rate = Column(Float, default=0.16, nullable=True)
+    withholding_tax_rate = Column(Float, default=0.03, nullable=True)
+    withholding_vat_rate = Column(String, default="0.02", nullable=True) # String to support fractions like "2/116"
+    advance_payment_amount = Column(Float, default=0.0, nullable=True)
 
     # Relationships
     project = relationship("Project", back_populates="contracts")

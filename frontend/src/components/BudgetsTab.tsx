@@ -48,6 +48,7 @@ export default function BudgetsTab({
   globalLoading,
   setGlobalLoading,
 }: BudgetsTabProps) {
+  const [internalTab, setInternalTab] = useState<'budget' | 'progress' | 'cost'>('budget');
   const [content, setContent] = useState('');
   const [isIssue, setIsIssue] = useState(false);
   const [priority, setPriority] = useState('Normal');
@@ -70,9 +71,19 @@ export default function BudgetsTab({
     }
   };
 
-  // Filter notes and docs for Budgets tab
+  // Filter notes globally for Budgets tab
   const filteredNotes = notes.filter((n) => n.department?.toUpperCase() === 'BUDGET');
-  const filteredDocs = documents.filter((d) => d.department?.toUpperCase() === 'BUDGET');
+  
+  // Base docs for budget
+  const baseBudgetDocs = documents.filter((d) => d.department?.toUpperCase() === 'BUDGET');
+  
+  // Filter docs based on internal tab using title prefix
+  const filteredDocs = baseBudgetDocs.filter((d) => {
+    if (internalTab === 'progress') return d.title.startsWith('[Progress]');
+    if (internalTab === 'cost') return d.title.startsWith('[Cost]');
+    // Baseline budget docs either start with [Budget] or have no prefix (legacy docs)
+    return d.title.startsWith('[Budget]') || (!d.title.startsWith('[Progress]') && !d.title.startsWith('[Cost]'));
+  });
 
   const handlePostNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,39 +106,76 @@ export default function BudgetsTab({
     }
   };
 
+  const getInternalTabInfo = () => {
+    switch (internalTab) {
+      case 'budget': return { prefix: '[Budget]', title: 'Project Budget', desc: 'Approved budget breakdowns and baseline cost structures. Expected: Excel.' };
+      case 'progress': return { prefix: '[Progress]', title: 'Work Progress', desc: 'Field measurement sheets and completion logs. Expected: Excel.' };
+      case 'cost': return { prefix: '[Cost]', title: 'Cost Tracking', desc: 'General cost ledgers and expense tracking. Expected: Excel/PDF.' };
+    }
+  };
+
+  const currentTabInfo = getInternalTabInfo();
+
   return (
     <div className="space-y-6">
       {/* Top Header Summary Card */}
       <div className="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950 text-white rounded-3xl p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
         <div className="relative z-10">
           <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Baseline Module</span>
-          <h2 className="text-xl font-bold font-lexend mt-1">Project Budgets</h2>
-          <p className="text-xs text-emerald-100/80 mt-1 max-w-lg">Manage cost structures, link baseline calculations, and discuss allocations.</p>
+          <h2 className="text-xl font-bold font-lexend mt-1">Project Budgets & EVM</h2>
+          <p className="text-xs text-emerald-100/80 mt-1 max-w-lg">Manage cost structures, link baseline calculations, and track progress.</p>
         </div>
       </div>
 
-      {/* Cloud File Integration (Google Drive & OneDrive) */}
-      {integrations && onRefresh && setGlobalLoading && (
-        <DocumentIntegrations
-          projectId={String(projectId)}
-          integrations={integrations}
-          onRefresh={onRefresh}
-          globalLoading={!!globalLoading}
-          setGlobalLoading={setGlobalLoading}
-          moduleContext="budget"
-          departmentName="Budget"
-          activeTab="pmo"
-          pmoSubTab="budgets"
-        />
-      )}
+      {/* Internal Navigation Ribbon */}
+      <div className="flex items-center space-x-2 border-b border-gray-100 pb-2">
+        {[
+          { key: 'budget', label: 'Project Budget' },
+          { key: 'progress', label: 'Work Progress Calculations' },
+          { key: 'cost', label: 'Cost Tracking' }
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setInternalTab(tab.key as any)}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition ${
+              internalTab === tab.key 
+                ? 'bg-dark-teal-50 text-dark-teal-900 border border-dark-teal-100 shadow-sm' 
+                : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+        <h3 className="text-sm font-bold text-gray-800 mb-1">{currentTabInfo.title}</h3>
+        <p className="text-xs text-gray-500 mb-4">{currentTabInfo.desc}</p>
+        
+        {/* Cloud File Integration (Google Drive & OneDrive) */}
+        {integrations && onRefresh && setGlobalLoading && (
+          <DocumentIntegrations
+            projectId={String(projectId)}
+            integrations={integrations}
+            onRefresh={onRefresh}
+            globalLoading={!!globalLoading}
+            setGlobalLoading={setGlobalLoading}
+            moduleContext="budget"
+            departmentName="Budget"
+            activeTab="pmo"
+            pmoSubTab="budgets"
+            titlePrefix={currentTabInfo.prefix}
+          />
+        )}
+      </div>
 
       {/* Linked Documents Panel */}
       <LinkedDocumentsPanel
-        title="Linked Budget Workbooks"
+        title={`Linked ${currentTabInfo.title} Files`}
         documents={filteredDocs}
         onUnlink={handleUnlinkDocument}
         unlinkingId={unlinkingId}
-        emptyMessage="No files linked to project budget yet."
+        emptyMessage={`No files linked to ${currentTabInfo.title.toLowerCase()} yet.`}
       />
 
       {/* Discussion & Note Form */}
