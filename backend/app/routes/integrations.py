@@ -9,15 +9,23 @@ from ..core.config import settings
 from ..db.database import get_db
 from ..models.project_integration import ProjectIntegration
 from ..models.project import Project
+from ..models.ipc import IPC
 from ..utils.security import encrypt_token, decrypt_token
 from ..services.integrations import (
     get_google_auth_url,
     exchange_google_code_for_tokens,
+    refresh_google_access_token,
     get_onedrive_auth_url,
     exchange_onedrive_code_for_tokens,
+    refresh_onedrive_access_token,
     run_initial_import,
+    get_google_spreadsheet_sheets,
+    get_onedrive_sheets,
+    get_google_sheet_rows,
+    get_onedrive_sheet_rows,
     process_sheet_webhook_update
 )
+from ..services.integrations.ipc_ai_engine import process_ipc_with_ai
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +43,13 @@ class SyncRequest(BaseModel):
     spreadsheet_id: str
     sheet_name: str
     changes: List[Dict[str, Any]]
+
+class IpcPreviewRequest(BaseModel):
+    project_id: int
+    provider: str
+    spreadsheet_id: str
+    ipc_certificate_number: str
+    refresh_token: Optional[str] = None
 
 # --- OAuth Authorization Redirect URLs ---
 
@@ -876,3 +891,78 @@ async def webhook_listener(
         return {"status": "queued"}
         
     raise HTTPException(status_code=400, detail="Unsupported webhook provider or format.")
+
+@router.post("/integrations/ipc/preview")
+async def preview_ipc_extraction(
+    request: IpcPreviewRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Phase 4 API: Authenticate, read first 12 sheets, run Pass A/B/C and LLM semantic extraction,
+    and return the data to the frontend for interactive preview BEFORE committing to the database.
+    """
+    # 1. Obtain fresh access token
+    access_token = None
+    if request.refresh_token:
+        decrypted_refresh = decrypt_token(request.refresh_token)
+        if request.provider == 'google_sheets':
+            access_token = await refresh_google_access_token(decrypted_refresh)
+        elif request.provider == 'onedrive':
+            access_token = await refresh_onedrive_access_token(decrypted_refresh)
+            
+    if not access_token:
+        integration = db.query(ProjectIntegration).filter(
+            ProjectIntegration.project_id == request.project_id,
+            ProjectIntegration.provider == request.provider
+        ).first()
+        if integration and integration.refresh_token:
+            decrypted_refresh = decrypt_token(integration.refresh_token)
+            if request.provider == 'google_sheets':
+                access_token = await refresh_google_access_token(decrypted_refresh)
+            elif request.provider == 'onedrive':
+                access_token = await refresh_onedrive_access_token(decrypted_refresh)
+                
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Missing or invalid authentication tokens.")
+        
+    # 2. Fetch first 12 sheets
+    sheets_data = {}
+    try:
+        if request.provider == 'google_sheets':
+            sheets_list = await get_google_spreadsheet_sheets(request.spreadsheet_id, access_token)
+            for s in sheets_list[:12]:
+                rows = await get_google_sheet_rows(request.spreadsheet_id, s["name"], access_token)
+                sheets_data[s["name"]] = rows
+        elif request.provider == 'onedrive':
+            sheets_list = await get_onedrive_sheets(request.spreadsheet_id, access_token)
+            for s in sheets_list[:12]:
+                rows = await get_onedrive_sheet_rows(request.spreadsheet_id, s["name"], access_token)
+                sheets_data[s["name"]] = rows
+    except Exception as e:
+        logger.error(f"Failed to fetch cloud sheets for preview: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch cloud sheets: {str(e)}")
+        
+    # 3. Classify and Extract
+    try:
+        extracted_data = await process_ipc_with_ai(sheets_data, request.ipc_certificate_number)
+        
+        if not extracted_data.get("is_ipc_document"):
+            raise HTTPException(status_code=400, detail="Document could not be verified as a valid IPC or missing Main IPC Summary.")
+        
+        # Check if this IPC already exists in the database
+        legacy_exists = False
+        if request.ipc_certificate_number:
+            existing_ipc = db.query(IPC).filter(
+                IPC.certificate_number == str(request.ipc_certificate_number),
+                IPC.project_id == request.project_id
+            ).first()
+            if existing_ipc:
+                legacy_exists = True
+        
+        return {
+            "extracted_data": extracted_data,
+            "legacy_exists": legacy_exists
+        }
+    except Exception as e:
+        logger.exception("AI Extraction failed:")
+        raise HTTPException(status_code=500, detail=str(e))

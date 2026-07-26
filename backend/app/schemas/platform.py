@@ -102,6 +102,7 @@ class DocumentBase(BaseModel):
     cloud_file_id: Optional[str] = None
     origin: Optional[str] = "file_upload"
     integration_id: Optional[int] = None  # FK to project_integrations — used for embed URL generation
+    extracted_data: Optional[dict] = None
 
 class DocumentCreate(DocumentBase):
     note_id: Optional[int] = None

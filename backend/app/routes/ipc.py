@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..db.database import get_db
 from ..models.ipc_document import IpcDocument
+from ..models.ipc import IPC
 from ..models.project import Project
 from ..models.contract import Contract
 from ..schemas import platform as platform_schemas
@@ -58,6 +59,29 @@ def get_ipc_documents(
         )
     return result
 
+@router.get("/check-exists")
+def check_ipc_exists(
+    project_id: int,
+    cloud_file_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Checks if a cloud file has already been linked, and if so, 
+    returns its associated IPC certificate number.
+    """
+    query = db.query(IpcDocument)
+    if hasattr(IpcDocument, 'project_id'):
+        query = query.filter(IpcDocument.project_id == project_id)
+    
+    existing_doc = query.filter(IpcDocument.cloud_file_id == cloud_file_id).first()
+    
+    if existing_doc and getattr(existing_doc, 'ipc_id', None):
+        ipc = db.query(IPC).filter(IPC.id == existing_doc.ipc_id).first()
+        if ipc:
+            return {"exists": True, "certificate_number": ipc.certificate_number}
+            
+    return {"exists": False, "certificate_number": None}
+
 @router.post("", response_model=platform_schemas.Document)
 def create_ipc_document(
     project_id: int,
@@ -98,6 +122,7 @@ def create_ipc_document(
     if not existing_doc and doc_in.file_url:
         existing_doc = query.filter(IpcDocument.file_url == doc_in.file_url).first()
 
+    target_doc = None
     if existing_doc:
         existing_doc.name = doc_in.title
         existing_doc.file_url = doc_in.file_url
@@ -114,50 +139,85 @@ def create_ipc_document(
             
         db.commit()
         db.refresh(existing_doc)
-        d = existing_doc
-        return platform_schemas.Document(
-            id=d.id,
-            project_id=getattr(d, 'project_id', project_id),
-            contract_id=getattr(d, 'contract_id', None),
-            title=d.name,
-            file_url=d.file_url or "",
-            file_type=d.file_type or "unknown",
-            department="ipc",
-            file_size=getattr(d, 'file_size', 0),
-            cloud_file_id=getattr(d, 'cloud_file_id', None),
-            origin=d.origin or "file_upload",
-            integration_id=d.integration_id,
-            is_linked=getattr(d, 'is_linked', True),
-            linked_at=getattr(d, 'linked_at', None),
-            unlinked_at=getattr(d, 'unlinked_at', None),
-            created_at=getattr(d, 'created_at', None)
-        )
+        target_doc = existing_doc
+    else:
+        kwargs = {
+            "name": doc_in.title,
+            "file_url": doc_in.file_url,
+            "file_type": doc_in.file_type,
+            "origin": doc_in.origin or "file_upload",
+            "integration_id": doc_in.integration_id
+        }
+        
+        if hasattr(IpcDocument, 'project_id'):
+            kwargs["project_id"] = project_id
+        if hasattr(IpcDocument, 'contract_id'):
+            kwargs["contract_id"] = contract_id
+        if hasattr(IpcDocument, 'cloud_file_id'):
+            kwargs["cloud_file_id"] = doc_in.cloud_file_id
+        if hasattr(IpcDocument, 'file_size'):
+            kwargs["file_size"] = doc_in.file_size
+        if hasattr(IpcDocument, 'is_linked'):
+            kwargs["is_linked"] = True
+            kwargs["linked_at"] = func.now()
 
-    kwargs = {
-        "name": doc_in.title,
-        "file_url": doc_in.file_url,
-        "file_type": doc_in.file_type,
-        "origin": doc_in.origin or "file_upload",
-        "integration_id": doc_in.integration_id
-    }
+        new_doc = IpcDocument(**kwargs)
+        db.add(new_doc)
+        db.commit()
+        db.refresh(new_doc)
+        target_doc = new_doc
     
-    if hasattr(IpcDocument, 'project_id'):
-        kwargs["project_id"] = project_id
-    if hasattr(IpcDocument, 'contract_id'):
-        kwargs["contract_id"] = contract_id
-    if hasattr(IpcDocument, 'cloud_file_id'):
-        kwargs["cloud_file_id"] = doc_in.cloud_file_id
-    if hasattr(IpcDocument, 'file_size'):
-        kwargs["file_size"] = doc_in.file_size
-    if hasattr(IpcDocument, 'is_linked'):
-        kwargs["is_linked"] = True
-        kwargs["linked_at"] = func.now()
+    # Check if we have extracted data to save to dual persistence (Phase 5)
+    if hasattr(doc_in, 'extracted_data') and doc_in.extracted_data:
+        try:
+            metrics = doc_in.extracted_data.get("ipc_summary", {}).get("metrics", {})
+            cert_no = metrics.get("certificate_number")
+            if cert_no:
+                # Map standard relational columns
+                gross_claimed = metrics.get("gross_amount_claimed", 0.0)
+                gross_certified = metrics.get("gross_amount_certified", 0.0)
+                deductions = metrics.get("total_deductions", 0.0)
+                net_due = metrics.get("net_amount_due", 0.0)
 
-    new_doc = IpcDocument(**kwargs)
-    db.add(new_doc)
-    db.commit()
-    db.refresh(new_doc)
-    d = new_doc
+                ipc_record = db.query(IPC).filter(IPC.certificate_number == cert_no, IPC.contract_id == contract_id).first()
+                if not ipc_record:
+                    ipc_record = IPC(
+                        certificate_number=cert_no,
+                        project_id=project_id,
+                        contract_id=contract_id,
+                        gross_amount_claimed=gross_claimed,
+                        gross_amount_certified=gross_certified,
+                        total_deductions=deductions,
+                        net_amount_due=net_due,
+                        unpaid_amount=net_due,
+                        status="Draft",
+                        payment_status="UNPAID",
+                        values_map={"extraction": doc_in.extracted_data}
+                    )
+                    db.add(ipc_record)
+                else:
+                    ipc_record.gross_amount_claimed = gross_claimed
+                    ipc_record.gross_amount_certified = gross_certified
+                    ipc_record.total_deductions = deductions
+                    ipc_record.net_amount_due = net_due
+                    ipc_record.unpaid_amount = net_due
+                    
+                    current_values = ipc_record.values_map or {}
+                    current_values["extraction"] = doc_in.extracted_data
+                    ipc_record.values_map = current_values
+                db.commit()
+                db.refresh(ipc_record)
+                
+                # Link Document directly to the IPC record
+                if hasattr(target_doc, 'ipc_id'):
+                    target_doc.ipc_id = ipc_record.id
+                    db.commit()
+                    db.refresh(target_doc)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to map extracted data to IPC record: {e}")
+
+    d = target_doc
     return platform_schemas.Document(
         id=d.id,
         project_id=getattr(d, 'project_id', project_id),

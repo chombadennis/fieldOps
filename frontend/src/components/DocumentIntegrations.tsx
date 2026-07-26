@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getGoogleAuthUrl, getOneDriveAuthUrl, saveIntegration, triggerSyncImport, listCloudFiles, listCloudSheets, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, createProjectDocument, createDecoupledDocument, convertGoogleCloudFile } from '@/services/api';
+import { listCloudSheets, saveIntegration, triggerSyncImport, previewIpcExtraction, getGoogleAuthUrl, getOneDriveAuthUrl, createProjectDocument, createDecoupledDocument, convertGoogleCloudFile, listCloudFiles, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, checkIpcExists } from '@/services/api';
+import IpcExtractionPreviewModal from './integrations/IpcExtractionPreviewModal';
 import { Folder, FileSpreadsheet, FileText, ChevronRight, ArrowLeft, Loader2, Trash2, AlertTriangle, ExternalLink, X, Unlink, Eye, Sparkles, Paperclip } from 'lucide-react';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 
@@ -42,11 +43,19 @@ export default function DocumentIntegrations({
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [spreadsheetId, setSpreadsheetId] = useState('');
   const [boqName, setBoqName] = useState('');
+  const [ipcCertificateNumber, setIpcCertificateNumber] = useState('');
   const [sheetsList, setSheetsList] = useState<{ id: string; name: string; has_headers: boolean }[]>([]);
   const [selectedSheets, setSelectedSheets] = useState<{ [id: string]: boolean }>({});
   const [fetchingSheets, setFetchingSheets] = useState(false);
   const [availableFiles, setAvailableFiles] = useState<{ id: string; name: string; type: 'folder' | 'file'; web_url?: string; is_google_sheet?: boolean; mime_type?: string }[]>([]);
   const [fetchingFiles, setFetchingFiles] = useState(false);
+  const [preScanWarning, setPreScanWarning] = useState<{
+    show: boolean;
+    certificateNumber: string | null;
+    selectedFile: any;
+    sheetsNames: string;
+    isSpreadsheet: boolean;
+  } | null>(null);
 
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -72,7 +81,7 @@ export default function DocumentIntegrations({
     if (lowerDept.includes('field')) return ['.pdf', '.doc', '.docx', '.jpg', '.png', '.jpeg'];
     if (lowerDept.includes('hr') || lowerDept.includes('legal')) return ['.pdf', '.doc', '.docx', '.xlsx', '.xls'];
 
-    if (moduleContext === 'ipc') return ['.xlsx', '.xls', '.csv'];
+    if (moduleContext === 'ipc') return ['.xlsx', '.xls'];
 
     return ['*'];
   };
@@ -106,6 +115,11 @@ export default function DocumentIntegrations({
   // Folder navigation states
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = useState<{ id: string; name: string }[]>([]);
+
+  // IPC Extraction state
+  const [showIpcPreviewModal, setShowIpcPreviewModal] = useState(false);
+  const [ipcExtractionData, setIpcExtractionData] = useState<any>(null);
+  const [pendingIpcFileDetails, setPendingIpcFileDetails] = useState<any>(null);
 
   // Fetch spreadsheets/folders when the OAuth setup completes or folder changes
   useEffect(() => {
@@ -171,14 +185,21 @@ export default function DocumentIntegrations({
   // Cycle through progress messages when active sync is running
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    const messages = [
-      'Connecting to sheet…',
-      'Reading worksheet…',
-      'Evaluating worksheet…',
-      'Checking structure…',
-      'Verifying format…',
-      'Processing columns…',
-      'Comparing schema…'
+    const messages = moduleContext === 'ipc' ? [
+      'Verifying IPC Document Type',
+      `Scanning Worksheets for Certificate No ${ipcCertificateNumber || '...'}`,
+      'Reading Cell Matrix',
+      'Checking Advance Recovery Sheet',
+      'Sanitizing Financial Values',
+      'Building Editable Preview Grid'
+    ] : [
+      'Connecting to sheet',
+      'Reading worksheet',
+      'Evaluating worksheet',
+      'Checking structure',
+      'Verifying format',
+      'Processing columns',
+      'Comparing schema'
     ];
     let index = 0;
 
@@ -191,13 +212,13 @@ export default function DocumentIntegrations({
         setProgressMessage(messages[index]);
       }, 2500);
     } else {
-      setProgressMessage('Connecting…');
+      setProgressMessage('Connecting');
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [loading, globalLoading, syncingId]);
+  }, [loading, globalLoading, syncingId, moduleContext, ipcCertificateNumber]);
 
   // Fetch sheet names when a spreadsheet is selected
   useEffect(() => {
@@ -310,21 +331,53 @@ export default function DocumentIntegrations({
       if (err) {
         if (window.opener) {
           window.opener.postMessage({ type: 'OAUTH_ERROR', error: decodeURIComponent(err) }, window.location.origin);
-          window.close();
-          return;
+        } else {
+          try {
+            const bc = new BroadcastChannel('oauth_channel');
+            bc.postMessage({ type: 'OAUTH_ERROR', error: decodeURIComponent(err) });
+            bc.close();
+          } catch (e) {
+            // ignore
+          }
         }
-        setError(`OAuth Authorization Failed: ${decodeURIComponent(err)}`);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Attempt to close the popup
+        window.close();
+        
+        // If window.close() failed (often happens if browser blocks script close),
+        // fallback to just showing the error in the current window.
+        setTimeout(() => {
+          if (!window.closed) {
+            setError(`OAuth Authorization Failed: ${decodeURIComponent(err)}`);
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }, 500);
+
       } else if (provider && token) {
         if (window.opener) {
           window.opener.postMessage({ type: 'OAUTH_CALLBACK', provider, token }, window.location.origin);
-          window.close();
-          return;
+        } else {
+          try {
+            const bc = new BroadcastChannel('oauth_channel');
+            bc.postMessage({ type: 'OAUTH_CALLBACK', provider, token });
+            bc.close();
+          } catch (e) {
+            // ignore
+          }
         }
-        setOauthProvider(provider);
-        setRefreshToken(token);
-        setShowConfigModal(true);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Attempt to close the popup
+        window.close();
+        
+        // If window.close() failed, render the dashboard here as fallback
+        setTimeout(() => {
+          if (!window.closed) {
+            setOauthProvider(provider);
+            setRefreshToken(token);
+            setShowConfigModal(true);
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }, 500);
       }
     }
   }, []);
@@ -332,7 +385,10 @@ export default function DocumentIntegrations({
   // Listen to message events from popup window
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      // For window.postMessage, verify origin. BroadcastChannel doesn't have event.origin in the same way, 
+      // but it's restricted to same-origin by the browser automatically.
+      if (event.origin && event.origin !== window.location.origin) return;
+      
       if (event.data?.type === 'OAUTH_CALLBACK') {
         const { provider, token } = event.data;
         setOauthProvider(provider);
@@ -344,8 +400,21 @@ export default function DocumentIntegrations({
         setLoading(false);
       }
     };
+    
     window.addEventListener('message', handleOAuthMessage);
-    return () => window.removeEventListener('message', handleOAuthMessage);
+    
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('oauth_channel');
+      bc.onmessage = handleOAuthMessage;
+    } catch (e) {
+      // ignore
+    }
+    
+    return () => {
+      window.removeEventListener('message', handleOAuthMessage);
+      if (bc) bc.close();
+    };
   }, []);
 
   const handleFolderClick = (id: string, name: string) => {
@@ -457,6 +526,16 @@ export default function DocumentIntegrations({
       }
 
       if (popup) {
+        const checkClosed = setInterval(() => {
+          try {
+            if (popup.closed) {
+              clearInterval(checkClosed);
+              setLoading(false);
+            }
+          } catch (e) {
+            // Ignore COOP errors
+          }
+        }, 500);
         popup.location.href = url;
       } else {
         window.location.href = url;
@@ -466,6 +545,41 @@ export default function DocumentIntegrations({
       setError(`Failed to initiate ${provider} authentication flow.`);
       setLoading(false);
       if (popup) popup.close();
+    }
+  };
+
+  const executeIpcExtractionPreview = async (selectedFile: any, sheetsNames: string, isSpreadsheet: boolean) => {
+    setLoading(true);
+    setGlobalLoading(true);
+    setPreScanWarning(null);
+    setModalMessage({ type: 'info', text: 'Scanning and classifying document... If confirmed as an IPC, data will be extracted for preview' });
+    try {
+        const previewResult = await previewIpcExtraction({
+          project_id: typeof projectId === 'string' ? parseInt(projectId) : projectId,
+          provider: oauthProvider as string,
+          spreadsheet_id: selectedFile.id,
+          ipc_certificate_number: ipcCertificateNumber,
+          refresh_token: (refreshToken === 'existing' || !refreshToken) ? undefined : refreshToken
+        });
+
+        setPendingIpcFileDetails({
+          selectedFile,
+          sheetsNames,
+          isSpreadsheet
+        });
+        setIpcExtractionData({
+          ...previewResult.extracted_data,
+          legacy_exists: previewResult.legacy_exists
+        });
+        setShowIpcPreviewModal(true);
+        setModalMessage(null);
+        setLoading(false);
+        setGlobalLoading(false);
+    } catch (err: any) {
+        console.error(err);
+        setModalMessage({ type: 'error', text: err?.response?.data?.detail || err.message || 'Failed to extract IPC data.' });
+        setLoading(false);
+        setGlobalLoading(false);
     }
   };
 
@@ -508,32 +622,104 @@ export default function DocumentIntegrations({
         }
       }
 
+      // If this is an IPC module, intercept here to preview the extraction
+      if (moduleContext === 'ipc') {
+        if (!ipcCertificateNumber) {
+          setModalMessage({ type: 'error', text: 'IPC Certificate Number is required.' });
+          setLoading(false);
+          setGlobalLoading(false);
+          return;
+        }
+
+        setModalMessage({ type: 'info', text: 'Verifying database status...' });
+        try {
+          const existsCheck = await checkIpcExists(typeof projectId === 'string' ? parseInt(projectId) : projectId, selectedFile.id);
+          if (existsCheck.exists) {
+            setPreScanWarning({
+              show: true,
+              certificateNumber: existsCheck.certificate_number,
+              selectedFile,
+              sheetsNames,
+              isSpreadsheet
+            });
+            setModalMessage(null);
+            setLoading(false);
+            setGlobalLoading(false);
+            return;
+          }
+        } catch (checkErr) {
+          console.error("Check exists failed:", checkErr);
+        }
+
+        await executeIpcExtractionPreview(selectedFile, sheetsNames, isSpreadsheet);
+        return; // Halt here until they confirm in the modal
+      }
+
+      // Normal flow continues here for BoQ and other documents
+      await finalizeDocumentSave(selectedFile, sheetsNames, isSpreadsheet, null);
+
+    } catch (err: any) {
+      console.error(err);
+      setModalMessage({ type: 'error', text: err?.response?.data?.detail || err.message || 'Failed to link document.' });
+      setLoading(false);
+      setGlobalLoading(false);
+    }
+  };
+
+  const handleIpcPreviewConfirm = async (finalData: any) => {
+    setShowIpcPreviewModal(false);
+    setLoading(true);
+    setGlobalLoading(true);
+    setModalMessage({ type: 'info', text: 'Saving extracted IPC data...' });
+    if (pendingIpcFileDetails) {
+      await finalizeDocumentSave(
+        pendingIpcFileDetails.selectedFile,
+        pendingIpcFileDetails.sheetsNames,
+        pendingIpcFileDetails.isSpreadsheet,
+        finalData
+      );
+    }
+  };
+
+  const finalizeDocumentSave = async (
+    targetFile: any,
+    sheetsNames: string,
+    isSpreadsheet: boolean,
+    extractedData: any
+  ) => {
+    try {
+      setLoading(true);
+      setGlobalLoading(true);
+      setModalMessage({ type: 'info', text: 'Finalizing database link...' });
+
       let integrationId: number | undefined;
       if (oauthProvider && refreshToken) {
         const savedInt = await saveIntegration({
           project_id: typeof projectId === 'string' ? parseInt(projectId) : projectId,
           provider: oauthProvider,
-          spreadsheet_id: selectedFile.id,
+          spreadsheet_id: targetFile.id,
           sheet_name: sheetsNames,
           refresh_token: refreshToken === 'existing' ? undefined : refreshToken,
-          boq_name: boqName || selectedFile.name,
-          module: moduleContext === 'department' ? departmentName.toLowerCase() : moduleContext,
+          boq_name: boqName || targetFile.name,
+          module: moduleContext === 'department' ? departmentName?.toLowerCase() : moduleContext,
+          ipc_certificate_number: moduleContext === 'ipc' ? ipcCertificateNumber : undefined,
         });
         integrationId = savedInt.integration_id;
       }
 
-      const fileExt = selectedFile.name.split('.').pop()?.toUpperCase() || 'Cloud File';
-
-      const finalTitle = boqName || selectedFile.name;
+      const fileExt = targetFile.name.split('.').pop()?.toUpperCase() || 'Cloud File';
+      const finalTitle = boqName || targetFile.name;
 
       const docPayload = {
         title: titlePrefix ? `${titlePrefix} ${finalTitle}` : finalTitle,
-        file_url: selectedFile.web_url || '',
+        file_url: targetFile.web_url || '',
         file_type: isSpreadsheet ? 'Cloud File' : fileExt,
-        department: moduleContext === 'department' ? departmentName : moduleContext.toUpperCase(),
-        cloud_file_id: selectedFile.id,
+        department: moduleContext === 'department' ? departmentName : moduleContext?.toUpperCase(),
+        cloud_file_id: targetFile.id,
         origin: oauthProvider || undefined,
         integration_id: integrationId,
+        // We'll pass extractedData here so createDecoupledDocument can update the IPC model
+        extracted_data: extractedData
       };
 
       if (apiEndpoint) {
@@ -542,19 +728,32 @@ export default function DocumentIntegrations({
         await createProjectDocument(projectId, docPayload);
       }
 
-      setModalMessage({ type: 'success', text: isSpreadsheet ? 'Spreadsheet linked successfully!' : 'Document linked successfully!' });
+      let successMsg = isSpreadsheet ? 'Spreadsheet linked successfully!' : 'Document linked successfully!';
+      if (moduleContext === 'ipc' && extractedData) {
+        successMsg = 'IPC data saved and document linked successfully!';
+      }
+      setModalMessage({ type: 'success', text: successMsg });
+      
       onRefresh();
       setTimeout(() => {
         setShowConfigModal(false);
+        setShowIpcPreviewModal(false);
+        setPendingIpcFileDetails(null);
       }, 1500);
 
     } catch (err: any) {
       console.error(err);
-      setModalMessage({ type: 'error', text: err?.response?.data?.detail || err.message || 'Failed to link document.' });
+      setModalMessage({ type: 'error', text: err?.response?.data?.detail || err.message || 'Failed to save linked document.' });
     } finally {
       setLoading(false);
       setGlobalLoading(false);
     }
+  };
+
+  const handleConfirmIpcData = async (editedData: any) => {
+    if (!pendingIpcFileDetails) return;
+    const { selectedFile, sheetsNames, isSpreadsheet } = pendingIpcFileDetails;
+    await finalizeDocumentSave(selectedFile, sheetsNames, isSpreadsheet, editedData);
   };
 
   const handleLinkAsDocument = async (file: any) => {
@@ -591,6 +790,7 @@ export default function DocumentIntegrations({
           refresh_token: refreshToken === 'existing' ? undefined : refreshToken,
           boq_name: targetFile.name,
           module: moduleContext === 'department' ? departmentName?.toLowerCase() : moduleContext,
+          ipc_certificate_number: moduleContext === 'ipc' ? ipcCertificateNumber : undefined,
         });
         integrationId = savedInt.integration_id;
       }
@@ -1403,6 +1603,24 @@ export default function DocumentIntegrations({
                   />
                 </div>
 
+                {moduleContext === 'ipc' && (
+                  <div className="mt-4 mb-2">
+                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1 text-indigo-700">IPC Certificate Number (Required)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 3 or IPC-03"
+                      value={ipcCertificateNumber}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 15);
+                        setIpcCertificateNumber(val);
+                      }}
+                      disabled={loading || fetchingSheets || !!modalMessage}
+                      className="w-full p-2.5 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-indigo-50/50 text-indigo-900 disabled:opacity-50 disabled:bg-gray-100 font-bold placeholder:font-normal placeholder:text-indigo-300"
+                      required
+                    />
+                  </div>
+                )}
+
                 {(() => {
                   const selectedFile = availableFiles.find(f => f.id === spreadsheetId);
                   if (!selectedFile) {
@@ -1485,7 +1703,7 @@ export default function DocumentIntegrations({
                   return (
                     <button
                       type="submit"
-                      disabled={loading || fetchingSheets || !spreadsheetId}
+                      disabled={loading || fetchingSheets || !spreadsheetId || (moduleContext === 'ipc' && !ipcCertificateNumber)}
                       className="flex-1 py-2.5 px-4 border border-transparent rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                     >
                       {(loading || fetchingSheets) && <Loader2 className="w-4 h-4 animate-spin text-white" />}
@@ -1529,6 +1747,39 @@ export default function DocumentIntegrations({
                 className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm active:scale-[0.98] transition-all duration-100"
               >
                 Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Pre-Scan Warning Modal */}
+      {preScanWarning && preScanWarning.show && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60] animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">Legacy Data Detected</h3>
+                <p className="text-xs text-gray-400">Database conflict</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed mb-6">
+              This document already exists and has data in the database {preScanWarning.certificateNumber ? `with IPC number ${preScanWarning.certificateNumber}` : 'as an IPC'}. Do you want to overwrite it?
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setPreScanWarning(null)}
+                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => executeIpcExtractionPreview(preScanWarning.selectedFile, preScanWarning.sheetsNames, preScanWarning.isSpreadsheet)}
+                className="flex-1 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm active:scale-[0.98] transition-all duration-100"
+              >
+                Continue Rescan
               </button>
             </div>
           </div>
@@ -1712,6 +1963,18 @@ export default function DocumentIntegrations({
           </div>
         </div>
       )}
+
+      <IpcExtractionPreviewModal
+        showModal={showIpcPreviewModal}
+        onClose={() => {
+          setShowIpcPreviewModal(false);
+          setModalMessage(null);
+        }}
+        onConfirm={handleIpcPreviewConfirm}
+        extractedData={ipcExtractionData}
+        isSaving={isLoading}
+        documentUrl={pendingIpcFileDetails?.selectedFile?.web_url || pendingIpcFileDetails?.selectedFile?.webViewLink}
+      />
     </div>
   );
 }

@@ -46,7 +46,7 @@ export default function LandingPage() {
                   <Image src="/file.svg" alt="Bidding" width={32} height={32} />
                 </div>
                 <h3 className="text-xl font-bold mb-4 group-hover:text-crimson-violet-600 transition-colors font-lexend">Simplified Bidding</h3>
-                <p className="text-gray-600 leading-relaxed text-sm">Create and manage bids with ease. Our AI-assisted parser extracts item details instantly, giving you real-time insights into your costs.</p>
+                <p className="text-gray-600 leading-relaxed text-sm">Create and manage bids with ease. Our automated parser extracts item details instantly, giving you real-time insights into your costs.</p>
             </div>
             <div className="group p-8 bg-[#fcfcfc] border border-gray-100 rounded-3xl hover:scale-105 transition-transform duration-300 shadow-sm hover:shadow-xl">
                 <div className="w-16 h-16 bg-dark-teal-50 rounded-2xl flex items-center justify-center mb-6 animate-float" style={{ animationDelay: '0.5s' }}>
@@ -77,7 +77,7 @@ export default function LandingPage() {
                   <div className="flex-shrink-0 w-10 h-10 bg-dark-teal-500 rounded-full flex items-center justify-center font-bold">1</div>
                   <div>
                     <h4 className="text-lg font-bold mb-2 font-lexend">Upload your BOQ</h4>
-                    <p className="text-dark-teal-100 text-sm">Drop your Excel files into our system. Our AI maps columns and extracts items automatically.</p>
+                    <p className="text-dark-teal-100 text-sm">Drop your Excel files into our system. The parser maps columns and extracts items automatically.</p>
                   </div>
                 </div>
                 <div className="flex gap-4">

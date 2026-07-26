@@ -177,6 +177,7 @@ export default function IpcsTab({
         onUnlink={handleUnlinkDocument}
         unlinkingId={unlinkingId}
         emptyMessage="No files linked to IPC claims yet."
+        docType="ipc"
       />
 
       {/* IPC Table / Cards */}

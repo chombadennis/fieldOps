@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+import logging
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..db import database
@@ -150,6 +153,7 @@ def unlink_project_document(
 async def get_document_embed_url(
     document_id: int,
     mode: str = "view",
+    doc_type: str = Query(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -157,7 +161,12 @@ async def get_document_embed_url(
     OAuth tokens stored in its associated project_integration record.
     Works for both Google Drive and OneDrive documents.
     """
-    doc = db.query(Document).filter(Document.id == document_id).first()
+    if doc_type == "ipc":
+        from ..models.ipc_document import IpcDocument
+        doc = db.query(IpcDocument).filter(IpcDocument.id == document_id).first()
+    else:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -193,8 +202,9 @@ async def get_document_embed_url(
             match = re.search(r'(?:file/d/|id=)([a-zA-Z0-9_-]+)', doc.file_url)
             if match:
                 file_id = match.group(1)
-        if file_id and (doc.origin == "google" or "google.com" in doc.file_url or not doc.origin):
-            is_sheet = doc.file_type == "Cloud File" or (doc.title and any(doc.title.lower().endswith(ext) for ext in [".xlsx", ".xls", ".csv", ".ods", ".gsheet"]))
+        if file_id and (doc.origin == "google" or "google.com" in getattr(doc, "file_url", "") or not doc.origin):
+            title = getattr(doc, "title", getattr(doc, "name", ""))
+            is_sheet = doc.file_type == "Cloud File" or (title and any(title.lower().endswith(ext) for ext in [".xlsx", ".xls", ".csv", ".ods", ".gsheet"]))
             if is_sheet:
                 return {"url": f"https://docs.google.com/spreadsheets/d/{file_id}/preview", "provider": "google"}
             else:
@@ -211,7 +221,8 @@ async def get_document_embed_url(
 
         if integration.provider == "google_sheets":
             from ..services.integrations.embed_service import get_google_embed_url
-            is_sheet = doc.file_type == "Cloud File" or (doc.title and any(doc.title.lower().endswith(ext) for ext in [".xlsx", ".xls", ".csv", ".ods", ".gsheet"]))
+            title = getattr(doc, "title", getattr(doc, "name", ""))
+            is_sheet = doc.file_type == "Cloud File" or (title and any(title.lower().endswith(ext) for ext in [".xlsx", ".xls", ".csv", ".ods", ".gsheet"]))
             embed_url = await get_google_embed_url(doc.cloud_file_id or integration.spreadsheet_id, mode, is_sheet=is_sheet)
             return {"url": embed_url, "provider": "google"}
 
@@ -238,7 +249,8 @@ async def get_document_embed_url(
                     raise HTTPException(status_code=500, detail="No webUrl found for this file in Microsoft Graph.")
 
             is_office = True
-            title_lower = doc.title.lower() if doc.title else ""
+            title = getattr(doc, "title", getattr(doc, "name", ""))
+            title_lower = title.lower() if title else ""
             file_type_lower = doc.file_type.lower() if doc.file_type else ""
             
             # Default to Office format unless explicitly a PDF, 

@@ -31,14 +31,16 @@ interface LinkedDocumentsPanelProps {
   unlinkingId: number | null;
   title: string;
   emptyMessage?: string;
+  docType?: 'ipc' | 'regular';
 }
 
 export default function LinkedDocumentsPanel({
   documents = [],
   onUnlink,
-  unlinkingId,
+  unlinkingId = null,
   title,
-  emptyMessage = 'No files linked yet.',
+  emptyMessage = "No linked documents yet.",
+  docType
 }: LinkedDocumentsPanelProps) {
   const [activeDocPreview, setActiveDocPreview] = useState<Document | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
@@ -53,7 +55,7 @@ export default function LinkedDocumentsPanel({
     }
 
     setLoadingEmbedUrl(true);
-    getDocumentEmbedUrl(activeDocPreview.id)
+    getDocumentEmbedUrl(activeDocPreview.id, 'view', docType)
       .then((data) => {
         if (data?.url) {
           setFetchedEmbedUrl(data.url);
@@ -142,7 +144,7 @@ export default function LinkedDocumentsPanel({
     if (!activeDocPreview) return;
     setLoadingEmbedUrl(true);
     try {
-      const data = await getDocumentEmbedUrl(activeDocPreview.id);
+      const data = await getDocumentEmbedUrl(activeDocPreview.id, 'view', docType);
       if (data?.url) {
         setFetchedEmbedUrl(data.url);
       }
@@ -383,16 +385,12 @@ export default function LinkedDocumentsPanel({
           ) : fetchedEmbedUrl ? (
             <div className="relative min-h-[800px] w-full bg-gray-50 rounded-2xl overflow-hidden border border-gray-200 flex flex-col">
               <div className="bg-indigo-50/80 border-b border-indigo-100 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-indigo-950 gap-2 flex-shrink-0">
-                <span className="font-medium">Google Drive Document Preview (If your browser restricts 3rd-party iframe cookies for private files, open directly):</span>
-                <a
-                  href={activeDocPreview.file_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center space-x-1 font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg transition active:scale-95 flex-shrink-0 shadow-sm"
-                >
-                  <span>Open in Google Drive</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                <span className="font-medium">
+                  {activeDocPreview.origin === 'onedrive' || (activeDocPreview.file_url || '').includes('sharepoint') || (activeDocPreview.file_url || '').includes('onedrive') || (activeDocPreview.file_url || '').includes('live.com')
+                    ? 'OneDrive Document Preview'
+                    : 'Google Drive Document Preview'}{' '}
+                  (If your browser restricts 3rd-party iframe cookies for private files, open directly):
+                </span>
               </div>
               <iframe
                 key={previewKey}

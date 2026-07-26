@@ -92,7 +92,7 @@ export default function UploadBOQ({ projectId, onUploadSuccess, disabled }: Uplo
           disabled={disabled || !file || uploading}
           className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all active:scale-[0.98]"
         >
-          {uploading ? 'Uploading & Parsing...' : 'Upload & Parse (AI)'}
+          {uploading ? 'Uploading & Parsing...' : 'Upload & Parse'}
         </button>
       </div>
     </div>

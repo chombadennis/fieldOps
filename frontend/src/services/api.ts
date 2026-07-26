@@ -95,6 +95,7 @@ export const saveIntegration = async (data: {
   boq_name?: string;
   refresh_token?: string;
   module?: string;
+  ipc_certificate_number?: string;
 }) => {
   const q = new URLSearchParams();
   q.append('project_id', String(data.project_id));
@@ -104,7 +105,26 @@ export const saveIntegration = async (data: {
   if (data.boq_name) q.append('boq_name', data.boq_name);
   if (data.refresh_token) q.append('refresh_token', data.refresh_token);
   if (data.module) q.append('module', data.module);
+  if (data.ipc_certificate_number) q.append('ipc_certificate_number', data.ipc_certificate_number);
   const response = await apiClient.post(`/integrations/save?${q.toString()}`);
+  return response.data;
+};
+
+export const previewIpcExtraction = async (data: {
+  project_id: string | number;
+  provider: string;
+  spreadsheet_id: string;
+  ipc_certificate_number: string;
+  refresh_token?: string;
+}) => {
+  const response = await apiClient.post(`/integrations/ipc/preview`, data);
+  return response.data;
+};
+
+export const checkIpcExists = async (projectId: string | number, cloudFileId: string) => {
+  const response = await apiClient.get(`/projects/${projectId}/ipc/check-exists`, {
+    params: { cloud_file_id: cloudFileId }
+  });
   return response.data;
 };
 
@@ -239,9 +259,9 @@ export const unlinkDecoupledDocument = async (projectId: string | number, endpoi
   return response.data;
 };
 
-export const getDocumentEmbedUrl = async (documentId: number, mode: string = 'view') => {
+export const getDocumentEmbedUrl = async (documentId: number, mode: string = 'view', docType?: string) => {
   const response = await apiClient.get(`/documents/${documentId}/embed-url`, {
-    params: { mode }
+    params: { mode, doc_type: docType }
   });
   return response.data;
 };

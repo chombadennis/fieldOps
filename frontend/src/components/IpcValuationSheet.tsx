@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Save, FileText, CheckCircle, Clock, AlertTriangle, DollarSign, Calendar } from 'lucide-react';
+import { Save, FileText, CheckCircle, Clock, AlertTriangle, DollarSign, Calendar, Code } from 'lucide-react';
+import SourceExtractionViewerModal from './integrations/SourceExtractionViewerModal';
 
 interface IpcValuationSheetProps {
   ipc?: any; // The selected IPC object
@@ -12,6 +13,7 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
   // State for the document lifecycle
   const [status, setStatus] = useState(ipc?.status || 'Draft');
   const [valuationDate, setValuationDate] = useState(ipc?.valuation_date || '');
+  const [showExtractionModal, setShowExtractionModal] = useState(false);
   
   // State for the financial amounts (Stored in values_map.valuation to keep DB ingested data clean)
   const [grossClaimed, setGrossClaimed] = useState(ipc?.values_map?.valuation?.gross_claimed || 0);
@@ -74,6 +76,15 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
             </p>
           </div>
           <div className="flex space-x-3">
+            {ipc?.values_map?.extraction && (
+              <button 
+                onClick={() => setShowExtractionModal(true)} 
+                className="px-4 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-xl transition flex items-center space-x-1.5"
+              >
+                <Code className="w-3.5 h-3.5" />
+                <span>View Source Extraction</span>
+              </button>
+            )}
             <button onClick={onClose} className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition">
               Cancel
             </button>
@@ -97,6 +108,13 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
         
         {/* Body */}
         <div className="p-8 flex-1 overflow-y-auto space-y-8 bg-gray-50/30">
+            
+            <SourceExtractionViewerModal 
+              show={showExtractionModal} 
+              onClose={() => setShowExtractionModal(false)} 
+              extractionData={ipc?.values_map?.extraction}
+              certificateNumber={ipc?.certificate_number || 'New'}
+            />
             
             {/* Section 1: Approval Lifecycle */}
             <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
