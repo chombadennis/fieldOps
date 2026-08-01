@@ -3,7 +3,7 @@ import { MessageSquare, Send, AlertTriangle, FileCheck } from 'lucide-react';
 import DocumentIntegrations from '@/components/DocumentIntegrations';
 import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
 import IpcValuationSheet from '@/components/IpcValuationSheet';
-import { unlinkProjectDocument, unlinkDecoupledDocument, updateProjectIPC } from '@/services/api';
+import { unlinkProjectDocument, unlinkDecoupledDocument, deleteProjectDocument, deleteDecoupledDocument, updateProjectIPC } from '@/services/api';
 
 interface IPC {
   id: number;
@@ -73,6 +73,7 @@ export default function IpcsTab({
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
   const [unlinkingId, setUnlinkingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [selectedIpc, setSelectedIpc] = useState<IPC | null>(null);
   const [editingNetDueId, setEditingNetDueId] = useState<number | null>(null);
   const [editingNetDueAmount, setEditingNetDueAmount] = useState<number>(0);
@@ -108,6 +109,22 @@ export default function IpcsTab({
       alert('Failed to unlink document.');
     } finally {
       setUnlinkingId(null);
+      if (setGlobalLoading) setGlobalLoading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: number) => {
+    if (!onRefresh) return;
+    setDeletingId(documentId);
+    if (setGlobalLoading) setGlobalLoading(true);
+    try {
+      await deleteDecoupledDocument(projectId, 'ipc', documentId).catch(() => deleteProjectDocument(projectId, documentId));
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete document data.');
+    } finally {
+      setDeletingId(null);
       if (setGlobalLoading) setGlobalLoading(false);
     }
   };
@@ -175,7 +192,9 @@ export default function IpcsTab({
         title="Linked IPC Claims"
         documents={filteredDocs}
         onUnlink={handleUnlinkDocument}
+        onDelete={handleDeleteDocument}
         unlinkingId={unlinkingId}
+        deletingId={deletingId}
         emptyMessage="No files linked to IPC claims yet."
         docType="ipc"
       />

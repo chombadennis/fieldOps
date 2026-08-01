@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 
 # --- User Schema ---
@@ -25,8 +25,14 @@ class User(UserBase):
 
 # --- Budget Schema ---
 class BudgetBase(BaseModel):
-    category: str
+    category: Optional[str] = "General"
+    name: Optional[str] = None
     amount: float
+    revised_amount: Optional[float] = None
+    planned_value: Optional[float] = None
+    earned_value: Optional[float] = None
+    actual_cost: Optional[float] = None
+    values_map: Optional[Any] = None
     allocated_date: Optional[str] = None
     description: Optional[str] = None
 

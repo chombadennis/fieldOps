@@ -129,24 +129,17 @@ def delete_boq_document(boq_id: int, db: Session = Depends(get_db)):
     if boq_doc is None:
         raise HTTPException(status_code=404, detail="BOQ document not found")
         
-    # Check if this BOQ document is linked to an active cloud integration
-    if boq_doc.origin in ["google_sheets", "onedrive"]:
-        linked = db.query(ProjectIntegration).filter(
-            ProjectIntegration.project_id == boq_doc.project_id,
-            ProjectIntegration.provider == boq_doc.origin
-        ).first()
-        if linked:
-            raise HTTPException(
-                status_code=400,
-                detail=f"This document is currently linked to an active {boq_doc.origin.replace('_', ' ').title()} integration. You must disconnect the workbook in the Linked Workbooks section first before you can delete this document snapshot from the database."
-            )
+    # Unlink/disassociate document reference if attached to an integration
+    if boq_doc.integration_id:
+        boq_doc.integration_id = None
+        db.commit()
             
     try:
         # Bulk delete all child items to avoid slow one-by-one ORM cascades over WAN
         db.query(models.boq_item.BoqItem).filter(models.boq_item.BoqItem.boq_id == boq_id).delete(synchronize_session=False)
         db.delete(boq_doc)
         db.commit()
-        return {"status": "success", "message": f"Successfully deleted BOQ document '{boq_doc.name}'."}
+        return {"status": "success", "message": f"Successfully unlinked and deleted BOQ document '{boq_doc.name}' and all its items."}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete BOQ document: {str(e)}")

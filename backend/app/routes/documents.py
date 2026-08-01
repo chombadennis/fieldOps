@@ -149,6 +149,31 @@ def unlink_project_document(
     return doc
 
 
+@router.delete("/projects/{project_id}/documents/{document_id}")
+def delete_project_document(
+    project_id: int,
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    doc = db.query(Document).filter(Document.id == document_id, Document.project_id == project_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Unlink first
+    doc.is_linked = False
+    doc.unlinked_at = func.now()
+    db.commit()
+
+    # Permanently delete document from database
+    db.delete(doc)
+    db.commit()
+    return {"status": "deleted", "message": f"Document '{doc.name}' unlinked and permanently deleted from database."}
+
+
 @router.get("/documents/{document_id}/embed-url")
 async def get_document_embed_url(
     document_id: int,

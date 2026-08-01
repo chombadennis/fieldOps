@@ -16,6 +16,7 @@ class ProjectIntegration(BaseModel):
     validation_score: Optional[float] = None
     validation_issues: Optional[List[str]] = None
     validation_summary: Optional[str] = None
+    reextract_logs: Optional[List[str]] = []
 
     class Config:
         from_attributes = True

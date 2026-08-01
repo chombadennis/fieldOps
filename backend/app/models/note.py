@@ -11,9 +11,10 @@ class Note(Base, CustomBase):
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
     contract_id = Column(Integer, ForeignKey('contracts.id', ondelete="CASCADE"), nullable=True, index=True)
     author_id = Column(Integer, ForeignKey('users.id', ondelete="SET NULL"), nullable=True)
-    department = Column(String, nullable=False, index=True) # e.g. "hr", "legal", "tech", "field_ops", "general"
+    department = Column(String, nullable=False, index=True) # e.g. "hr", "legal", "tech", "field_ops", "general", "boq", "ipc", "budget"
     content = Column(Text, nullable=False)
-    is_flagged_issue = Column(Boolean, default=False, nullable=False)
+    is_issue = Column(Boolean, default=False, nullable=False)
+    priority = Column(String, default="Normal", nullable=True)
     follow_up_date = Column(Date, nullable=True)
     values_map = Column(JSONB, nullable=True)
 

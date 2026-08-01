@@ -11,7 +11,8 @@ import {
   Unlink,
   Eye,
   RotateCw,
-  Edit
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 interface Document {
@@ -28,7 +29,9 @@ interface Document {
 interface LinkedDocumentsPanelProps {
   documents: Document[];
   onUnlink: (documentId: number) => Promise<void>;
-  unlinkingId: number | null;
+  onDelete?: (documentId: number) => Promise<void>;
+  unlinkingId?: number | null;
+  deletingId?: number | null;
   title: string;
   emptyMessage?: string;
   docType?: 'ipc' | 'regular';
@@ -37,12 +40,16 @@ interface LinkedDocumentsPanelProps {
 export default function LinkedDocumentsPanel({
   documents = [],
   onUnlink,
+  onDelete,
   unlinkingId = null,
+  deletingId = null,
   title,
   emptyMessage = "No linked documents yet.",
   docType
 }: LinkedDocumentsPanelProps) {
   const [activeDocPreview, setActiveDocPreview] = useState<Document | null>(null);
+  const [docToDelete, setDocToDelete] = useState<Document | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [previewKey, setPreviewKey] = useState(0);
   const [fetchedEmbedUrl, setFetchedEmbedUrl] = useState<string | null>(null);
   const [loadingEmbedUrl, setLoadingEmbedUrl] = useState<boolean>(false);
@@ -163,6 +170,28 @@ export default function LinkedDocumentsPanel({
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!docToDelete) return;
+    setIsDeleting(true);
+    try {
+      // Unlink first
+      await onUnlink(docToDelete.id);
+      // Permanently delete document data if onDelete callback is provided
+      if (onDelete) {
+        await onDelete(docToDelete.id);
+      }
+      if (activeDocPreview?.id === docToDelete.id) {
+        setActiveDocPreview(null);
+      }
+      setDocToDelete(null);
+    } catch (err) {
+      console.error('Failed to permanently delete document data:', err);
+      alert('Failed to delete document data.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* List / Grid of Linked Documents */}
@@ -184,6 +213,7 @@ export default function LinkedDocumentsPanel({
             {documents.map((doc) => {
               const isPreviewActive = activeDocPreview?.id === doc.id;
               const isUnlinking = unlinkingId === doc.id;
+              const isDeletingThis = deletingId === doc.id;
               const isGoogle = doc.origin === 'google' || doc.file_url.includes('google.com');
               const isOneDrive = doc.origin === 'onedrive' || doc.file_url.includes('onedrive.live.com') || doc.file_url.includes('sharepoint.com');
               const isFolder = doc.file_type?.toLowerCase().includes('folder');
@@ -260,16 +290,31 @@ export default function LinkedDocumentsPanel({
                       <span>{isPreviewActive ? 'Hide Preview' : 'Inline Preview'}</span>
                     </button>
 
+                    {/* Unlink Button */}
                     <button
-                      disabled={isUnlinking}
+                      disabled={isUnlinking || isDeletingThis}
                       onClick={() => handleUnlinkClick(doc.id)}
-                      className="p-1.5 border border-red-100 hover:border-red-200 rounded-lg text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                      title="Disconnect document link"
+                      className="p-1.5 border border-amber-200 hover:border-amber-300 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50"
+                      title="Disconnect document link (keeps DB record unlinked)"
                     >
                       {isUnlinking ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                        <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
                       ) : (
                         <Unlink className="w-4 h-4" />
+                      )}
+                    </button>
+
+                    {/* Delete Button */}
+                    <button
+                      disabled={isUnlinking || isDeletingThis}
+                      onClick={() => setDocToDelete(doc)}
+                      className="p-1.5 border border-red-200 hover:border-red-300 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      title="Delete document data permanently from database"
+                    >
+                      {isDeletingThis ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
                       )}
                     </button>
                   </div>
@@ -279,6 +324,70 @@ export default function LinkedDocumentsPanel({
           </div>
         )}
       </div>
+
+      {/* Custom Irreversible Deletion Warning Modal */}
+      {docToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 flex flex-col relative animate-scale-up">
+            <button
+              onClick={() => setDocToDelete(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-3 bg-red-50 rounded-xl text-red-600">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">Irreversible Deletion Warning</h3>
+                <p className="text-xs text-red-500 font-semibold">Database Data Purge</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 leading-relaxed mb-4">
+              You are about to perform an <span className="font-bold text-red-600">irreversible deletion</span> of the document <span className="font-bold text-gray-800">"{docToDelete.title}"</span> from the database and all of its records will be deleted permanently. Do you wish to continue?
+            </p>
+
+            <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-xl mb-4">
+              <span className="font-bold block mb-0.5 text-blue-900 uppercase tracking-wider text-[10px]">Cloud Storage Safeguard</span>
+              Note: This action will <span className="font-bold text-blue-900">NOT</span> delete the actual file in your cloud drive.
+            </div>
+
+            {isDeleting && (
+              <div className="flex items-center space-x-2 text-red-650 bg-red-50/70 border border-red-100 p-3 rounded-xl mb-4 animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-red-600 flex-shrink-0" />
+                <span className="text-[11px] font-semibold text-red-700">Unlinking and permanently deleting data from database...</span>
+              </div>
+            )}
+
+            <div className="flex space-x-3">
+              <button
+                disabled={isDeleting}
+                onClick={() => setDocToDelete(null)}
+                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100 disabled:opacity-50 flex items-center justify-center space-x-1.5"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete Permanently</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Inline Document Preview Panel */}
       {activeDocPreview && (

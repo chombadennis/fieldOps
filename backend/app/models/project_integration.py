@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..db.database import Base
@@ -18,10 +19,12 @@ class ProjectIntegration(Base, CustomBase):
     last_synced_at = Column(DateTime, nullable=True)
     dismissed_sheets = Column(Text, nullable=True, default=None)  # JSON list of sheet names user has permanently dismissed
     module = Column(String, nullable=False, default="boq") # boq, ipc, budget, tech, hr, legal
+    reextract_logs = Column(JSONB, nullable=True, default=list)
+    meta_data = Column(JSONB, nullable=True, default=dict)
 
     # Relationships
     project = relationship("Project", back_populates="integrations")
-    boq_documents = relationship("BoqDocument", foreign_keys="BoqDocument.integration_id", backref="integration", lazy="select")
+    boq_documents = relationship("BoqDocument", foreign_keys="BoqDocument.integration_id", backref="integration", lazy="selectin")
 
     # Computed properties read from the linked BoqDocument (most recent one)
     @property

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileSpreadsheet, FileText, AlertTriangle, ArrowLeft, Loader2, X, ChevronRight, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { FileSpreadsheet, FileText, AlertTriangle, ArrowLeft, Loader2, X, ChevronRight, ChevronDown, CheckCircle2, Folder, Paperclip } from 'lucide-react';
 
 export default function CloudConfigModal(props: any) {
   const {
@@ -9,6 +9,7 @@ export default function CloudConfigModal(props: any) {
     availableFiles,
     spreadsheetId,
     boqName,
+    setBoqName,
     refreshToken,
     navigationHistory,
     fetchingFiles,
@@ -24,10 +25,24 @@ export default function CloudConfigModal(props: any) {
     selectedSheets,
     handleSheetSelection,
     fetchingSheets,
-    savingConfig
+    savingConfig,
+    moduleContext,
+    trackingMode,
+    setTrackingMode,
+    ipcCertificateNumber,
+    setIpcCertificateNumber,
+    handleLinkAsDocument
   } = props;
 
   if (!showConfigModal) return null;
+
+  // New handler to reset modal state and then close
+  const handleCancel = () => {
+    // Reset modal-specific state using provided reset function
+    resetConfigModal();
+    // Invoke the passed close handler if it exists
+    if (handleCloseConfig) handleCloseConfig();
+  };
 
   return (
     <>
@@ -57,7 +72,7 @@ export default function CloudConfigModal(props: any) {
                       <div className="absolute inset-2 rounded-full border-2 border-cyan-500/30 border-b-cyan-400 border-l-cyan-400 animate-spin [animation-duration:1.5s] [animation-direction:reverse]" />
                       <div className="p-3.5 bg-indigo-950/80 rounded-2xl border border-indigo-400/40 text-indigo-300 shadow-inner">
                         {(() => {
-                          const selectedFile = availableFiles.find(f => f.id === spreadsheetId);
+                          const selectedFile = availableFiles.find((f: any) => f.id === spreadsheetId);
                           const isSpreadsheet = selectedFile ? (selectedFile.is_google_sheet || /\.(xlsx|xls|csv|ods|gsheet)$/i.test(selectedFile.name)) : true;
                           return isSpreadsheet ? (
                             <FileSpreadsheet className="w-7 h-7 animate-bounce [animation-duration:2s]" />
@@ -69,12 +84,12 @@ export default function CloudConfigModal(props: any) {
                     </div>
 
                     {(() => {
-                      const selectedFile = availableFiles.find(f => f.id === spreadsheetId);
+                      const selectedFile = availableFiles.find((f: any) => f.id === spreadsheetId);
                       const isSpreadsheet = selectedFile ? (selectedFile.is_google_sheet || /\.(xlsx|xls|csv|ods|gsheet)$/i.test(selectedFile.name)) : true;
                       return (
                         <>
                           <h3 className="text-xl font-extrabold text-white mb-2 tracking-tight z-10">
-                            {isSpreadsheet ? 'Processing Spreadsheet' : 'Linking Document'}
+                            {moduleContext === 'budget' ? 'Workbook Linkage Setup' : (isSpreadsheet ? 'Processing Spreadsheet' : 'Linking Document')}
                           </h3>
 
                           {/* Active Step Badge */}
@@ -146,10 +161,10 @@ export default function CloudConfigModal(props: any) {
               </div>
             )}
             <h3 className="text-xl font-bold text-gray-800 mb-2 flex-shrink-0">
-              Link Cloud Document
+              {moduleContext === 'budget' ? 'Workbook Linkage Setup' : 'Link Cloud Document'}
             </h3>
             <p className="text-sm text-gray-500 mb-4 flex-shrink-0">
-              Successfully authenticated with <span className="font-semibold capitalize text-gray-700">{oauthProvider?.replace('_', ' ')}</span>. Select a document or spreadsheet file below:
+              Successfully authenticated with <span className="font-semibold capitalize text-gray-700">{oauthProvider?.replace('_', ' ')}</span>. {moduleContext === 'budget' ? 'Select a budget spreadsheet workbook below:' : 'Select a document or spreadsheet file below:'}
             </p>
 
             <form onSubmit={handleSaveConfig} className="flex-1 flex flex-col min-h-0">
@@ -168,7 +183,9 @@ export default function CloudConfigModal(props: any) {
                 ) : (
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-semibold text-gray-600 uppercase">Select File or Document</label>
+                      <label className="block text-xs font-semibold text-gray-600 uppercase">
+                        {moduleContext === 'budget' ? 'Select Workbook' : 'Select File or Document'}
+                      </label>
                       {navigationHistory.length > 0 && (
                         <button
                           type="button"
@@ -184,7 +201,7 @@ export default function CloudConfigModal(props: any) {
                     {/* Breadcrumbs Path */}
                     <div className="text-[11px] text-gray-400 truncate mb-2 bg-gray-50 p-1.5 rounded-lg border border-gray-100">
                       <span className="font-semibold text-gray-600">Path:</span> Home
-                      {navigationHistory.map((folder) => (
+                      {navigationHistory.map((folder: any) => (
                         <span key={folder.id}> / {folder.name}</span>
                       ))}
                     </div>
@@ -216,29 +233,44 @@ export default function CloudConfigModal(props: any) {
                         ) : (
                           availableFiles
                             .filter(isFileAllowed)
-                            .filter(file => !(oauthProvider === 'onedrive' && file.name.toLowerCase().endsWith('.csv')))
-                            .map((file) => {
+                            .filter((file: any) => !(oauthProvider === 'onedrive' && file.name.toLowerCase().endsWith('.csv')))
+                            .map((file: any) => {
                               const isFolder = file.type === 'folder';
                               const isSelected = spreadsheetId === file.id;
                               return (
                                 <div
                                   key={file.id}
-                                  className={`flex items-center justify-between p-3 transition-all duration-150 ${isSelected
-                                    ? 'bg-emerald-50 text-emerald-950 font-bold border-l-4 border-emerald-500'
-                                    : 'hover:bg-gray-50 text-gray-700 font-medium'
+                                  className={`flex items-center justify-between p-3 transition-all duration-150 ${file.already_linked_module
+                                      ? 'opacity-60 bg-gray-50 cursor-not-allowed border-l-4 border-gray-300'
+                                      : isSelected
+                                        ? 'bg-emerald-50 text-emerald-950 font-bold border-l-4 border-emerald-500'
+                                        : 'hover:bg-gray-50 text-gray-700 font-medium'
                                     }`}
                                 >
                                   <div
-                                    onClick={() => handleSelectFile(file)}
-                                    className="flex-1 flex items-center space-x-3 min-w-0 cursor-pointer"
+                                    onClick={() => {
+                                      if (file.already_linked_module) return;
+                                      isFolder ? handleFolderClick(file.id, file.name) : handleSelectFile(file.id);
+                                    }}
+                                    className={`flex-1 flex items-center space-x-3 min-w-0 ${file.already_linked_module ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                   >
                                     {isFolder ? (
                                       <Folder className="w-5 h-5 text-amber-500 fill-amber-100 flex-shrink-0" />
                                     ) : (
-                                      <FileSpreadsheet className={`w-5 h-5 flex-shrink-0 ${isSelected ? 'text-emerald-600' : 'text-gray-400'}`} />
+                                      <FileSpreadsheet className={`w-5 h-5 flex-shrink-0 ${file.already_linked_module ? 'text-gray-400' : isSelected ? 'text-emerald-600' : 'text-gray-400'}`} />
                                     )}
                                     <span className="text-xs truncate">{file.name}</span>
-                                    {oauthProvider === 'google_sheets' && !isFolder && (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) && (
+                                    {file.already_linked_module && (
+                                      <span className="text-[9px] bg-red-50 text-red-700 border border-red-200 font-extrabold px-2 py-0.5 rounded flex-shrink-0 flex items-center space-x-1">
+                                        <span>Linked in [{file.already_linked_module}] • Locked</span>
+                                      </span>
+                                    )}
+                                    {file.is_rejected && !file.already_linked_module && (
+                                      <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200 font-extrabold px-1.5 py-0.5 rounded flex-shrink-0">
+                                        Flagged ({file.rejected_reason})
+                                      </span>
+                                    )}
+                                    {oauthProvider === 'google_sheets' && !isFolder && !file.already_linked_module && (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) && (
                                       <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200 font-semibold px-1 py-0.5 rounded flex-shrink-0">
                                         Excel (.xlsx) - Auto-Convert
                                       </span>
@@ -281,25 +313,45 @@ export default function CloudConfigModal(props: any) {
                     {spreadsheetId && (
                       <div className="mt-2 text-xs text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-100 flex items-center">
                         <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" />
-                        <span>Selected: {availableFiles.find((f) => f.id === spreadsheetId)?.name}</span>
+                        <span>Selected: {availableFiles.find((f: any) => f.id === spreadsheetId)?.name}</span>
                       </div>
                     )}
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Document Title / Label (Optional)</label>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                    {moduleContext === 'budget' ? 'Workbook Title / Label (Optional)' : 'Document Title / Label (Optional)'}
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. IPC Claim No. 8 / Structural Report"
+                    placeholder={moduleContext === 'budget' ? 'e.g. Master Project Budget / Structural Trade' : 'e.g. IPC Claim No. 8 / Structural Report'}
                     value={boqName}
                     onChange={(e) => setBoqName(e.target.value)}
                     className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-800"
                   />
                 </div>
 
+                {moduleContext === 'ipc' && (
+                  <div className="mt-4 mb-2">
+                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-1 text-indigo-700">IPC Certificate Number (Required)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 3 or IPC-03"
+                      value={ipcCertificateNumber}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 15);
+                        setIpcCertificateNumber(val);
+                      }}
+                      disabled={savingConfig || fetchingSheets || !!modalMessage}
+                      className="w-full p-2.5 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-indigo-50/50 text-indigo-900 disabled:opacity-50 disabled:bg-gray-100 font-bold placeholder:font-normal placeholder:text-indigo-300"
+                      required
+                    />
+                  </div>
+                )}
+
                 {(() => {
-                  const selectedFile = availableFiles.find(f => f.id === spreadsheetId);
+                  const selectedFile = availableFiles.find((f: any) => f.id === spreadsheetId);
                   if (!selectedFile) {
                     return (
                       <div className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100">
@@ -310,49 +362,59 @@ export default function CloudConfigModal(props: any) {
 
                   const isSpreadsheet = selectedFile.is_google_sheet || /\.(xlsx|xls|csv|ods|gsheet)$/i.test(selectedFile.name);
 
-                  if (!isSpreadsheet) {
-                    return (
-                      <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3.5 text-xs text-indigo-900 leading-relaxed">
-                        <span className="font-bold block text-xs text-indigo-950 mb-0.5">Document Selected ({selectedFile.name})</span>
-                        This file format will be linked directly to your workspace without worksheet mapping.
-                      </div>
-                    );
-                  }
-
                   return (
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">
-                        Select Worksheets to Link
-                      </label>
-                      {fetchingSheets ? (
-                        <div className="flex items-center space-x-2 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                          <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-                          <span>Loading worksheets...</span>
+                    <div className="space-y-3">
+                      {selectedFile.already_linked_module && (
+                        <div className="bg-indigo-50/80 border border-indigo-200 rounded-xl p-3 text-xs text-indigo-900 leading-relaxed flex items-start space-x-2">
+                          <AlertTriangle className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold block text-indigo-950">Cross-Module Integration Notice</span>
+                            This file is currently linked in the <strong>[{selectedFile.already_linked_module}]</strong> module. Linking it here will share cloud data updates across both tabs.
+                          </div>
                         </div>
-                      ) : sheetsList.length === 0 ? (
-                        <div className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100">
-                          Loading worksheet structure...
+                      )}
+
+                      {!isSpreadsheet ? (
+                        <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3.5 text-xs text-indigo-900 leading-relaxed">
+                          <span className="font-bold block text-xs text-indigo-950 mb-0.5">Document Selected ({selectedFile.name})</span>
+                          This file format will be linked directly to your workspace without worksheet mapping.
                         </div>
                       ) : (
-                        <div className="space-y-2 max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50/50">
-                          {sheetsList.map((sheet) => (
-                            <label key={sheet.id} className="flex items-start space-x-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-gray-100/70 transition-colors">
-                              <input
-                                type="checkbox"
-                                checked={!!selectedSheets[sheet.id]}
-                                onChange={(e) =>
-                                  setSelectedSheets((prev) => ({
-                                    ...prev,
-                                    [sheet.id]: e.target.checked,
-                                  }))
-                                }
-                                className="mt-0.5 w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <span className="text-xs font-semibold text-gray-700 truncate block">{sheet.name}</span>
-                              </div>
-                            </label>
-                          ))}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">
+                            Select Worksheets to Link
+                          </label>
+                          {fetchingSheets ? (
+                            <div className="flex items-center space-x-2 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                              <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                              <span>Loading worksheets...</span>
+                            </div>
+                          ) : sheetsList.length === 0 ? (
+                            <div className="text-xs text-amber-800 bg-amber-50 p-3 rounded-lg border border-amber-200/60 leading-relaxed font-medium">
+                              No worksheets found or could not load structure. Please verify the workbook format.
+                            </div>
+                          ) : (
+                            <div className="space-y-2 max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50/50">
+                              {sheetsList.map((sheet: any) => (
+                                <label key={sheet.id} className="flex items-start space-x-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-gray-100/70 transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!selectedSheets[sheet.id]}
+                                    onChange={(e) =>
+                                      props.setSelectedSheets((prev: any) => ({
+                                        ...prev,
+                                        [sheet.id]: e.target.checked,
+                                      }))
+                                    }
+                                    className="mt-0.5 w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-xs font-semibold text-gray-700 truncate block">{sheet.name}</span>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -364,27 +426,30 @@ export default function CloudConfigModal(props: any) {
               <div className="flex space-x-3 pt-4 border-t border-gray-100 flex-shrink-0 bg-white">
                 <button
                   type="button"
-                  onClick={handleCloseConfig}
+                  onClick={handleCancel}
                   className="flex-1 py-2.5 px-4 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 {(() => {
-                  const selectedFile = availableFiles.find(f => f.id === spreadsheetId);
+                  const selectedFile = availableFiles.find((f: any) => f.id === spreadsheetId);
                   const isSpreadsheet = selectedFile && (
                     selectedFile.is_google_sheet ||
                     /\.(xlsx|xls|csv|ods|gsheet)$/i.test(selectedFile.name)
                   );
                   const buttonLabel = isSpreadsheet ? 'Link Workbook' : 'Link Document';
+                  const isNoSheets = isSpreadsheet && sheetsList.length === 0;
+                  const isLocked = selectedFile?.already_linked_module;
+                  const isButtonDisabled = savingConfig || fetchingSheets || !spreadsheetId || isNoSheets || isLocked || (moduleContext === 'ipc' && !ipcCertificateNumber);
 
                   return (
                     <button
                       type="submit"
-                      disabled={loading || fetchingSheets || !spreadsheetId}
+                      disabled={isButtonDisabled}
                       className="flex-1 py-2.5 px-4 border border-transparent rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                     >
-                      {(loading || fetchingSheets) && <Loader2 className="w-4 h-4 animate-spin text-white" />}
-                      <span>{loading ? 'Linking...' : fetchingSheets ? 'Converting Sheet...' : buttonLabel}</span>
+                      {(savingConfig || fetchingSheets) && <Loader2 className="w-4 h-4 animate-spin text-white" />}
+                      <span>{savingConfig ? 'Linking...' : fetchingSheets ? 'Loading Worksheets...' : buttonLabel}</span>
                     </button>
                   );
                 })()}
@@ -392,7 +457,7 @@ export default function CloudConfigModal(props: any) {
             </form>
           </div>
         </div>
-      )
+      )}
     </>
   );
 }

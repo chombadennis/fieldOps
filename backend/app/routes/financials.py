@@ -23,7 +23,7 @@ def get_project_budgets(project_id: int, contract_id: Optional[int] = None, db: 
     from ..models.contract import Contract
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        return []
 
     if contract_id is not None:
         contract = db.query(Contract).filter(Contract.id == contract_id, Contract.project_id == project_id).first()

@@ -87,6 +87,14 @@ export const getOneDriveAuthUrl = async (projectId: string | number, activeTab?:
   return response.data;
 };
 
+export const getGlobalAuthToken = async (projectId: string | number, provider: string) => {
+  const response = await apiClient.get(`/projects/${projectId}/integrations/token`, {
+    params: { provider }
+  });
+  return response.data;
+};
+
+
 export const saveIntegration = async (data: {
   project_id: string | number;
   provider: string;
@@ -96,6 +104,8 @@ export const saveIntegration = async (data: {
   refresh_token?: string;
   module?: string;
   ipc_certificate_number?: string;
+  trade_label?: string;
+  tracking_mode?: string;
 }) => {
   const q = new URLSearchParams();
   q.append('project_id', String(data.project_id));
@@ -106,15 +116,17 @@ export const saveIntegration = async (data: {
   if (data.refresh_token) q.append('refresh_token', data.refresh_token);
   if (data.module) q.append('module', data.module);
   if (data.ipc_certificate_number) q.append('ipc_certificate_number', data.ipc_certificate_number);
+  if (data.trade_label) q.append('trade_label', data.trade_label);
+  if (data.tracking_mode) q.append('tracking_mode', data.tracking_mode);
   const response = await apiClient.post(`/integrations/save?${q.toString()}`);
   return response.data;
 };
 
 export const previewIpcExtraction = async (data: {
-  project_id: string | number;
+  project_id: number | string;
   provider: string;
   spreadsheet_id: string;
-  ipc_certificate_number: string;
+  ipc_certificate_number?: string;
   refresh_token?: string;
 }) => {
   const response = await apiClient.post(`/integrations/ipc/preview`, data);
@@ -143,8 +155,10 @@ export const triggerSyncImport = async (integrationId: number) => {
   return response.data;
 };
 
-export const deleteIntegration = async (integrationId: number) => {
-  const response = await apiClient.delete(`/integrations/${integrationId}`);
+export const deleteIntegration = async (integrationId: number, purgeData: boolean = false) => {
+  const response = await apiClient.delete(`/integrations/${integrationId}`, {
+    params: { purge_data: purgeData }
+  });
   return response.data;
 };
 
@@ -171,9 +185,9 @@ export const listActiveIntegrationSheets = async (integrationId: number) => {
   return response.data;
 };
 
-export const listCloudFiles = async (provider: string, refreshToken: string, folderId?: string, filterType?: string) => {
+export const listCloudFiles = async (provider: string, refreshToken: string, folderId?: string, filterType?: string, projectId?: string | number) => {
   const response = await apiClient.get('/integrations/list-files', {
-    params: { provider, refresh_token: refreshToken, folder_id: folderId, filter_type: filterType }
+    params: { provider, refresh_token: refreshToken, folder_id: folderId, filter_type: filterType, project_id: projectId }
   });
   return response.data;
 };
@@ -255,6 +269,11 @@ export const createDecoupledDocument = async (projectId: string | number, endpoi
 };
 
 export const unlinkDecoupledDocument = async (projectId: string | number, endpoint: string, documentId: number) => {
+  const response = await apiClient.post(`/projects/${projectId}/${endpoint}/${documentId}/unlink`);
+  return response.data;
+};
+
+export const deleteDecoupledDocument = async (projectId: string | number, endpoint: string, documentId: number) => {
   const response = await apiClient.delete(`/projects/${projectId}/${endpoint}/${documentId}`);
   return response.data;
 };
@@ -268,6 +287,11 @@ export const getDocumentEmbedUrl = async (documentId: number, mode: string = 'vi
 
 export const unlinkProjectDocument = async (projectId: string | number, documentId: number) => {
   const response = await apiClient.post(`/projects/${projectId}/documents/${documentId}/unlink`);
+  return response.data;
+};
+
+export const deleteProjectDocument = async (projectId: string | number, documentId: number) => {
+  const response = await apiClient.delete(`/projects/${projectId}/documents/${documentId}`);
   return response.data;
 };
 
@@ -295,3 +319,34 @@ export const updateProjectIPC = async (projectId: string | number, ipcId: string
   const response = await apiClient.put(`/projects/${projectId}/ipc/records/${ipcId}`, data);
   return response.data;
 };
+
+export const validateBudget = async (data: { project_id: number; provider: string; spreadsheet_id: string; refresh_token?: string; trade_label?: string }): Promise<{ valid: boolean; reason?: string; previously_flagged?: boolean }> => {
+  const response = await apiClient.post('/integrations/budget/validate', data);
+  return response.data;
+};
+
+export const previewBudgetExtraction = async (data: { project_id: number; provider: string; spreadsheet_id: string; refresh_token?: string; trade_label?: string }) => {
+  const response = await apiClient.post('/integrations/budget/preview', data);
+  return response.data;
+};
+
+export const commitBudgetExtraction = async (data: {
+  project_id: number;
+  contract_id?: number;
+  original_contract_sum: number;
+  appraised_budget?: number;
+  earned_value?: number;
+  remaining_balance?: number;
+  percent_used?: number;
+  categories?: any[];
+  integration_id?: number;
+  file_url?: string;
+  title?: string;
+  trade_label?: string;
+  expected_count?: number;
+  project_title_found?: string;
+}) => {
+  const response = await apiClient.post('/integrations/budget/commit', data);
+  return response.data;
+};
+

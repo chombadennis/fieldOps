@@ -240,8 +240,8 @@ def create_{name}_document(
         created_at=getattr(d, 'created_at', None)
     )
 
-@router.delete("/{{document_id}}")
-def delete_{name}_document(
+@router.post("/{{document_id}}/unlink")
+def unlink_{name}_document(
     project_id: int,
     document_id: int,
     db: Session = Depends(get_db)
@@ -258,11 +258,31 @@ def delete_{name}_document(
         doc.unlinked_at = func.now()
         db.commit()
         db.refresh(doc)
-        return {{"status": "unlinked"}}
-    else:
-        db.delete(doc)
+    return {{"status": "unlinked"}}
+
+@router.delete("/{{document_id}}")
+def delete_{name}_document(
+    project_id: int,
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    doc = db.query({model}).filter({model}.id == document_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    if hasattr(doc, 'project_id') and doc.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Document does not belong to this project")
+
+    # Step 1: Unlink first
+    if hasattr(doc, 'is_linked'):
+        doc.is_linked = False
+        doc.unlinked_at = func.now()
         db.commit()
-        return {{"status": "deleted"}}
+
+    # Step 2: Permanently delete document data from database
+    db.delete(doc)
+    db.commit()
+    return {{"status": "deleted", "message": "Document data permanently deleted from database"}}
 """
 
 os.makedirs("app/routes", exist_ok=True)

@@ -25,3 +25,25 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def run_migrations():
+    """Ensure newly added columns exist in PostgreSQL tables without requiring full Alembic migrations."""
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS revised_amount DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS planned_value DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS earned_value DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS actual_cost DOUBLE PRECISION;"))
+            conn.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS values_map JSONB;"))
+            conn.execute(text("ALTER TABLE notes ADD COLUMN IF NOT EXISTS is_issue BOOLEAN DEFAULT FALSE;"))
+            conn.execute(text("ALTER TABLE notes ADD COLUMN IF NOT EXISTS priority VARCHAR DEFAULT 'Normal';"))
+            conn.commit()
+        except Exception as e:
+            print(f"Migration notice: {e}")
+
+try:
+    run_migrations()
+except Exception as e:
+    print(f"Failed to auto-migrate database columns: {e}")
+

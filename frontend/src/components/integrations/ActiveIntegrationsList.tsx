@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileSpreadsheet, Loader2, AlertTriangle, ExternalLink, X, Unlink, Eye } from 'lucide-react';
+import { FileSpreadsheet, Loader2, AlertTriangle, ExternalLink, X, Unlink, Trash2, Eye } from 'lucide-react';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 import { Integration } from './types';
 
@@ -19,6 +19,7 @@ interface ActiveIntegrationsListProps {
   handleImportSheetClick: (integration: any, sheetName: string) => void;
   handleManualSync: (integrationId: number) => void;
   handleDisconnectClick: (integrationId: number) => void;
+  handleDeleteClick?: (integration: Integration) => void;
   setSyncResultMap: React.Dispatch<React.SetStateAction<{ [id: number]: { type: 'success' | 'error'; text: string } | null }>>;
   syncingName: string;
   progressMessage: string;
@@ -40,6 +41,7 @@ export default function ActiveIntegrationsList({
   handleImportSheetClick,
   handleManualSync,
   handleDisconnectClick,
+  handleDeleteClick,
   setSyncResultMap,
   syncingName,
   progressMessage
@@ -241,12 +243,31 @@ export default function ActiveIntegrationsList({
                   </button>
                   <button
                     disabled={isLoading || syncingId !== null || deletingId !== null}
+                    onClick={() => handleManualSync(integration.id)}
+                    title={syncingId === integration.id ? `Syncing worksheets: ${syncingName}` : "Sync workbook data"}
+                    className="py-2 px-3 border border-indigo-600 rounded-lg shadow-sm text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
+                  >
+                    {syncingId === integration.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{syncingId === integration.id ? progressMessage : 'Sync Workbook'}</span>
+                  </button>
+                  <button
+                    disabled={isLoading || syncingId !== null || deletingId !== null}
                     onClick={() => handleDisconnectClick(integration.id)}
-                    className="p-2 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Disconnect spreadsheet"
+                    className="p-2 border border-amber-200 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Unlink / Disconnect workbook link (keeps database records)"
                   >
                     <Unlink className="w-4 h-4" />
                   </button>
+                  {handleDeleteClick && (
+                    <button
+                      disabled={isLoading || syncingId !== null || deletingId !== null}
+                      onClick={() => handleDeleteClick(integration)}
+                      className="p-2 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete workbook data permanently from database"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
               {/* Per-card sync result */}

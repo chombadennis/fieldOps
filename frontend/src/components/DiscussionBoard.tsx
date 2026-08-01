@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { MessageSquare, Send, AlertTriangle } from 'lucide-react';
-import DocumentIntegrations from '@/components/DocumentIntegrations';
-import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
-import { unlinkProjectDocument, unlinkDecoupledDocument, deleteProjectDocument, deleteDecoupledDocument } from '@/services/api';
 
 interface Note {
   id: number;
@@ -12,104 +9,20 @@ interface Note {
   priority?: string;
   author_name?: string;
   created_at?: string;
-  documents?: any[];
 }
 
-interface Document {
-  id: number;
-  title: string;
-  file_url: string;
-  file_type?: string;
-  department?: string;
-  created_at?: string;
-  integration_id?: number;
-}
-
-interface DepartmentTabProps {
-  projectId: number;
-  departmentName: string;
-  departmentKey: string;
-  apiEndpoint?: string;
-  description: string;
-  colorTheme: string;
+interface DiscussionBoardProps {
   notes: Note[];
-  documents: Document[];
   onAddNote: (note: { content: string; department: string; is_issue: boolean; priority: string }) => Promise<void>;
-  integrations?: any[];
-  boqDocuments?: any[];
-  onRefresh?: () => void;
-  globalLoading?: boolean;
-  setGlobalLoading?: (loading: boolean) => void;
-  activeTab?: string;
+  departmentKey: string;
+  departmentName: string;
 }
 
-export default function DepartmentTab({
-  projectId,
-  departmentName,
-  departmentKey,
-  apiEndpoint,
-  description,
-  colorTheme,
-  notes = [],
-  documents = [],
-  onAddNote,
-  integrations,
-  boqDocuments,
-  onRefresh,
-  globalLoading,
-  setGlobalLoading,
-  activeTab,
-}: DepartmentTabProps) {
+export default function DiscussionBoard({ notes, onAddNote, departmentKey, departmentName }: DiscussionBoardProps) {
   const [content, setContent] = useState('');
   const [isIssue, setIsIssue] = useState(false);
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
-  const [unlinkingId, setUnlinkingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-
-  const handleUnlinkDocument = async (documentId: number) => {
-    if (!onRefresh) return;
-    setUnlinkingId(documentId);
-    if (setGlobalLoading) setGlobalLoading(true);
-    try {
-      if (apiEndpoint) {
-        await unlinkDecoupledDocument(projectId, apiEndpoint, documentId);
-      } else {
-        await unlinkProjectDocument(projectId, documentId);
-      }
-      onRefresh();
-    } catch (err) {
-      console.error(err);
-      alert('Failed to unlink document.');
-    } finally {
-      setUnlinkingId(null);
-      if (setGlobalLoading) setGlobalLoading(false);
-    }
-  };
-
-  const handleDeleteDocument = async (documentId: number) => {
-    if (!onRefresh) return;
-    setDeletingId(documentId);
-    if (setGlobalLoading) setGlobalLoading(true);
-    try {
-      if (apiEndpoint) {
-        await deleteDecoupledDocument(projectId, apiEndpoint, documentId);
-      } else {
-        await deleteProjectDocument(projectId, documentId);
-      }
-      onRefresh();
-    } catch (err) {
-      console.error(err);
-      alert('Failed to delete document data.');
-    } finally {
-      setDeletingId(null);
-      if (setGlobalLoading) setGlobalLoading(false);
-    }
-  };
-
-  // Filter notes and docs for this department
-  const filteredNotes = notes.filter((n) => n.department?.toLowerCase() === departmentKey.toLowerCase() || departmentKey === 'all');
-  const filteredDocs = documents.filter((d) => d.department?.toLowerCase() === departmentKey.toLowerCase() || departmentKey === 'all');
 
   const handlePostNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,42 +46,7 @@ export default function DepartmentTab({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Department Header Banner */}
-      <div className={`rounded-3xl p-8 shadow-2xl text-white ${colorTheme} flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden`}>
-        <div className="relative z-10">
-          <span className="text-xs font-semibold uppercase tracking-widest text-white/70">Department Workspace</span>
-          <h2 className="text-xl font-bold font-lexend mt-1">{departmentName} Hub</h2>
-          <p className="text-xs text-white/80 mt-1 max-w-xl leading-relaxed">{description}</p>
-        </div>
-      </div>
-
-      {/* Cloud File Integration (Google Drive & OneDrive) */}
-      {integrations && onRefresh && setGlobalLoading && (
-        <DocumentIntegrations
-          projectId={String(projectId)}
-          integrations={integrations}
-          onRefresh={onRefresh}
-          globalLoading={!!globalLoading}
-          setGlobalLoading={setGlobalLoading}
-          moduleContext="department"
-          departmentName={departmentKey}
-          activeTab={activeTab}
-        />
-      )}
-
-      {/* Linked Documents Panel */}
-      <LinkedDocumentsPanel
-        title="Linked Documents"
-        documents={filteredDocs}
-        onUnlink={handleUnlinkDocument}
-        onDelete={handleDeleteDocument}
-        unlinkingId={unlinkingId}
-        deletingId={deletingId}
-        emptyMessage="No documents linked to this department section."
-      />
-
-      {/* Discussion & Entry Feed */}
+    <div className="space-y-4">
       <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
         <h3 className="text-sm font-bold font-lexend text-gray-800">Add Discussion Note / Log Issue</h3>
         <form onSubmit={handlePostNote} className="space-y-4">
@@ -223,14 +101,14 @@ export default function DepartmentTab({
 
       <div className="space-y-4">
         <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Discussion Feed</h4>
-        {filteredNotes.length === 0 ? (
+        {notes.length === 0 ? (
           <div className="bg-white rounded-3xl p-10 text-center border border-dashed border-gray-200">
             <MessageSquare className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-xs text-gray-400 font-medium">No notes recorded for this department yet.</p>
+            <p className="text-xs text-gray-400 font-medium">No notes recorded for {departmentName} yet.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredNotes.map((note) => (
+            {notes.map((note) => (
               <div
                 key={note.id}
                 className={`bg-white rounded-3xl p-6 border shadow-sm transition ${

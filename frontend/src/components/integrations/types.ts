@@ -11,6 +11,8 @@ export interface Integration {
   validation_issues?: string[] | null;
   validation_summary?: string | null;
   module?: string;
+  refresh_token?: string;
+  meta_data?: any;
 }
 
 export interface DocumentIntegrationsProps {

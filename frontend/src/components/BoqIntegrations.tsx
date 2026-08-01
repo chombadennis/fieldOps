@@ -46,6 +46,7 @@ export default function BoqIntegrations({
   const [outOfSyncMap, setOutOfSyncMap] = useState<{ [id: number]: boolean }>({});
   const [newSheetsMap, setNewSheetsMap] = useState<{ [id: number]: string[] }>({});
   const [disconnectingId, setDisconnectingId] = useState<number | null>(null);
+  const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
   const [dismissedNewSheets, setDismissedNewSheets] = useState<{ [id: number]: boolean }>({});
   const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
   const [activeAuditIntegration, setActiveAuditIntegration] = useState<Integration | null>(null);
@@ -558,6 +559,36 @@ export default function BoqIntegrations({
       }, 3000);
     } catch (err) {
       setError('Failed to disconnect integration.');
+      onRefresh();
+    } finally {
+      setDeletingId(null);
+      setLoading(false);
+      setGlobalLoading(false);
+    }
+  };
+
+  const handleConfirmDeleteIntegration = async () => {
+    if (!integrationToDelete) return;
+    const id = integrationToDelete.id;
+    setIntegrationToDelete(null);
+    setDeletingId(id);
+
+    if (activeEditorId === id) setActiveEditorId(null);
+    if (activeAuditIntegration?.id === id) setActiveAuditIntegration(null);
+
+    setLoading(true);
+    setGlobalLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await deleteIntegration(id, true);
+      setSuccess('Workbook data and all associated database records deleted permanently.');
+      onRefresh();
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+    } catch (err) {
+      setError('Failed to delete workbook data from database.');
       onRefresh();
     } finally {
       setDeletingId(null);
@@ -1246,10 +1277,18 @@ export default function BoqIntegrations({
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => handleDisconnectClick(integration.id)}
-                        className="p-2 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Disconnect spreadsheet"
+                        className="p-2 border border-amber-200 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Unlink / Disconnect workbook link (keeps database records)"
                       >
                         <Unlink className="w-4 h-4" />
+                      </button>
+                      <button
+                        disabled={isLoading || syncingId !== null || deletingId !== null}
+                        onClick={() => setIntegrationToDelete(integration)}
+                        className="p-2 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete workbook data permanently from database"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -1400,6 +1439,57 @@ export default function BoqIntegrations({
                 className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100"
               >
                 Disconnect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Irreversible Deletion Warning Modal */}
+      {integrationToDelete !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up relative">
+            <button
+              onClick={() => setIntegrationToDelete(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-3 bg-red-100 rounded-xl text-red-600">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Irreversible Deletion Warning</h3>
+                <p className="text-xs text-red-600 font-semibold">Permanent Database Purge</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed mb-4">
+              You are about to perform an irreversible deletion of the document data for{' '}
+              <strong className="text-gray-900 font-semibold">{integrationToDelete.boq_name || 'Spreadsheet BOQ'}</strong>{' '}
+              from the database and all of its records will be deleted permanently. Do you wish to continue?
+            </p>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-6">
+              <p className="text-[11px] font-semibold text-amber-900 leading-relaxed">
+                Cloud Storage Safeguard: <span className="font-normal text-amber-800">Note: This action will NOT delete the actual file in your cloud drive.</span>
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setIntegrationToDelete(null)}
+                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteIntegration}
+                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100"
+              >
+                Delete Permanently
               </button>
             </div>
           </div>

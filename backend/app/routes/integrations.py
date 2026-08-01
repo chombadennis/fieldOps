@@ -1,7 +1,9 @@
 import logging
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Query
 from fastapi.responses import RedirectResponse, PlainTextResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
@@ -26,6 +28,7 @@ from ..services.integrations import (
     process_sheet_webhook_update
 )
 from ..services.integrations.ipc_ai_engine import process_ipc_with_ai
+from ..services.integrations.budget_ai_engine import process_budget_with_ai
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +54,51 @@ class IpcPreviewRequest(BaseModel):
     ipc_certificate_number: str
     refresh_token: Optional[str] = None
 
+class BudgetPreviewRequest(BaseModel):
+    project_id: int
+    provider: str
+    spreadsheet_id: str
+    refresh_token: Optional[str] = None
+    selected_sheets: Optional[List[str]] = None
+    tracking_mode: Optional[str] = "split"
+    trade_label: Optional[str] = None
+
+class BudgetCommitRequest(BaseModel):
+    project_id: int
+    contract_id: Optional[int] = None
+    original_contract_sum: float
+    appraised_budget: Optional[float] = None
+    earned_value: float = 0.0
+    remaining_balance: float = 0.0
+    percent_used: float = 0.0
+    categories: List[Dict[str, Any]] = []
+    integration_id: Optional[int] = None
+    file_url: Optional[str] = None
+    title: Optional[str] = "Master Budget & EVM"
+    trade_label: Optional[str] = "General Trade"
+    expected_count: Optional[int] = 1
+    project_title_found: Optional[str] = None
+
 # --- OAuth Authorization Redirect URLs ---
+
+@router.get("/projects/{project_id}/integrations/token")
+def get_global_integration_token(
+    project_id: int, 
+    provider: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Checks if there's any existing valid refresh token for this project and provider, regardless of module.
+    """
+    integration = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == project_id,
+        ProjectIntegration.provider == provider,
+        ProjectIntegration.refresh_token.isnot(None)
+    ).first()
+    
+    if integration:
+        return {"has_auth": True, "refresh_token": integration.refresh_token}
+    return {"has_auth": False}
 
 @router.get("/integrations/google/auth-url")
 def google_auth_url(project_id: int, active_tab: Optional[str] = None, pmo_sub_tab: Optional[str] = None):
@@ -185,8 +232,10 @@ async def onedrive_callback(
 async def list_cloud_files(
     provider: str,
     refresh_token: str,
+    project_id: Optional[int] = Query(None),
     folder_id: Optional[str] = None,
-    filter_type: Optional[str] = "spreadsheets"
+    filter_type: Optional[str] = "spreadsheets",
+    db: Session = Depends(get_db)
 ):
     """
     Given an encrypted refresh token and optional folder_id, fetches access token,
@@ -200,6 +249,24 @@ async def list_cloud_files(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid encryption token.")
         
+    rejected_map = {}
+    active_linked_map = {}
+    if project_id:
+        rejected = db.query(ProjectIntegration).filter(
+            ProjectIntegration.project_id == project_id,
+            ProjectIntegration.provider == provider,
+            ProjectIntegration.module == "budget_rejected"
+        ).all()
+        for r in rejected:
+            rejected_map[r.spreadsheet_id] = r.meta_data.get("identified_document_type", "Unknown Document") if r.meta_data else "Unknown Document"
+
+        active_integrations = db.query(ProjectIntegration).filter(
+            ProjectIntegration.project_id == project_id,
+            ProjectIntegration.module != "budget_rejected"
+        ).all()
+        for ai in active_integrations:
+            active_linked_map[ai.spreadsheet_id] = ai.module.upper()
+
     if provider == "google_sheets":
         from ..services.integrations.google_sheets import refresh_google_access_token
         try:
@@ -253,7 +320,10 @@ async def list_cloud_files(
                     "type": "folder" if is_folder else "file",
                     "mime_type": mime_type,
                     "is_google_sheet": is_google_sheet,
-                    "web_url": f.get("webViewLink")
+                    "web_url": f.get("webViewLink"),
+                    "is_rejected": f["id"] in rejected_map,
+                    "rejected_reason": rejected_map.get(f["id"]),
+                    "already_linked_module": active_linked_map.get(f["id"])
                 })
             return mapped
             
@@ -300,7 +370,10 @@ async def list_cloud_files(
                             "id": item["id"],
                             "name": name,
                             "type": "file",
-                            "web_url": web_url
+                            "web_url": web_url,
+                            "is_rejected": item["id"] in rejected_map,
+                            "rejected_reason": rejected_map.get(item["id"]),
+                            "already_linked_module": active_linked_map.get(item["id"])
                         })
                 
             return files_list
@@ -460,6 +533,8 @@ def save_integration(
     refresh_token: Optional[str] = Query(None),
     boq_name: Optional[str] = Query(None),
     module: Optional[str] = Query("boq"),
+    trade_label: Optional[str] = Query(None),
+    tracking_mode: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -481,6 +556,17 @@ def save_integration(
             db.refresh(contract)
         contract_id = contract.id
 
+    existing_other = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == project_id,
+        ProjectIntegration.spreadsheet_id == spreadsheet_id,
+        ProjectIntegration.module != "budget_rejected"
+    ).first()
+    if existing_other and (module is None or existing_other.module != module):
+        raise HTTPException(
+            status_code=400,
+            detail=f"This document is already linked under the {existing_other.module.upper()} tab for this project. Duplicate linkages are strictly prohibited."
+        )
+
     existing = db.query(ProjectIntegration).filter(
         ProjectIntegration.project_id == project_id,
         ProjectIntegration.contract_id == contract_id,
@@ -491,6 +577,12 @@ def save_integration(
     if not existing and not refresh_token:
         raise HTTPException(status_code=400, detail="refresh_token is required for new integrations.")
         
+    meta_data = {}
+    if trade_label is not None:
+        meta_data["trade_label"] = trade_label
+    if tracking_mode is not None:
+        meta_data["tracking_mode"] = tracking_mode
+
     if existing:
         existing.spreadsheet_id = spreadsheet_id
         existing.sheet_name = sheet_name
@@ -500,6 +592,8 @@ def save_integration(
             existing.refresh_token = refresh_token
         if module:
             existing.module = module
+        if meta_data:
+            existing.meta_data = meta_data
         db_integration = existing
     else:
         db_integration = ProjectIntegration(
@@ -510,7 +604,8 @@ def save_integration(
             sheet_name=sheet_name,
             boq_name=boq_name,
             refresh_token=refresh_token,
-            module=module
+            module=module,
+            meta_data=meta_data if meta_data else None
         )
         db.add(db_integration)
         
@@ -554,16 +649,116 @@ async def trigger_sync_import(
     }
 
 @router.delete("/integrations/{integration_id}")
-def delete_integration(integration_id: int, db: Session = Depends(get_db)):
+async def delete_integration(
+    integration_id: int,
+    purge_data: bool = Query(False),
+    db: Session = Depends(get_db)
+):
     """
     Deletes the spreadsheet integration connection for a project.
+    If purge_data is True, also permanently purges all associated BoqDocument, BoqItem,
+    IpcDocument, BudgetDocument, and Document records from the database.
     """
     integration = db.query(ProjectIntegration).filter(ProjectIntegration.id == integration_id).first()
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found.")
+
+    is_budget = integration.module == "budgets" or integration.module == "budget"
+    project_id = integration.project_id
+
+    if purge_data:
+        # 1. Delete associated BOQ documents & items
+        from ..models.boq_document import BoqDocument
+        from ..models.boq_item import BoqItem
+        boq_docs = db.query(BoqDocument).filter(BoqDocument.integration_id == integration_id).all()
+        for bdoc in boq_docs:
+            db.query(BoqItem).filter(BoqItem.boq_id == bdoc.id).delete(synchronize_session=False)
+            db.delete(bdoc)
+
+        # 2. Delete associated IPC documents
+        from ..models.ipc_document import IpcDocument
+        db.query(IpcDocument).filter(IpcDocument.integration_id == integration_id).delete(synchronize_session=False)
+
+        # 3. Delete associated Budget documents
+        from ..models.budget_document import BudgetDocument
+        db.query(BudgetDocument).filter(BudgetDocument.integration_id == integration_id).delete(synchronize_session=False)
+
+        # 4. Delete associated General documents
+        from ..models.document import Document
+        db.query(Document).filter(Document.integration_id == integration_id).delete(synchronize_session=False)
+
     db.delete(integration)
     db.commit()
-    return {"status": "success", "message": "Integration disconnected successfully."}
+
+    # 5. Re-reconcile Budget Master Bundle Matrix if it was a Budget Integration
+    if is_budget:
+        from ..models.budget import Budget
+        from ..services.integrations.budget_ai_engine import reconcile_master_bundle_ai
+        
+        budget = db.query(Budget).filter(Budget.project_id == project_id).first()
+        if budget:
+            values_map = budget.values_map or {}
+            matrix = values_map.get("master_bundle_matrix", [])
+            
+            # Remove the deleted integration
+            new_matrix = [m for m in matrix if m.get("integration_id") != integration_id]
+            
+            if len(new_matrix) < len(matrix):
+                # We removed something, need to reconcile
+                from ..models.project import Project
+                proj = db.query(Project).filter(Project.id == project_id).first()
+                proj_title = proj.name if proj else ""
+                
+                if new_matrix:
+                    reconciled_master = await reconcile_master_bundle_ai(new_matrix, proj_title)
+                    master_orig = reconciled_master.get("original_contract_sum") or 0.0
+                    master_appr = reconciled_master.get("appraised_budget")
+                    master_ev = reconciled_master.get("earned_value") or 0.0
+                    
+                    budget.amount = master_orig
+                    budget.revised_amount = master_appr if master_appr is not None else master_orig
+                    budget.earned_value = master_ev
+                    
+                    values_map["master_bundle_matrix"] = new_matrix
+                    values_map["master_cleaned_table"] = reconciled_master
+                    values_map["original_contract_sum"] = master_orig
+                    values_map["appraised_budget"] = master_appr
+                    values_map["is_appraised"] = master_appr is not None and master_appr != master_orig
+                    values_map["earned_value"] = master_ev
+                    values_map["remaining_balance"] = reconciled_master.get("remaining_balance", 0.0)
+                    values_map["percent_used"] = reconciled_master.get("percent_used", 0.0)
+                    values_map["summary_breakdown"] = reconciled_master.get("reconciled_categories", [])
+                    
+                    # Also update linked_count
+                    bundle_config = values_map.get("bundle_config", {})
+                    bundle_config["linked_count"] = len(new_matrix)
+                    bundle_config["is_complete"] = len(new_matrix) >= bundle_config.get("expected_count", 1)
+                    values_map["bundle_config"] = bundle_config
+                else:
+                    # Matrix is empty, reset budget totals
+                    budget.amount = 0.0
+                    budget.revised_amount = 0.0
+                    budget.earned_value = 0.0
+                    
+                    values_map["master_bundle_matrix"] = []
+                    values_map["master_cleaned_table"] = {}
+                    values_map["original_contract_sum"] = 0.0
+                    values_map["appraised_budget"] = None
+                    values_map["is_appraised"] = False
+                    values_map["earned_value"] = 0.0
+                    values_map["remaining_balance"] = 0.0
+                    values_map["percent_used"] = 0.0
+                    values_map["summary_breakdown"] = []
+                    
+                    bundle_config = values_map.get("bundle_config", {})
+                    bundle_config["linked_count"] = 0
+                    bundle_config["is_complete"] = False
+                    values_map["bundle_config"] = bundle_config
+                
+                budget.values_map = values_map
+                db.commit()
+
+    return {"status": "success", "message": "Integration and associated document data deleted successfully."}
 
 @router.get("/integrations/{integration_id}/check-update")
 async def check_integration_update(integration_id: int, db: Session = Depends(get_db)):
@@ -922,9 +1117,46 @@ async def preview_ipc_extraction(
             elif request.provider == 'onedrive':
                 access_token = await refresh_onedrive_access_token(decrypted_refresh)
                 
-    if not access_token:
-        raise HTTPException(status_code=400, detail="Missing or invalid authentication tokens.")
+    # Check duplicate linkage across modules
+    existing_link = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == request.project_id,
+        ProjectIntegration.spreadsheet_id == request.spreadsheet_id,
+        ProjectIntegration.module != "budget_rejected"
+    ).first()
+    if existing_link and existing_link.module != "ipc":
+        raise HTTPException(
+            status_code=400,
+            detail=f"This document is already linked under the {existing_link.module.upper()} tab for this project. Duplicate linkages are strictly prohibited."
+        )
+
+    # Check rate limits stored in PostgreSQL for this specific IPC integration
+    target_integration = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == request.project_id,
+        ProjectIntegration.provider == request.provider,
+        ProjectIntegration.spreadsheet_id == request.spreadsheet_id
+    ).first()
+
+    recent_logs = []
+    if target_integration:
+        import datetime
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        twenty_four_hours_ago = now_utc - datetime.timedelta(hours=24)
         
+        logs = target_integration.reextract_logs or []
+        for ts_str in logs:
+            try:
+                ts = datetime.datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
+                if ts > twenty_four_hours_ago:
+                    recent_logs.append(ts_str)
+            except Exception:
+                pass
+
+        if len(recent_logs) >= 2:
+            raise HTTPException(
+                status_code=429,
+                detail="Daily rate limit exceeded: Maximum 2 AI re-extractions per 24 hours allowed for this IPC document."
+            )
+
     # 2. Fetch first 12 sheets
     sheets_data = {}
     try:
@@ -959,6 +1191,12 @@ async def preview_ipc_extraction(
             if existing_ipc:
                 legacy_exists = True
         
+        if target_integration:
+            import datetime
+            recent_logs.append(datetime.datetime.now(datetime.timezone.utc).isoformat())
+            target_integration.reextract_logs = recent_logs
+            db.commit()
+
         return {
             "extracted_data": extracted_data,
             "legacy_exists": legacy_exists
@@ -966,3 +1204,348 @@ async def preview_ipc_extraction(
     except Exception as e:
         logger.exception("AI Extraction failed:")
         raise HTTPException(status_code=500, detail=str(e))
+
+async def _fetch_budget_sheets(request: BudgetPreviewRequest, db: Session):
+    """
+    Shared helper: obtains an access token and fetches sheet data for a budget request.
+    Returns the sheets_data dict.
+    """
+    access_token = None
+    if request.refresh_token:
+        decrypted_refresh = decrypt_token(request.refresh_token)
+        if request.provider == 'google_sheets':
+            access_token = await refresh_google_access_token(decrypted_refresh)
+        elif request.provider == 'onedrive':
+            access_token = await refresh_onedrive_access_token(decrypted_refresh)
+
+    if not access_token:
+        integration = db.query(ProjectIntegration).filter(
+            ProjectIntegration.project_id == request.project_id,
+            ProjectIntegration.provider == request.provider
+        ).first()
+        if integration and integration.refresh_token:
+            decrypted_refresh = decrypt_token(integration.refresh_token)
+            if request.provider == 'google_sheets':
+                access_token = await refresh_google_access_token(decrypted_refresh)
+            elif request.provider == 'onedrive':
+                access_token = await refresh_onedrive_access_token(decrypted_refresh)
+
+    sheets_data = {}
+    try:
+        if request.provider == 'google_sheets':
+            sheets_list = await get_google_spreadsheet_sheets(request.spreadsheet_id, access_token)
+            target_names = request.selected_sheets if request.selected_sheets else [s["name"] for s in sheets_list[:5]]
+            sheets_to_fetch = [s for s in sheets_list if s["name"] in target_names]
+            async def fetch_sheet(s):
+                rows = await get_google_sheet_rows(request.spreadsheet_id, s["name"], access_token)
+                return s["name"], rows
+            results = await asyncio.gather(*[fetch_sheet(s) for s in sheets_to_fetch])
+            for name, rows in results:
+                sheets_data[name] = rows
+        elif request.provider == 'onedrive':
+            sheets_list = await get_onedrive_sheets(request.spreadsheet_id, access_token)
+            target_names = request.selected_sheets if request.selected_sheets else [s["name"] for s in sheets_list[:5]]
+            sheets_to_fetch = [s for s in sheets_list if s["name"] in target_names]
+            async def fetch_sheet(s):
+                rows = await get_onedrive_sheet_rows(request.spreadsheet_id, s["name"], access_token)
+                return s["name"], rows
+            results = await asyncio.gather(*[fetch_sheet(s) for s in sheets_to_fetch])
+            for name, rows in results:
+                sheets_data[name] = rows
+    except Exception as e:
+        logger.error(f"Failed to fetch cloud sheets for budget: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch cloud sheets: {str(e)}")
+    return sheets_data
+
+
+@router.post("/integrations/budget/validate")
+async def validate_budget_document(
+    request: BudgetPreviewRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Validation-only endpoint: Runs AI classification on the document to determine
+    if it is a valid budget document. Does NOT perform extraction or commit.
+    Returns {valid: true/false, reason: ...}.
+    """
+    # Check if this document was already rejected
+    existing_rejected = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == request.project_id,
+        ProjectIntegration.spreadsheet_id == request.spreadsheet_id,
+        ProjectIntegration.module == "budget_rejected"
+    ).first()
+    if existing_rejected:
+        doc_type = (existing_rejected.meta_data or {}).get("identified_document_type", "Unknown Document")
+        return {
+            "valid": False,
+            "reason": doc_type,
+            "previously_flagged": True
+        }
+
+    # Check duplicate linkage across modules
+    existing_link = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == request.project_id,
+        ProjectIntegration.spreadsheet_id == request.spreadsheet_id,
+        ProjectIntegration.module != "budget_rejected"
+    ).first()
+    if existing_link and existing_link.module not in ("budget", "budgets"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"This document is already linked under the {existing_link.module.upper()} tab for this project. Duplicate linkages are strictly prohibited."
+        )
+
+    sheets_data = await _fetch_budget_sheets(request, db)
+
+    try:
+        project = db.query(Project).filter(Project.id == request.project_id).first()
+        proj_name = project.name if project else ""
+        extracted_data = await process_budget_with_ai(sheets_data, proj_name, request.trade_label or "")
+
+        if not extracted_data.get("is_budget_document"):
+            doc_type = extracted_data.get("identified_document_type", "Unknown Document")
+
+            # Persist rejection record
+            db_integration = ProjectIntegration(
+                project_id=request.project_id,
+                provider=request.provider,
+                spreadsheet_id=request.spreadsheet_id,
+                refresh_token=request.refresh_token or "rejected_no_token",
+                sheet_name="Rejected",
+                module="budget_rejected",
+                meta_data={"identified_document_type": doc_type, "rejection_reason": doc_type}
+            )
+            try:
+                db.add(db_integration)
+                db.commit()
+            except OperationalError as oe:
+                logger.warning(f"DB commit failed due to {oe}, rolling back and retrying")
+                db.rollback()
+                db.add(db_integration)
+                db.commit()
+
+            return {
+                "valid": False,
+                "reason": doc_type,
+                "previously_flagged": False
+            }
+
+        return {"valid": True, "reason": None}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("AI Budget Validation failed:")
+        raise HTTPException(status_code=500, detail=f"Budget validation failed: {str(e)}")
+
+
+@router.post("/integrations/budget/preview")
+async def preview_budget_extraction(
+    request: BudgetPreviewRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Budget AI Extraction API: Reads first 150 rows of up to 12 sheet tabs,
+    runs semantic AI summary extraction (original vs appraised, category breakdown, earned value),
+    and returns data for interactive human preview BEFORE committing to PostgreSQL.
+    Only called AFTER the /budget/validate endpoint has confirmed the document is valid.
+    """
+    # Block previously rejected documents from extraction
+    existing_rejected = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == request.project_id,
+        ProjectIntegration.spreadsheet_id == request.spreadsheet_id,
+        ProjectIntegration.module == "budget_rejected"
+    ).first()
+    if existing_rejected:
+        doc_type = (existing_rejected.meta_data or {}).get("identified_document_type", "Unknown Document")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "INVALID_BUDGET_DOCUMENT",
+                "identified_document_type": doc_type,
+                "message": f"This document was previously rejected as a '{doc_type}'. Budget extraction is not allowed."
+            }
+        )
+
+    # Check duplicate linkage across modules
+    existing_link = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == request.project_id,
+        ProjectIntegration.spreadsheet_id == request.spreadsheet_id,
+        ProjectIntegration.module != "budget_rejected"
+    ).first()
+    if existing_link and existing_link.module not in ("budget", "budgets"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"This document is already linked under the {existing_link.module.upper()} tab for this project. Duplicate linkages are strictly prohibited."
+        )
+
+    sheets_data = await _fetch_budget_sheets(request, db)
+
+    try:
+        project = db.query(Project).filter(Project.id == request.project_id).first()
+        proj_name = project.name if project else ""
+        extracted_data = await process_budget_with_ai(sheets_data, proj_name, request.trade_label or "")
+
+        if not extracted_data.get("is_budget_document"):
+            doc_type = extracted_data.get("identified_document_type", "Unknown Document")
+            raise HTTPException(status_code=400, detail={
+                "error_code": "INVALID_BUDGET_DOCUMENT",
+                "identified_document_type": doc_type
+            })
+
+        return {"extracted_data": extracted_data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("AI Budget Extraction failed:")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/integrations/budget/commit")
+async def commit_budget_extraction(
+    request: BudgetCommitRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Commits human-validated Budget Summary & Category Appraisals to PostgreSQL.
+    Appends individual workbook JSON to values_map->master_bundle_matrix and
+    runs AI cross-workbook reconciliation to generate the cleaned-up Master Table.
+    """
+    from ..models.budget import Budget
+    from ..models.budget_document import BudgetDocument
+    from ..models.contract import Contract
+    from ..services.integrations.budget_ai_engine import reconcile_master_bundle_ai
+
+    project = db.query(Project).filter(Project.id == request.project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    contract_id = request.contract_id
+    if not contract_id:
+        general_contract = db.query(Contract).filter(
+            Contract.project_id == request.project_id,
+            Contract.contract_type == "GENERAL"
+        ).first()
+        if not general_contract:
+            general_contract = Contract(project_id=request.project_id, name="General Contract", contract_type="GENERAL")
+            db.add(general_contract)
+            db.commit()
+            db.refresh(general_contract)
+        contract_id = general_contract.id
+
+    # Fetch or create master Budget record for project
+    budget = db.query(Budget).filter(Budget.project_id == request.project_id).first()
+    if not budget:
+        budget = Budget(
+            project_id=request.project_id,
+            contract_id=contract_id,
+            name="Master Project Budget",
+            amount=request.original_contract_sum
+        )
+        db.add(budget)
+        db.commit()
+        db.refresh(budget)
+
+    # Prepare current workbook JSON entry
+    current_wb_entry = {
+        "integration_id": request.integration_id,
+        "trade_label": request.trade_label or "General Trade",
+        "title": request.title or "Master Budget & EVM",
+        "file_url": request.file_url,
+        "extracted_project_name": request.project_title_found,
+        "summary_metrics": {
+            "original_contract_sum": request.original_contract_sum,
+            "appraised_budget": request.appraised_budget,
+            "earned_value": request.earned_value,
+            "remaining_balance": request.remaining_balance,
+            "percent_used": request.percent_used
+        },
+        "categories": request.categories
+    }
+
+    values_map = budget.values_map or {}
+    bundle_config = values_map.get("bundle_config", {})
+    expected_cnt = request.expected_count or bundle_config.get("expected_count", 1)
+
+    # Master Bundle Matrix array
+    matrix = values_map.get("master_bundle_matrix", [])
+    # Update existing entry if integration_id matches or append new
+    updated = False
+    if request.integration_id:
+        for idx, item in enumerate(matrix):
+            if item.get("integration_id") == request.integration_id:
+                matrix[idx] = current_wb_entry
+                updated = True
+                break
+    if not updated:
+        matrix.append(current_wb_entry)
+
+    # Truncate matrix if over max limit 5
+    matrix = matrix[:5]
+    linked_cnt = len(matrix)
+
+    # Run AI Cross-Workbook Reconciliation Engine
+    proj_title = project.name or ""
+    reconciled_master = await reconcile_master_bundle_ai(matrix, proj_title)
+
+    # Update top-level budget fields from AI-reconciled master totals
+    master_orig = reconciled_master.get("original_contract_sum") or request.original_contract_sum
+    master_appr = reconciled_master.get("appraised_budget")
+    master_ev = reconciled_master.get("earned_value") or request.earned_value
+
+    if master_orig > 0:
+        budget.amount = master_orig
+    if master_appr is not None:
+        budget.revised_amount = master_appr
+    if master_ev is not None:
+        budget.earned_value = master_ev
+
+    # Store master JSON matrix and cleaned master table in values_map
+    values_map.update({
+        "bundle_config": {
+            "expected_count": expected_cnt,
+            "linked_count": linked_cnt,
+            "is_complete": linked_cnt >= expected_cnt
+        },
+        "master_bundle_matrix": matrix,
+        "master_cleaned_table": reconciled_master,
+        "original_contract_sum": master_orig,
+        "appraised_budget": master_appr,
+        "is_appraised": master_appr is not None and master_appr != master_orig,
+        "earned_value": master_ev,
+        "remaining_balance": reconciled_master.get("remaining_balance", 0.0),
+        "percent_used": reconciled_master.get("percent_used", 0.0),
+        "summary_breakdown": reconciled_master.get("reconciled_categories", [])
+    })
+
+    budget.values_map = values_map
+    db.commit()
+    db.refresh(budget)
+
+    # Link/create BudgetDocument reference if file_url provided
+    if request.file_url or request.title:
+        new_doc = BudgetDocument(
+            budget_id=budget.id,
+            project_id=request.project_id,
+            contract_id=contract_id,
+            name=f"[{request.trade_label}] {request.title or 'Budget Sheet'}",
+            file_url=request.file_url,
+            origin="cloud_integration" if request.integration_id else "file_upload",
+            integration_id=request.integration_id
+        )
+        db.add(new_doc)
+        db.commit()
+
+    if request.integration_id:
+        integration = db.query(ProjectIntegration).filter(ProjectIntegration.id == request.integration_id).first()
+        if integration:
+            meta_data = integration.meta_data or {}
+            meta_data["trade_label"] = request.trade_label
+            integration.meta_data = meta_data
+            db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Successfully committed budget workbook '{request.trade_label}' and reconciled Master Table.",
+        "budget_id": budget.id,
+        "master_cleaned_table": reconciled_master
+    }
+
+

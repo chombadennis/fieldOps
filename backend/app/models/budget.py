@@ -12,6 +12,7 @@ class Budget(Base, CustomBase):
     contract_id = Column(Integer, ForeignKey('contracts.id', ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String, nullable=False, index=True)
     amount = Column(Float, nullable=False)
+    revised_amount = Column(Float, nullable=True)
     planned_value = Column(Float, nullable=True)
     earned_value = Column(Float, nullable=True)
     actual_cost = Column(Float, nullable=True)

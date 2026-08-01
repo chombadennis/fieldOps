@@ -25,6 +25,7 @@ import RoleSwitcher, { UserRole, ROLES_CONFIG } from '@/components/RoleSwitcher'
 import BudgetsTab from '@/components/BudgetsTab';
 import IpcsTab from '@/components/IpcsTab';
 import DepartmentTab from '@/components/DepartmentTab';
+import DiscussionBoard from '@/components/DiscussionBoard';
 import { AlertTriangle, X, FileSpreadsheet, DollarSign, FileCheck, HardHat, Wrench, Users, Scale, Building2, Calendar } from 'lucide-react';
 
 export default function ProjectDashboardPage({ params }: { params: { projectId: string } }) {
@@ -363,9 +364,9 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                   {/* Cloud Integrations Card */}
                   <BoqIntegrations
                     projectId={project.id}
-                    integrations={project.integrations || []}
+                    integrations={(project.integrations || []).filter((i: any) => i.module === 'boq')}
                     boqDocuments={project.boq_documents || []}
-                    documents={documents}
+                    documents={documents.filter((d: any) => d.department?.toLowerCase() === 'boq')}
                     onRefresh={fetchProjectData}
                     globalLoading={globalProcessing}
                     setGlobalLoading={setGlobalProcessing}
@@ -383,7 +384,15 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                     documents={project.boq_documents || []}
                     onViewItems={handleViewBoqItems}
                     onDeleteDocument={handleDeleteBoqDocument}
-                    integrations={project.integrations || []}
+                    integrations={(project.integrations || []).filter((i: any) => i.module === 'boq')}
+                  />
+                  
+                  {/* Discussion Board for BoQ */}
+                  <DiscussionBoard
+                    notes={notes.filter((n: any) => n.department?.toLowerCase() === 'boq')}
+                    onAddNote={handleAddNote}
+                    departmentKey="boq"
+                    departmentName="Bill of Quantities"
                   />
                 </div>
               )}
@@ -393,10 +402,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                 <IpcsTab
                   projectId={project.id}
                   ipcs={ipcs}
-                  notes={notes}
-                  documents={documents}
+                  notes={notes.filter((n: any) => n.department?.toLowerCase() === 'ipc' || n.department?.toLowerCase() === 'ipcs')}
+                  documents={documents.filter((d: any) => d.department?.toLowerCase() === 'ipc' || d.department?.toLowerCase() === 'ipcs')}
                   onAddNote={handleAddNote}
-                  integrations={project.integrations || []}
+                  integrations={(project.integrations || []).filter((i: any) => i.module === 'ipc' || i.module === 'ipcs')}
                   boqDocuments={project.boq_documents || []}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
@@ -408,10 +417,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
               {pmoSubTab === 'budgets' && (
                 <BudgetsTab
                   projectId={project.id}
-                  notes={notes}
-                  documents={documents}
+                  notes={notes.filter((n: any) => n.department?.toLowerCase() === 'budget' || n.department?.toLowerCase() === 'budgets')}
+                  documents={documents.filter((d: any) => d.department?.toLowerCase() === 'budget' || d.department?.toLowerCase() === 'budgets')}
                   onAddNote={handleAddNote}
-                  integrations={project.integrations || []}
+                  integrations={(project.integrations || []).filter((i: any) => i.module === 'budget' || i.module === 'budgets')}
                   boqDocuments={project.boq_documents || []}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
@@ -427,10 +436,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                   apiEndpoint="activity_schedule"
                   description="Upload and link Lump Sum Activity Schedule files. Expected format: Excel Workbooks."
                   colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
-                  notes={notes}
-                  documents={documents}
+                  notes={notes.filter((n: any) => n.department?.toLowerCase() === 'activity_schedule')}
+                  documents={documents.filter((d: any) => d.department?.toLowerCase() === 'activity_schedule')}
                   onAddNote={handleAddNote}
-                  integrations={project.integrations || []}
+                  integrations={(project.integrations || []).filter((i: any) => i.module === 'activity_schedule')}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
                   setGlobalLoading={setGlobalProcessing}
@@ -447,10 +456,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                   apiEndpoint="milestone_claims"
                   description="Upload milestone payment claims and certificates. Expected format: PDF or Word."
                   colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
-                  notes={notes}
-                  documents={documents}
+                  notes={notes.filter((n: any) => n.department?.toLowerCase() === 'milestone_claims')}
+                  documents={documents.filter((d: any) => d.department?.toLowerCase() === 'milestone_claims')}
                   onAddNote={handleAddNote}
-                  integrations={project.integrations || []}
+                  integrations={(project.integrations || []).filter((i: any) => i.module === 'milestone_claims')}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
                   setGlobalLoading={setGlobalProcessing}
@@ -467,10 +476,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                   apiEndpoint="rate_schedule"
                   description="Upload Cost-Plus Schedule of Rates. Expected format: Excel Workbooks."
                   colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
-                  notes={notes}
-                  documents={documents}
+                  notes={notes.filter((n: any) => n.department?.toLowerCase() === 'rate_schedule')}
+                  documents={documents.filter((d: any) => d.department?.toLowerCase() === 'rate_schedule')}
                   onAddNote={handleAddNote}
-                  integrations={project.integrations || []}
+                  integrations={(project.integrations || []).filter((i: any) => i.module === 'rate_schedule')}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
                   setGlobalLoading={setGlobalProcessing}
@@ -487,10 +496,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                   apiEndpoint="reimbursable_claims"
                   description="Upload daily invoices, receipts, and reimbursable claims. Expected format: PDF or Images."
                   colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
-                  notes={notes}
-                  documents={documents}
+                  notes={notes.filter((n: any) => n.department?.toLowerCase() === 'reimbursable_claims')}
+                  documents={documents.filter((d: any) => d.department?.toLowerCase() === 'reimbursable_claims')}
                   onAddNote={handleAddNote}
-                  integrations={project.integrations || []}
+                  integrations={(project.integrations || []).filter((i: any) => i.module === 'reimbursable_claims')}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
                   setGlobalLoading={setGlobalProcessing}
@@ -507,10 +516,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                   apiEndpoint="program_of_works"
                   description="Upload master scheduling files and timelines. Expected format: MPP (MS Project), Excel, or PDF."
                   colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
-                  notes={notes}
-                  documents={documents}
+                  notes={notes.filter((n: any) => n.department?.toLowerCase() === 'program_of_works')}
+                  documents={documents.filter((d: any) => d.department?.toLowerCase() === 'program_of_works')}
                   onAddNote={handleAddNote}
-                  integrations={project.integrations || []}
+                  integrations={(project.integrations || []).filter((i: any) => i.module === 'program_of_works')}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
                   setGlobalLoading={setGlobalProcessing}
@@ -531,10 +540,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           apiEndpoint="tech"
           description={`Technical specs, structural calculations, and engineering issue logs. Expected format: PDF, AutoCAD (DWG), or Images. ${contractContext}`}
           colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
-          notes={notes}
-          documents={documents}
+          notes={notes.filter((n: any) => n.department?.toLowerCase() === 'tech')}
+          documents={documents.filter((d: any) => d.department?.toLowerCase() === 'tech')}
           onAddNote={handleAddNote}
-          integrations={project.integrations || []}
+          integrations={(project.integrations || []).filter((i: any) => i.module === 'tech')}
           boqDocuments={project.boq_documents || []}
           onRefresh={fetchProjectData}
           globalLoading={globalProcessing}
@@ -552,10 +561,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           apiEndpoint="field_ops"
           description={`Site equipment status, weather delays, safety updates, and contractor coordination. Expected format: PDF, Word, or Images. ${contractContext}`}
           colorTheme="bg-gradient-to-r from-princeton-orange-950 via-princeton-orange-900 to-autumn-leaf-950"
-          notes={notes}
-          documents={documents}
+          notes={notes.filter((n: any) => n.department?.toLowerCase() === 'field_ops')}
+          documents={documents.filter((d: any) => d.department?.toLowerCase() === 'field_ops')}
           onAddNote={handleAddNote}
-          integrations={project.integrations || []}
+          integrations={(project.integrations || []).filter((i: any) => i.module === 'field_ops')}
           boqDocuments={project.boq_documents || []}
           onRefresh={fetchProjectData}
           globalLoading={globalProcessing}
@@ -572,10 +581,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           departmentKey="HR"
           description="Site staffing rosters, labor compliance, personnel onboarding, and labor issues. Expected format: PDF, Excel, or Word."
           colorTheme="bg-gradient-to-r from-emerald-950 via-teal-900 to-dark-teal-950"
-          notes={notes}
-          documents={documents}
+          notes={notes.filter((n: any) => n.department?.toLowerCase() === 'hr')}
+          documents={documents.filter((d: any) => d.department?.toLowerCase() === 'hr')}
           onAddNote={handleAddNote}
-          integrations={project.integrations || []}
+          integrations={(project.integrations || []).filter((i: any) => i.module?.toLowerCase() === 'hr')}
           boqDocuments={project.boq_documents || []}
           onRefresh={fetchProjectData}
           globalLoading={globalProcessing}
@@ -592,10 +601,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           departmentKey="Legal"
           description="Subcontractor contracts, environmental permits, regulatory compliance, and legal notices. Expected format: PDF or Word."
           colorTheme="bg-gradient-to-r from-crimson-violet-950 via-deep-crimson-950 to-dark-teal-950"
-          notes={notes}
-          documents={documents}
+          notes={notes.filter((n: any) => n.department?.toLowerCase() === 'legal')}
+          documents={documents.filter((d: any) => d.department?.toLowerCase() === 'legal')}
           onAddNote={handleAddNote}
-          integrations={project.integrations || []}
+          integrations={(project.integrations || []).filter((i: any) => i.module?.toLowerCase() === 'legal')}
           boqDocuments={project.boq_documents || []}
           onRefresh={fetchProjectData}
           globalLoading={globalProcessing}

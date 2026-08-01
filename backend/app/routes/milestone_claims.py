@@ -104,9 +104,6 @@ def create_milestone_claims_document(
         existing_doc = query.filter(MilestoneClaimDocument.file_url == doc_in.file_url).first()
 
     if existing_doc:
-        if getattr(existing_doc, 'is_linked', True):
-            raise HTTPException(status_code=409, detail="This document is already linked to this module.")
-            
         existing_doc.name = doc_in.title
         existing_doc.file_url = doc_in.file_url
         existing_doc.file_type = doc_in.file_type
@@ -184,8 +181,8 @@ def create_milestone_claims_document(
         created_at=getattr(d, 'created_at', None)
     )
 
-@router.delete("/{document_id}")
-def delete_milestone_claims_document(
+@router.post("/{document_id}/unlink")
+def unlink_milestone_claims_document(
     project_id: int,
     document_id: int,
     db: Session = Depends(get_db)
@@ -202,8 +199,28 @@ def delete_milestone_claims_document(
         doc.unlinked_at = func.now()
         db.commit()
         db.refresh(doc)
-        return {"status": "unlinked"}
-    else:
-        db.delete(doc)
+    return {"status": "unlinked"}
+
+@router.delete("/{document_id}")
+def delete_milestone_claims_document(
+    project_id: int,
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    doc = db.query(MilestoneClaimDocument).filter(MilestoneClaimDocument.id == document_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    if hasattr(doc, 'project_id') and doc.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Document does not belong to this project")
+
+    # Step 1: Unlink first
+    if hasattr(doc, 'is_linked'):
+        doc.is_linked = False
+        doc.unlinked_at = func.now()
         db.commit()
-        return {"status": "deleted"}
+
+    # Step 2: Permanently delete document data from database
+    db.delete(doc)
+    db.commit()
+    return {"status": "deleted", "message": "Document data permanently deleted from database"}

@@ -30,16 +30,6 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteClick = (doc: BoqDocument) => {
-    // Check if the document's origin is actively linked to a cloud integration
-    const isLinked = integrations?.some(
-      (integration) => integration.provider === doc.origin && integration.project_id === doc.project_id
-    );
-
-    if (isLinked) {
-      setDocBlockedToDelete(doc);
-      return;
-    }
-
     setDocToDelete(doc);
   };
 
@@ -187,12 +177,12 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
             </div>
 
             <p className="text-sm text-gray-600 leading-relaxed mb-4">
-              Are you sure you want to permanently delete the BOQ document <span className="font-bold text-gray-800">"{docToDelete.name}"</span>? This will delete the document and all of its parsed items from the FieldOps database permanently. This is not a recoverable operation.
+              You are about to perform an <span className="font-bold text-red-600">irreversible deletion</span> of the BOQ document <span className="font-bold text-gray-800">"{docToDelete.name}"</span> from the database and all of its records will be deleted permanently. Do you wish to continue?
             </p>
 
             <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-xl mb-4">
               <span className="font-bold block mb-0.5 text-blue-900 uppercase tracking-wider text-[10px]">Cloud Storage Safeguard</span>
-              Note: This will <span className="font-bold text-blue-900">NOT</span> delete the actual file in your cloud drive (Google Drive/OneDrive). It only deletes it from the local database.
+              Note: This action will <span className="font-bold text-blue-900">NOT</span> delete the actual file in your cloud drive.
             </div>
 
             {deleting && (
