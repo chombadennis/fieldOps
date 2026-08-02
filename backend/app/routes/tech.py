@@ -214,13 +214,12 @@ def delete_tech_document(
     if hasattr(doc, 'project_id') and doc.project_id != project_id:
         raise HTTPException(status_code=400, detail="Document does not belong to this project")
 
-    # Step 1: Unlink first
-    if hasattr(doc, 'is_linked'):
-        doc.is_linked = False
-        doc.unlinked_at = func.now()
-        db.commit()
+    # Step 1: Delete integration if attached
+    if getattr(doc, 'integration_id', None):
+        from ..models.project_integration import ProjectIntegration
+        db.query(ProjectIntegration).filter(ProjectIntegration.id == doc.integration_id).delete(synchronize_session=False)
 
     # Step 2: Permanently delete document data from database
     db.delete(doc)
     db.commit()
-    return {"status": "deleted", "message": "Document data permanently deleted from database"}
+    return {"status": "deleted", "message": "Document data and integration permanently deleted from database"}

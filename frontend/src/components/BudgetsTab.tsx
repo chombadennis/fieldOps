@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info } from 'lucide-react';
 import BudgetIntegrations from '@/components/BudgetIntegrations';
-import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
-import { unlinkProjectDocument, deleteProjectDocument, unlinkDecoupledDocument, deleteDecoupledDocument, getProjectBudgets } from '@/services/api';
+import { getProjectBudgets } from '@/services/api';
 
 interface Note {
   id: number;
@@ -53,9 +52,6 @@ export default function BudgetsTab({
   const [isIssue, setIsIssue] = useState(false);
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
-  const [unlinkingId, setUnlinkingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-
   const [budgetRecord, setBudgetRecord] = useState<any>(null);
 
   const fetchBudgetRecord = async () => {
@@ -76,52 +72,8 @@ export default function BudgetsTab({
     fetchBudgetRecord();
   }, [projectId]);
 
-  const handleUnlinkDocument = async (documentId: number) => {
-    if (!onRefresh) return;
-    setUnlinkingId(documentId);
-    if (setGlobalLoading) setGlobalLoading(true);
-    try {
-      await unlinkDecoupledDocument(projectId, 'budget', documentId).catch(() => unlinkProjectDocument(projectId, documentId));
-      onRefresh();
-      fetchBudgetRecord();
-    } catch (err) {
-      console.error(err);
-      alert('Failed to unlink document.');
-    } finally {
-      setUnlinkingId(null);
-      if (setGlobalLoading) setGlobalLoading(false);
-    }
-  };
-
-  const handleDeleteDocument = async (documentId: number) => {
-    if (!onRefresh) return;
-    setDeletingId(documentId);
-    if (setGlobalLoading) setGlobalLoading(true);
-    try {
-      await deleteDecoupledDocument(projectId, 'budget', documentId).catch(() => deleteProjectDocument(projectId, documentId));
-      onRefresh();
-      fetchBudgetRecord();
-    } catch (err) {
-      console.error(err);
-      alert('Failed to delete document data.');
-    } finally {
-      setDeletingId(null);
-      if (setGlobalLoading) setGlobalLoading(false);
-    }
-  };
-
   // Filter notes globally for Budgets tab
   const filteredNotes = notes.filter((n) => n.department?.toUpperCase() === 'BUDGET');
-  
-  // Base docs for budget
-  const baseBudgetDocs = documents.filter((d) => d.department?.toUpperCase() === 'BUDGET');
-  
-  // Filter docs based on internal tab using title prefix
-  const filteredDocs = baseBudgetDocs.filter((d) => {
-    if (internalTab === 'progress') return d.title.startsWith('[Progress]');
-    if (internalTab === 'cost') return d.title.startsWith('[Cost]');
-    return d.title.startsWith('[Budget]') || (!d.title.startsWith('[Progress]') && !d.title.startsWith('[Cost]'));
-  });
 
   const handlePostNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,15 +107,15 @@ export default function BudgetsTab({
   const bundleConfig = valuesMap.bundle_config || { expected_count: 1, linked_count: 1 };
 
   const originalSum = masterCleaned.original_contract_sum || valuesMap.original_contract_sum || budgetRecord?.amount || 0;
-  const appraisedBudget = masterCleaned.appraised_budget ?? valuesMap.appraised_budget ?? budgetRecord?.revised_amount;
-  const isAppraised = valuesMap.is_appraised || (appraisedBudget !== null && appraisedBudget !== undefined && appraisedBudget !== originalSum);
+  const appraisedBudget = masterCleaned.appraised_budget || valuesMap.appraised_budget || budgetRecord?.revised_amount || null;
+  const isAppraised = !!valuesMap.is_appraised || (appraisedBudget !== null && appraisedBudget !== undefined && appraisedBudget !== originalSum);
   const effectiveBudget = (appraisedBudget !== null && appraisedBudget !== undefined && Number(appraisedBudget) > 0)
     ? Number(appraisedBudget)
     : originalSum;
-  const earnedValue = masterCleaned.earned_value ?? valuesMap.earned_value ?? budgetRecord?.earned_value ?? 0;
-  const remainingBalance = masterCleaned.remaining_balance ?? valuesMap.remaining_balance ?? Math.max(0, effectiveBudget - earnedValue);
-  const percentUsed = masterCleaned.percent_used ?? valuesMap.percent_used ?? (effectiveBudget > 0 ? Math.min(100, (earnedValue / effectiveBudget) * 100) : 0);
-  const categories: any[] = masterCleaned.reconciled_categories || valuesMap.summary_breakdown || [];
+  const earnedValue = masterCleaned.earned_value || valuesMap.earned_value || budgetRecord?.earned_value || 0;
+  const remainingBalance = masterCleaned.remaining_balance || valuesMap.remaining_balance || Math.max(0, effectiveBudget - earnedValue);
+  const percentUsed = masterCleaned.percent_used || valuesMap.percent_used || (effectiveBudget > 0 ? Math.min(100, (earnedValue / effectiveBudget) * 100) : 0);
+  const categories: any[] = (masterCleaned.categories && masterCleaned.categories.length > 0) ? masterCleaned.categories : (masterCleaned.reconciled_categories || valuesMap.summary_breakdown || []);
   const detectedOverlaps: string[] = masterCleaned.detected_overlaps || [];
 
   return (
@@ -347,7 +299,12 @@ export default function BudgetsTab({
       {integrations && onRefresh && setGlobalLoading && (
         <BudgetIntegrations
           projectId={projectId}
-          integrations={integrations.filter(i => i.module === 'budgets' || i.module === 'budget')}
+          moduleContext={internalTab === 'progress' ? 'progress' : internalTab === 'cost' ? 'cost' : 'budget'}
+          integrations={integrations.filter(i => {
+            if (internalTab === 'progress') return i.module === 'progress';
+            if (internalTab === 'cost') return i.module === 'cost';
+            return i.module === 'budgets' || i.module === 'budget';
+          })}
           documents={documents}
           masterMatrix={masterMatrix}
           onRefresh={() => {
@@ -359,16 +316,6 @@ export default function BudgetsTab({
         />
       )}
 
-      {/* Linked Documents Panel */}
-      <LinkedDocumentsPanel
-        title={`Linked ${internalTab === 'budget' ? 'Project Budget' : internalTab === 'progress' ? 'Work Progress' : 'Cost Tracking'} Files`}
-        documents={filteredDocs}
-        onUnlink={handleUnlinkDocument}
-        onDelete={handleDeleteDocument}
-        unlinkingId={unlinkingId}
-        deletingId={deletingId}
-        emptyMessage="No files linked yet."
-      />
 
       {/* Discussion & Note Form */}
       <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">

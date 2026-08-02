@@ -36,7 +36,12 @@ def get_project_budgets(project_id: int, contract_id: Optional[int] = None, db: 
 
     query = db.query(Budget).filter(Budget.project_id == project_id)
     if contract_id is not None:
-        query = query.filter(Budget.contract_id == contract_id)
+        general_contract = db.query(Contract).filter(Contract.project_id == project_id, Contract.contract_type == "GENERAL").first()
+        if general_contract and contract_id == general_contract.id:
+            from sqlalchemy import or_
+            query = query.filter(or_(Budget.contract_id == contract_id, Budget.contract_id == None))
+        else:
+            query = query.filter(Budget.contract_id == contract_id)
 
     return query.order_by(Budget.created_at.desc()).all()
 

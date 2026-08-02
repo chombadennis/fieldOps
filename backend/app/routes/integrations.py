@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request,
 from fastapi.responses import RedirectResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
@@ -78,6 +79,7 @@ class BudgetCommitRequest(BaseModel):
     trade_label: Optional[str] = "General Trade"
     expected_count: Optional[int] = 1
     project_title_found: Optional[str] = None
+    module: Optional[str] = "budget"
 
 # --- OAuth Authorization Redirect URLs ---
 
@@ -756,6 +758,7 @@ async def delete_integration(
                     values_map["bundle_config"] = bundle_config
                 
                 budget.values_map = values_map
+                flag_modified(budget, "values_map")
                 db.commit()
 
     return {"status": "success", "message": "Integration and associated document data deleted successfully."}
@@ -1268,19 +1271,16 @@ async def validate_budget_document(
     if it is a valid budget document. Does NOT perform extraction or commit.
     Returns {valid: true/false, reason: ...}.
     """
-    # Check if this document was already rejected
+    # Check if this document was already rejected. If so, delete the old rejection row
+    # to allow a fresh validation check (in case the user corrected the sheet or wants to retry).
     existing_rejected = db.query(ProjectIntegration).filter(
         ProjectIntegration.project_id == request.project_id,
         ProjectIntegration.spreadsheet_id == request.spreadsheet_id,
         ProjectIntegration.module == "budget_rejected"
     ).first()
     if existing_rejected:
-        doc_type = (existing_rejected.meta_data or {}).get("identified_document_type", "Unknown Document")
-        return {
-            "valid": False,
-            "reason": doc_type,
-            "previously_flagged": True
-        }
+        db.delete(existing_rejected)
+        db.commit()
 
     # Check duplicate linkage across modules
     existing_link = db.query(ProjectIntegration).filter(
@@ -1355,15 +1355,8 @@ async def preview_budget_extraction(
         ProjectIntegration.module == "budget_rejected"
     ).first()
     if existing_rejected:
-        doc_type = (existing_rejected.meta_data or {}).get("identified_document_type", "Unknown Document")
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error_code": "INVALID_BUDGET_DOCUMENT",
-                "identified_document_type": doc_type,
-                "message": f"This document was previously rejected as a '{doc_type}'. Budget extraction is not allowed."
-            }
-        )
+        db.delete(existing_rejected)
+        db.commit()
 
     # Check duplicate linkage across modules
     existing_link = db.query(ProjectIntegration).filter(
@@ -1442,6 +1435,11 @@ async def commit_budget_extraction(
         db.add(budget)
         db.commit()
         db.refresh(budget)
+    else:
+        # Align/heal contract_id if it was legacy None/empty
+        if budget.contract_id is None and contract_id is not None:
+            budget.contract_id = contract_id
+            db.commit()
 
     # Prepare current workbook JSON entry
     current_wb_entry = {
@@ -1516,6 +1514,7 @@ async def commit_budget_extraction(
     })
 
     budget.values_map = values_map
+    flag_modified(budget, "values_map")
     db.commit()
     db.refresh(budget)
 
@@ -1523,8 +1522,6 @@ async def commit_budget_extraction(
     if request.file_url or request.title:
         new_doc = BudgetDocument(
             budget_id=budget.id,
-            project_id=request.project_id,
-            contract_id=contract_id,
             name=f"[{request.trade_label}] {request.title or 'Budget Sheet'}",
             file_url=request.file_url,
             origin="cloud_integration" if request.integration_id else "file_upload",
@@ -1539,6 +1536,8 @@ async def commit_budget_extraction(
             meta_data = integration.meta_data or {}
             meta_data["trade_label"] = request.trade_label
             integration.meta_data = meta_data
+            if request.module:
+                integration.module = request.module
             db.commit()
 
     return {
@@ -1546,6 +1545,36 @@ async def commit_budget_extraction(
         "message": f"Successfully committed budget workbook '{request.trade_label}' and reconciled Master Table.",
         "budget_id": budget.id,
         "master_cleaned_table": reconciled_master
+    }
+
+
+class UpdateModuleRequest(BaseModel):
+    module: str
+
+@router.put("/integrations/{integration_id}/module")
+async def update_integration_module(
+    integration_id: int,
+    req: UpdateModuleRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Updates the active module tag ('budget' or 'progress') of an integration.
+    """
+    integration = db.query(ProjectIntegration).filter(ProjectIntegration.id == integration_id).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found.")
+        
+    if req.module not in ["budget", "progress", "cost"]:
+        raise HTTPException(status_code=400, detail="Invalid module type. Must be 'budget', 'progress', or 'cost'.")
+        
+    integration.module = req.module
+    db.commit()
+    db.refresh(integration)
+    return {
+        "status": "success",
+        "message": f"Successfully updated integration module to {req.module}.",
+        "integration_id": integration.id,
+        "module": integration.module
     }
 
 

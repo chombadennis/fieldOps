@@ -129,17 +129,16 @@ def delete_boq_document(boq_id: int, db: Session = Depends(get_db)):
     if boq_doc is None:
         raise HTTPException(status_code=404, detail="BOQ document not found")
         
-    # Unlink/disassociate document reference if attached to an integration
-    if boq_doc.integration_id:
-        boq_doc.integration_id = None
-        db.commit()
-            
     try:
+        # Delete integration connection if attached to an integration
+        if boq_doc.integration_id:
+            db.query(ProjectIntegration).filter(ProjectIntegration.id == boq_doc.integration_id).delete(synchronize_session=False)
+
         # Bulk delete all child items to avoid slow one-by-one ORM cascades over WAN
         db.query(models.boq_item.BoqItem).filter(models.boq_item.BoqItem.boq_id == boq_id).delete(synchronize_session=False)
         db.delete(boq_doc)
         db.commit()
-        return {"status": "success", "message": f"Successfully unlinked and deleted BOQ document '{boq_doc.name}' and all its items."}
+        return {"status": "success", "message": f"Successfully unlinked, deleted integration, and deleted BOQ document '{boq_doc.name}' and all its items."}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete BOQ document: {str(e)}")

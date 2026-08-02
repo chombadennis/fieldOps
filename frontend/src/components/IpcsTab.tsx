@@ -103,7 +103,7 @@ export default function IpcsTab({
     if (setGlobalLoading) setGlobalLoading(true);
     try {
       await unlinkDecoupledDocument(projectId, 'ipc', documentId).catch(() => unlinkProjectDocument(projectId, documentId));
-      onRefresh();
+      await onRefresh();
     } catch (err) {
       console.error(err);
       alert('Failed to unlink document.');
@@ -119,7 +119,7 @@ export default function IpcsTab({
     if (setGlobalLoading) setGlobalLoading(true);
     try {
       await deleteDecoupledDocument(projectId, 'ipc', documentId).catch(() => deleteProjectDocument(projectId, documentId));
-      onRefresh();
+      await onRefresh();
     } catch (err) {
       console.error(err);
       alert('Failed to delete document data.');

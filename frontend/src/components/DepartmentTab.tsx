@@ -77,7 +77,7 @@ export default function DepartmentTab({
       } else {
         await unlinkProjectDocument(projectId, documentId);
       }
-      onRefresh();
+      await onRefresh();
     } catch (err) {
       console.error(err);
       alert('Failed to unlink document.');
@@ -97,7 +97,7 @@ export default function DepartmentTab({
       } else {
         await deleteProjectDocument(projectId, documentId);
       }
-      onRefresh();
+      await onRefresh();
     } catch (err) {
       console.error(err);
       alert('Failed to delete document data.');

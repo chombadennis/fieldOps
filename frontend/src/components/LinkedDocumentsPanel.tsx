@@ -34,7 +34,7 @@ interface LinkedDocumentsPanelProps {
   deletingId?: number | null;
   title: string;
   emptyMessage?: string;
-  docType?: 'ipc' | 'regular';
+  docType?: string;
 }
 
 export default function LinkedDocumentsPanel({
@@ -561,7 +561,7 @@ export default function LinkedDocumentsPanel({
 
               const iframeSrc = isDocSpreadsheet
                 ? (fetchedEmbedUrl || getEmbedUrl(activeDocPreview.file_url, activeDocPreview.cloud_file_id, isDocSpreadsheet) || '')
-                : getDocumentStreamUrl(activeDocPreview.id);
+                : getDocumentStreamUrl(activeDocPreview.id, docType);
 
               return (
                 <iframe

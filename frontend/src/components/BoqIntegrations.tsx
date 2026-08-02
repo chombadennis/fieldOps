@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getGoogleAuthUrl, getOneDriveAuthUrl, saveIntegration, triggerSyncImport, listCloudFiles, listCloudSheets, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, createProjectDocument, convertGoogleCloudFile } from '@/services/api';
-import { Folder, FileSpreadsheet, ChevronRight, ArrowLeft, Loader2, Trash2, AlertTriangle, ExternalLink, X, Unlink, Eye, Sparkles, Paperclip } from 'lucide-react';
+import { Folder, FileSpreadsheet, ChevronRight, ArrowLeft, Loader2, Trash2, AlertTriangle, ExternalLink, X, Unlink, Eye, Sparkles, Paperclip, RefreshCw } from 'lucide-react';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 
 
@@ -570,7 +570,6 @@ export default function BoqIntegrations({
   const handleConfirmDeleteIntegration = async () => {
     if (!integrationToDelete) return;
     const id = integrationToDelete.id;
-    setIntegrationToDelete(null);
     setDeletingId(id);
 
     if (activeEditorId === id) setActiveEditorId(null);
@@ -583,13 +582,15 @@ export default function BoqIntegrations({
     try {
       await deleteIntegration(id, true);
       setSuccess('Workbook data and all associated database records deleted permanently.');
-      onRefresh();
+      await onRefresh();
+      setIntegrationToDelete(null); // Close modal only after refresh completes
       setTimeout(() => {
         setSuccess(null);
       }, 3000);
     } catch (err) {
       setError('Failed to delete workbook data from database.');
-      onRefresh();
+      await onRefresh();
+      setIntegrationToDelete(null); // Close modal even on error
     } finally {
       setDeletingId(null);
       setLoading(false);
@@ -1101,7 +1102,7 @@ export default function BoqIntegrations({
 
               return (
                 <div key={integration.id} className="space-y-2">
-                  <div className={`rounded-xl p-5 border flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-all duration-300 ${cardClass}`}>
+                  <div className={`rounded-xl p-5 border flex flex-col md:flex-row md:items-start md:justify-between gap-4 transition-all duration-300 ${cardClass}`}>
                     <div className="flex items-start space-x-4 min-w-0">
                       <div className={`p-2.5 rounded-xl flex-shrink-0 transition-all duration-300 ${iconClass}`}>
                         {isSyncing ? (
@@ -1239,45 +1240,38 @@ export default function BoqIntegrations({
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      {(
-                        <button
-                          disabled={isLoading || syncingId !== null || deletingId !== null}
-                          onClick={() => setActiveAuditIntegration(integration)}
-                          className="py-2 px-3 border border-indigo-200 rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 hover:bg-indigo-50 hover:border-indigo-300 text-indigo-750 bg-white transition-all duration-250 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="View Structure Report"
-                        >
-                          <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-500" />
-                          <span>Structure</span>
-                        </button>
-                      )}
+                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
+                      <button
+                        disabled={isLoading || syncingId !== null || deletingId !== null}
+                        onClick={() => setActiveAuditIntegration(integration)}
+                        className="p-2 hover:bg-white text-indigo-600 hover:text-indigo-800 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                        title="Structure Report (Format Assessment)"
+                      >
+                        <FileSpreadsheet className="w-4 h-4" />
+                      </button>
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
-                        className={`py-2 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${activeEditorId === integration.id
-                          ? 'bg-indigo-650 border-indigo-600 text-white bg-indigo-600 hover:bg-indigo-750'
-                          : 'border-gray-205 border-gray-200 hover:border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                        className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'hover:bg-white text-gray-600 hover:text-gray-900'
                           }`}
-                        title={activeEditorId === integration.id ? 'Hide inline spreadsheet preview' : 'Open inline spreadsheet preview'}
+                        title={activeEditorId === integration.id ? 'Hide inline preview' : 'Open inline preview'}
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>{activeEditorId === integration.id ? 'Hide Preview' : 'Inline Preview'}</span>
+                        <Eye className="w-4 h-4" />
                       </button>
-                      {(
-                        <button
-                          disabled={isLoading || syncingId !== null || deletingId !== null}
-                          onClick={() => handleManualSync(integration.id)}
-                          title={syncingId === integration.id ? `Syncing worksheets: ${syncingName}` : "Sync workbook data"}
-                          className="py-2 px-4 border border-indigo-600 rounded-lg shadow-sm text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
-                        >
-                          {syncingId === integration.id && <Loader2 className="w-3 h-3 animate-spin" />}
-                          <span>{syncingId === integration.id ? progressMessage : 'Sync Workbook'}</span>
-                        </button>
-                      )}
+                      <button
+                        disabled={isLoading || syncingId !== null || deletingId !== null}
+                        onClick={() => handleManualSync(integration.id)}
+                        title={syncingId === integration.id ? `Syncing worksheets: ${syncingName}` : "Sync workbook data"}
+                        className="p-2 hover:bg-white text-indigo-750 hover:text-indigo-900 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${syncingId === integration.id ? 'animate-spin text-indigo-900' : ''}`} />
+                      </button>
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => handleDisconnectClick(integration.id)}
-                        className="p-2 border border-amber-200 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 hover:bg-white text-amber-600 hover:text-amber-800 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
                         title="Unlink / Disconnect workbook link (keeps database records)"
                       >
                         <Unlink className="w-4 h-4" />
@@ -1285,7 +1279,7 @@ export default function BoqIntegrations({
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => setIntegrationToDelete(integration)}
-                        className="p-2 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 hover:bg-white text-red-650 hover:text-red-700 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
                         title="Delete workbook data permanently from database"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1478,18 +1472,34 @@ export default function BoqIntegrations({
               </p>
             </div>
 
+            {isLoading && (
+              <div className="flex items-center space-x-2 text-red-650 bg-red-50/70 border border-red-100 p-3 rounded-xl mb-4 animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-red-600 flex-shrink-0" />
+                <span className="text-[11px] font-semibold text-red-700">Unlinking and permanently deleting data from database...</span>
+              </div>
+            )}
+
             <div className="flex space-x-3">
               <button
+                disabled={isLoading}
                 onClick={() => setIntegrationToDelete(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100"
+                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                disabled={isLoading}
                 onClick={handleConfirmDeleteIntegration}
-                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100"
+                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100 disabled:opacity-50 flex items-center justify-center space-x-1.5"
               >
-                Delete Permanently
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete Permanently</span>
+                )}
               </button>
             </div>
           </div>

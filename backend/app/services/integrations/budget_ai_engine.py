@@ -123,7 +123,7 @@ async def process_budget_with_ai(sheets_data: Dict[str, List[List[Any]]], contra
          
        - **EXPLICIT REINFORCED EXCLUSIONS (Always set `is_budget_document = false` for these)**:
          * **IPC / Payment Certificates**: Interim Valuation claims, contractor payment certificates, net payment now due, retentions, or valuation certificates are billing documents, NOT budgets or progress calculation overviews -> Set `is_budget_document = false` and `identified_document_type = "Interim Payment Certificate (IPC)"`.
-         * **Detailed Bills of Quantities (BoQ)**: Line-by-line itemized measure schedules with granular item numbers and unit rates are BoQs, NOT budget summaries -> Set `is_budget_document = false` and `identified_document_type = "Detailed Bill of Quantities (BoQ)"`.
+         * **Detailed Bills of Quantities (BoQ)**: Line-by-line itemized measure schedules with granular item numbers and unit rates are BoQs, NOT budget summaries. (Note: Progress tracking or EVM spreadsheets often contain summary rows for trade categories and quantities to calculate cumulative progress. Do NOT reject a document as a 'Detailed BoQ' if its primary purpose is tracking earned value, cost-to-complete, or budget progress over time). If it is a raw, non-progress measure sheet, set `is_budget_document = false` and `identified_document_type = "Detailed Bill of Quantities (BoQ)"`.
          * **Invoices / POs / Receipts**: Vendor invoices, tax receipts, or purchase orders -> Set `is_budget_document = false` and `identified_document_type = "Vendor Invoice / PO"`.
          * **Other Non-Budget Files**: Architectural logs, safety checklists, HR rosters, timesheets, site memos -> Set `is_budget_document = false`.
 

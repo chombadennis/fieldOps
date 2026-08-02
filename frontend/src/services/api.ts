@@ -199,8 +199,9 @@ export const convertGoogleCloudFile = async (provider: string, refreshToken: str
   return response.data;
 };
 
-export const getDocumentStreamUrl = (documentId: number) => {
-  return `${API_URL}/documents/${documentId}/stream`;
+export const getDocumentStreamUrl = (documentId: number, docType?: string) => {
+  const url = `${API_URL}/documents/${documentId}/stream`;
+  return docType ? `${url}?doc_type=${docType}` : url;
 };
 
 export const getBoqItems = async (boqId: number) => {
@@ -345,8 +346,14 @@ export const commitBudgetExtraction = async (data: {
   trade_label?: string;
   expected_count?: number;
   project_title_found?: string;
+  module?: string;
 }) => {
   const response = await apiClient.post('/integrations/budget/commit', data);
+  return response.data;
+};
+
+export const updateIntegrationModule = async (integrationId: string | number, module: string) => {
+  const response = await apiClient.put(`/integrations/${integrationId}/module`, { module });
   return response.data;
 };
 

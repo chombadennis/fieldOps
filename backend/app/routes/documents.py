@@ -163,15 +163,15 @@ def delete_project_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Unlink first
-    doc.is_linked = False
-    doc.unlinked_at = func.now()
-    db.commit()
+    # Delete integration connection if attached to an integration
+    if doc.integration_id:
+        from ..models.project_integration import ProjectIntegration
+        db.query(ProjectIntegration).filter(ProjectIntegration.id == doc.integration_id).delete(synchronize_session=False)
 
     # Permanently delete document from database
     db.delete(doc)
     db.commit()
-    return {"status": "deleted", "message": f"Document '{doc.name}' unlinked and permanently deleted from database."}
+    return {"status": "deleted", "message": f"Document '{doc.name}' integration and document permanently deleted from database."}
 
 
 @router.get("/documents/{document_id}/embed-url")
@@ -189,6 +189,12 @@ async def get_document_embed_url(
     if doc_type == "ipc":
         from ..models.ipc_document import IpcDocument
         doc = db.query(IpcDocument).filter(IpcDocument.id == document_id).first()
+    elif doc_type == "budget":
+        from ..models.budget_document import BudgetDocument
+        doc = db.query(BudgetDocument).filter(BudgetDocument.id == document_id).first()
+    elif doc_type == "boq":
+        from ..models.boq_document import BoqDocument
+        doc = db.query(BoqDocument).filter(BoqDocument.id == document_id).first()
     else:
         doc = db.query(Document).filter(Document.id == document_id).first()
         
@@ -196,40 +202,51 @@ async def get_document_embed_url(
         raise HTTPException(status_code=404, detail="Document not found")
 
     integration = None
-    if doc.integration_id:
+    if getattr(doc, "integration_id", None):
         integration = db.query(ProjectIntegration).filter(ProjectIntegration.id == doc.integration_id).first()
 
     # Auto-heal legacy documents created before integration_id was stored
     if not integration:
-        if doc.cloud_file_id:
+        cloud_file_id = getattr(doc, "cloud_file_id", None)
+        project_id = getattr(doc, "project_id", None)
+        if not project_id and hasattr(doc, "budget") and doc.budget:
+            project_id = doc.budget.project_id
+        if not project_id and hasattr(doc, "project") and doc.project:
+            project_id = doc.project.id
+            
+        if cloud_file_id and project_id:
             integration = db.query(ProjectIntegration).filter(
-                ProjectIntegration.project_id == doc.project_id,
-                ProjectIntegration.spreadsheet_id == doc.cloud_file_id
+                ProjectIntegration.project_id == project_id,
+                ProjectIntegration.spreadsheet_id == cloud_file_id
             ).first()
-        if not integration:
-            provider = "onedrive" if doc.origin in ["onedrive", "microsoft"] else "google_sheets"
+        if not integration and project_id:
+            origin = getattr(doc, "origin", None)
+            provider = "onedrive" if origin in ["onedrive", "microsoft"] else "google_sheets"
             integration = db.query(ProjectIntegration).filter(
-                ProjectIntegration.project_id == doc.project_id,
+                ProjectIntegration.project_id == project_id,
                 ProjectIntegration.provider == provider
             ).order_by(ProjectIntegration.id.desc()).first()
 
         # Persist healed integration_id for future fast lookups
-        if integration:
+        if integration and hasattr(doc, "integration_id"):
             doc.integration_id = integration.id
             db.commit()
             db.refresh(doc)
 
     if not integration:
         # Fallback for Google Drive files without active integration record
-        file_id = doc.cloud_file_id
-        if not file_id and doc.file_url:
+        file_id = getattr(doc, "cloud_file_id", None)
+        file_url = getattr(doc, "file_url", None)
+        origin = getattr(doc, "origin", None)
+        file_type = getattr(doc, "file_type", None)
+        if not file_id and file_url:
             import re
-            match = re.search(r'(?:file/d/|id=)([a-zA-Z0-9_-]+)', doc.file_url)
+            match = re.search(r'(?:file/d/|id=)([a-zA-Z0-9_-]+)', file_url)
             if match:
                 file_id = match.group(1)
-        if file_id and (doc.origin == "google" or "google.com" in getattr(doc, "file_url", "") or not doc.origin):
+        if file_id and (origin == "google" or "google.com" in getattr(doc, "file_url", "") or not origin):
             title = getattr(doc, "title", getattr(doc, "name", ""))
-            is_sheet = doc.file_type == "Cloud File" or (title and any(title.lower().endswith(ext) for ext in [".xlsx", ".xls", ".csv", ".ods", ".gsheet"]))
+            is_sheet = file_type == "Cloud File" or (title and any(title.lower().endswith(ext) for ext in [".xlsx", ".xls", ".csv", ".ods", ".gsheet"]))
             if is_sheet:
                 return {"url": f"https://docs.google.com/spreadsheets/d/{file_id}/preview", "provider": "google"}
             else:
@@ -247,8 +264,10 @@ async def get_document_embed_url(
         if integration.provider == "google_sheets":
             from ..services.integrations.embed_service import get_google_embed_url
             title = getattr(doc, "title", getattr(doc, "name", ""))
-            is_sheet = doc.file_type == "Cloud File" or (title and any(title.lower().endswith(ext) for ext in [".xlsx", ".xls", ".csv", ".ods", ".gsheet"]))
-            embed_url = await get_google_embed_url(doc.cloud_file_id or integration.spreadsheet_id, mode, is_sheet=is_sheet)
+            file_type = getattr(doc, "file_type", None)
+            is_sheet = file_type == "Cloud File" or (title and any(title.lower().endswith(ext) for ext in [".xlsx", ".xls", ".csv", ".ods", ".gsheet"]))
+            cloud_file_id = getattr(doc, "cloud_file_id", None)
+            embed_url = await get_google_embed_url(cloud_file_id or integration.spreadsheet_id, mode, is_sheet=is_sheet)
             return {"url": embed_url, "provider": "google"}
 
         elif integration.provider == "onedrive":
@@ -259,7 +278,8 @@ async def get_document_embed_url(
             access_token = await refresh_onedrive_access_token(decrypted)
 
             # Get webUrl from Microsoft Graph using cloud_file_id
-            file_id = doc.cloud_file_id or integration.spreadsheet_id
+            cloud_file_id = getattr(doc, "cloud_file_id", None)
+            file_id = cloud_file_id or integration.spreadsheet_id
             url = f"https://graph.microsoft.com/v1.0/me/drive/items/{file_id}?select=webUrl"
             headers = {"Authorization": f"Bearer {access_token}"}
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -276,7 +296,8 @@ async def get_document_embed_url(
             is_office = True
             title = getattr(doc, "title", getattr(doc, "name", ""))
             title_lower = title.lower() if title else ""
-            file_type_lower = doc.file_type.lower() if doc.file_type else ""
+            file_type = getattr(doc, "file_type", None)
+            file_type_lower = file_type.lower() if file_type else ""
             
             # Default to Office format unless explicitly a PDF, 
             # to handle Office files that might not have extensions in their title.
@@ -289,6 +310,8 @@ async def get_document_embed_url(
                 import os
                 api_base = os.environ.get("VITE_API_URL", "http://localhost:8000")
                 embed_url = f"{api_base}/api/documents/{doc.id}/stream"
+                if doc_type:
+                    embed_url += f"?doc_type={doc_type}"
                 
             return {"url": embed_url, "provider": "onedrive"}
 
@@ -305,6 +328,7 @@ async def get_document_embed_url(
 @router.get("/documents/{document_id}/stream")
 async def stream_project_document(
     document_id: int,
+    doc_type: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -315,24 +339,43 @@ async def stream_project_document(
     from fastapi.responses import Response
     import httpx
 
-    doc = db.query(Document).filter(Document.id == document_id).first()
+    if doc_type == "ipc":
+        from ..models.ipc_document import IpcDocument
+        doc = db.query(IpcDocument).filter(IpcDocument.id == document_id).first()
+    elif doc_type == "budget":
+        from ..models.budget_document import BudgetDocument
+        doc = db.query(BudgetDocument).filter(BudgetDocument.id == document_id).first()
+    elif doc_type == "boq":
+        from ..models.boq_document import BoqDocument
+        doc = db.query(BoqDocument).filter(BoqDocument.id == document_id).first()
+    else:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
     integration = None
-    if doc.integration_id:
+    if getattr(doc, "integration_id", None):
         integration = db.query(ProjectIntegration).filter(ProjectIntegration.id == doc.integration_id).first()
 
-    if not integration and doc.cloud_file_id:
+    cloud_file_id = getattr(doc, "cloud_file_id", None)
+    project_id = getattr(doc, "project_id", None)
+    if not project_id and hasattr(doc, "budget") and doc.budget:
+        project_id = doc.budget.project_id
+    if not project_id and hasattr(doc, "project") and doc.project:
+        project_id = doc.project.id
+
+    if not integration and cloud_file_id and project_id:
         integration = db.query(ProjectIntegration).filter(
-            ProjectIntegration.project_id == doc.project_id,
-            ProjectIntegration.spreadsheet_id == doc.cloud_file_id
+            ProjectIntegration.project_id == project_id,
+            ProjectIntegration.spreadsheet_id == cloud_file_id
         ).first()
 
-    if not integration:
-        provider = "onedrive" if (doc.origin and doc.origin in ["onedrive", "microsoft"]) else "google_sheets"
+    if not integration and project_id:
+        origin = getattr(doc, "origin", None)
+        provider = "onedrive" if (origin and origin in ["onedrive", "microsoft"]) else "google_sheets"
         integration = db.query(ProjectIntegration).filter(
-            ProjectIntegration.project_id == doc.project_id,
+            ProjectIntegration.project_id == project_id,
             ProjectIntegration.provider == provider
         ).order_by(ProjectIntegration.id.desc()).first()
 
@@ -342,9 +385,11 @@ async def stream_project_document(
             detail="No active cloud integration found to authorize document stream."
         )
 
-    file_id = doc.cloud_file_id or integration.spreadsheet_id
+    file_id = cloud_file_id or integration.spreadsheet_id
     if not file_id:
         raise HTTPException(status_code=400, detail="Cloud file ID not found for document.")
+
+    title = getattr(doc, "title", getattr(doc, "name", "Document"))
 
     from ..utils.security import decrypt_token
     decrypted = decrypt_token(integration.refresh_token)
@@ -365,7 +410,7 @@ async def stream_project_document(
                 content=resp.content,
                 media_type=content_type,
                 headers={
-                    "Content-Disposition": f'inline; filename="{doc.title}"',
+                    "Content-Disposition": f'inline; filename="{title}"',
                     "Cache-Control": "private, max-age=3600"
                 }
             )
@@ -386,7 +431,7 @@ async def stream_project_document(
                 content=resp.content,
                 media_type=content_type,
                 headers={
-                    "Content-Disposition": f'inline; filename="{doc.title}"',
+                    "Content-Disposition": f'inline; filename="{title}"',
                     "Cache-Control": "private, max-age=3600"
                 }
             )

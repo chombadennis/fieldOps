@@ -3,12 +3,13 @@ import {
   FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Layers
 } from 'lucide-react';
 import {
-  getGoogleAuthUrl, getOneDriveAuthUrl, listActiveIntegrationSheets, deleteIntegration, previewBudgetExtraction, commitBudgetExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateBudget
+  getGoogleAuthUrl, getOneDriveAuthUrl, listActiveIntegrationSheets, deleteIntegration, previewBudgetExtraction, commitBudgetExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateBudget, updateIntegrationModule
 } from '@/services/api';
 import BudgetExtractionPreviewModal from './integrations/BudgetExtractionPreviewModal';
 import BudgetBundleSetupModal from './integrations/BudgetBundleSetupModal';
 import WorkbookInlinePreviewDrawer from './integrations/WorkbookInlinePreviewDrawer';
 import CloudConfigModal from './integrations/CloudConfigModal';
+import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 
 interface Integration {
   id: number;
@@ -18,26 +19,29 @@ interface Integration {
   boq_name?: string;
   last_synced_at?: string;
   meta_data?: any;
+  module?: string;
 }
 
 interface BudgetIntegrationsProps {
   projectId: number;
   integrations: Integration[];
-  documents?: any[];
+  documents: any[];
+  masterMatrix: any[];
   onRefresh: () => void;
   globalLoading?: boolean;
-  setGlobalLoading?: (loading: boolean) => void;
-  masterMatrix?: any[];
+  setGlobalLoading?: (val: boolean) => void;
+  moduleContext?: string;
 }
 
 export default function BudgetIntegrations({
   projectId,
-  integrations = [],
-  documents = [],
+  integrations,
+  documents,
+  masterMatrix,
   onRefresh,
   globalLoading,
   setGlobalLoading,
-  masterMatrix = [],
+  moduleContext = 'budget'
 }: BudgetIntegrationsProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [pendingProvider, setPendingProvider] = useState<'google' | 'onedrive' | null>(null);
@@ -72,12 +76,16 @@ export default function BudgetIntegrations({
   const [fetchingSheets, setFetchingSheets] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
 
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
   const [extractingIntegrationId, setExtractingIntegrationId] = useState<number | null>(null);
   const [extractedData, setExtractedData] = useState<any>(null);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
   const [rejectedDocumentContext, setRejectedDocumentContext] = useState<string | null>(null);
   const [warningFileContext, setWarningFileContext] = useState<any>(null);
 
@@ -501,6 +509,7 @@ export default function BudgetIntegrations({
     if (setGlobalLoading) setGlobalLoading(true);
     try {
       let integrationId = selectedIntegration?.id;
+      const targetModule = finalData.module || moduleContext;
       
       if (!integrationId && pendingFileDetails && oauthProvider && refreshToken) {
         const savedInt = await saveIntegration({
@@ -510,7 +519,7 @@ export default function BudgetIntegrations({
           sheet_name: pendingFileDetails.sheetsNames,
           refresh_token: refreshToken,
           boq_name: pendingFileDetails.boqName,
-          module: 'budgets',
+          module: targetModule,
           trade_label: finalData.trade_label || bundleConfig.tradeLabel,
           tracking_mode: bundleConfig.isBundle ? 'split' : 'single'
         });
@@ -526,7 +535,8 @@ export default function BudgetIntegrations({
         percent_used: finalData.percent_used,
         categories: finalData.categories,
         integration_id: integrationId,
-        title: pendingFileDetails?.boqName || selectedIntegration?.boq_name || 'Master Budget & EVM',
+        module: targetModule,
+        title: (targetModule === 'progress' ? '[Progress] ' : targetModule === 'cost' ? '[Cost] ' : '[Budget] ') + (pendingFileDetails?.boqName || selectedIntegration?.boq_name || 'Master Budget & EVM'),
         trade_label: finalData.trade_label || bundleConfig.tradeLabel,
         expected_count: bundleConfig.expectedCount,
         project_title_found: finalData.project_metadata?.extracted_project_name,
@@ -535,6 +545,10 @@ export default function BudgetIntegrations({
       setShowPreviewModal(false);
       setPendingFileDetails(null);
       resetConfigModal();
+      setSuccess('Budget workbook data committed successfully and Master Table reconciled.');
+      setTimeout(() => {
+        setSuccess(null);
+      }, 4000);
       onRefresh();
     } catch (err: any) {
       setActionError(err.response?.data?.detail || 'Failed to save Budget to database.');
@@ -544,14 +558,42 @@ export default function BudgetIntegrations({
     }
   };
 
+  const handleUpdateModule = async (integrationId: number, newModule: string) => {
+    if (setGlobalLoading) setGlobalLoading(true);
+    setActionError(null);
+    setSuccess(null);
+    try {
+      await updateIntegrationModule(integrationId, newModule);
+      setSuccess(`Updated workbook destination tag to '${newModule === 'progress' ? 'Work Progress Calculations' : 'Project Budget'}'.`);
+      setTimeout(() => {
+        setSuccess(null);
+      }, 4000);
+      onRefresh();
+    } catch (err: any) {
+      console.error(err);
+      setActionError(err.response?.data?.detail || 'Failed to update workbook tag.');
+    } finally {
+      if (setGlobalLoading) setGlobalLoading(false);
+    }
+  };
+
   const handleDisconnect = async (integrationId: number, purgeData: boolean = false) => {
+    if (purgeData) {
+  // Confirmation handled by modal UI
+}
+    setDeletingId(integrationId);
     if (setGlobalLoading) setGlobalLoading(true);
     try {
       await deleteIntegration(integrationId, purgeData);
+      setSuccess(purgeData ? 'Integration and database records deleted permanently.' : 'Integration disconnected successfully.');
+      setTimeout(() => {
+        setSuccess(null);
+      }, 4000);
       onRefresh();
     } catch (err: any) {
       setActionError('Failed to disconnect spreadsheet.');
     } finally {
+      setDeletingId(null);
       if (setGlobalLoading) setGlobalLoading(false);
     }
   };
@@ -609,7 +651,12 @@ export default function BudgetIntegrations({
         </div>
       ) : (
         <div className="space-y-4">
-          <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Linked Workbooks ({integrations.length})</span>
+          <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Linked Workbooks</h4>
+            <span className="text-[11px] font-bold text-dark-teal-700 bg-dark-teal-50 px-2.5 py-0.5 rounded-full border border-dark-teal-100">
+              {integrations.length} {integrations.length > 1 ? 'workbooks' : 'workbook'}
+            </span>
+          </div>
 
           <div className="space-y-4">
             {integrations.map((integration) => {
@@ -625,39 +672,83 @@ export default function BudgetIntegrations({
 
               return (
                 <div key={integration.id} className="space-y-2">
-                  <div className="bg-white rounded-2xl p-5 border border-gray-150 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="bg-white rounded-2xl p-5 border border-gray-150 shadow-sm flex flex-col sm:flex-row items-start justify-between gap-4">
                     <div className="flex items-center space-x-3">
                       <div className="p-3 bg-dark-teal-50 rounded-xl text-dark-teal-800 border border-dark-teal-100">
                         <FileSpreadsheet className="w-5 h-5" />
                       </div>
-                      <div>
+                      <div className="space-y-1">
                         <h4 className="text-xs font-bold font-lexend text-gray-900 leading-tight">
                           {integration.boq_name || 'Master Budget Sheet'}
                         </h4>
-                        <p className="text-[10px] text-gray-400 mt-0.5 capitalize">
-                          Provider: {integration.provider.replace('_', ' ')} • Tab: {integration.sheet_name}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-[10px] text-gray-400 font-medium capitalize">
+                            Provider: {integration.provider.replace('_', ' ')} • Tab: {integration.sheet_name}
+                          </span>
+                          <span className="text-gray-300 hidden sm:inline">•</span>
+                          <div className="flex items-center space-x-1">
+                            <span className="text-[9px] font-bold text-gray-400 uppercase">Tag:</span>
+                            <select
+                              value={integration.module === 'progress' ? 'progress' : 'budget'}
+                              onChange={(e) => handleUpdateModule(integration.id, e.target.value)}
+                              disabled={globalLoading}
+                              className="p-1 px-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-700 hover:bg-gray-100 transition focus:outline-none cursor-pointer"
+                            >
+                              <option value="budget">Project Budget</option>
+                              <option value="progress">Work Progress</option>
+                            </select>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
-                        onClick={() => handleRunAiExtraction(integration)}
-                        className="px-3 py-1.5 bg-dark-teal-50 hover:bg-dark-teal-100 text-dark-teal-700 rounded-lg text-[10px] font-bold transition flex items-center space-x-1"
+                        disabled={globalLoading || deletingId !== null}
+                        onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
+                        className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'hover:bg-white text-gray-600 hover:text-gray-900'
+                          }`}
+                        title={activeEditorId === integration.id ? 'Hide inline preview' : 'Open inline preview'}
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Preview Data</span>
+                        <Eye className="w-4 h-4" />
                       </button>
 
                       <button
-                        onClick={() => handleDisconnect(integration.id, true)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition"
-                        title="Disconnect & Purge Data"
+                        disabled={globalLoading || deletingId !== null}
+                        onClick={() => handleDisconnect(integration.id, false)}
+                        className="p-2 hover:bg-white text-amber-600 hover:text-amber-800 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                        title="Unlink / Disconnect workbook link (keeps database records)"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Unlink className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        disabled={globalLoading || deletingId !== null}
+                        onClick={() => setIntegrationToDelete(integration)}
+                        className="p-2 hover:bg-white text-red-655 hover:text-red-700 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm flex items-center justify-center"
+                        title="Delete workbook data permanently from database"
+                      >
+                        {deletingId === integration.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
+
+                  {activeEditorId === integration.id && (
+                    <div className="animate-fade-in">
+                      <EmbeddedSheetEditor
+                        integrationId={integration.id}
+                        provider={integration.provider}
+                        spreadsheetId={integration.spreadsheet_id}
+                        boqName={integration.boq_name || undefined}
+                      />
+                    </div>
+                  )}
 
                   {/* Inline Preview Table Drawer for this specific workbook */}
                   <WorkbookInlinePreviewDrawer workbookData={matchedMatrix} />
@@ -667,6 +758,43 @@ export default function BudgetIntegrations({
           </div>
         </div>
       )}
+
+{integrationToDelete && (
+  <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+      <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
+        <AlertTriangle className="w-8 h-8 text-red-500" />
+      </div>
+      <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Delete Workbook Permanently</h3>
+      <p className="text-sm text-gray-600 mb-6">
+        This will permanently delete the workbook integration and all associated database records. The original spreadsheet file remains unchanged.
+      </p>
+      <p className="text-xs text-gray-500 mb-4">
+        Workbook: <strong className="text-gray-900">{integrationToDelete?.boq_name || integrationToDelete?.sheet_name}</strong>
+      </p>
+      <div className="flex gap-2 justify-center">
+        <button
+          onClick={() => setIntegrationToDelete(null)}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl transition"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={async () => {
+            const id = integrationToDelete?.id;
+            setIntegrationToDelete(null);
+            if (id) await handleDisconnect(id, true);
+          }}
+          disabled={globalLoading || deletingId !== null}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center gap-1 disabled:opacity-50 transition"
+        >
+          {deletingId === integrationToDelete?.id ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          Delete Permanently
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Validation Rejection Modal */}
       {rejectedDocumentContext && (
@@ -740,6 +868,19 @@ export default function BudgetIntegrations({
         </div>
       )}
 
+      {/* Action Success Banner */}
+      {success && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-semibold flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4 text-emerald-500" />
+            <span>{success}</span>
+          </div>
+          <button onClick={() => setSuccess(null)} className="text-emerald-400 hover:text-emerald-600">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Action Error Banner */}
       {actionError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-semibold flex items-center justify-between">
@@ -781,6 +922,7 @@ export default function BudgetIntegrations({
         currentWorkbookIndex={
           selectedIntegration ? integrations.findIndex((i) => i.id === selectedIntegration.id) + 1 : 1
         }
+        initialModule={moduleContext}
       />
 
       <CloudConfigModal

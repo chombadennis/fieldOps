@@ -195,14 +195,14 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
     PMO_SUBTABS = [
       { key: 'activity_schedule', label: 'Activity Schedule', description: `Upload Activity Schedule files (Expected: Excel). ${contractContext}`, icon: FileSpreadsheet, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'activity_schedule').length },
       { key: 'milestone_payments', label: 'Milestone Payments', description: `Upload milestone claims (Expected: PDF/Word). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'milestone_claims').length },
-      { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: budgets.length + documents.filter((d) => d.department?.toUpperCase() === 'BUDGET').length },
+      { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: ((project.integrations || []).filter((i: any) => i.module === 'budget' || i.module === 'budgets' || i.module === 'progress' || i.module === 'cost')).length },
       { key: 'scheduling', label: 'Scheduling & Timeline', description: `Upload Program of Works (Expected: MPP/Excel). ${contractContext}`, icon: Calendar, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'program_of_works').length },
     ];
   } else if (contractType === 'COST_PLUS') {
     PMO_SUBTABS = [
       { key: 'rate_schedule', label: 'Schedule of Rates', description: `Upload Rate Schedule files (Expected: Excel). ${contractContext}`, icon: FileSpreadsheet, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'rate_schedule').length },
       { key: 'reimbursable_costs', label: 'Reimbursable Costs', description: `Upload Invoices and Receipts (Expected: PDF/Images). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'reimbursable_claims').length },
-      { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: budgets.length + documents.filter((d) => d.department?.toUpperCase() === 'BUDGET').length },
+      { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: ((project.integrations || []).filter((i: any) => i.module === 'budget' || i.module === 'budgets' || i.module === 'progress' || i.module === 'cost')).length },
       { key: 'scheduling', label: 'Scheduling & Timeline', description: `Upload Program of Works (Expected: MPP/Excel). ${contractContext}`, icon: Calendar, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'program_of_works').length },
     ];
   } else {
@@ -210,7 +210,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
     PMO_SUBTABS = [
       { key: 'boq', label: 'BoQ & Files', description: `Bills of Quantities (Expected: Excel Workbooks). ${contractContext}`, icon: FileSpreadsheet, badgeCount: project.boq_documents?.length || 0 },
       { key: 'ipcs', label: 'IPC & Claims', description: `Interim Payment Certificates (Expected: PDF/Excel). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toUpperCase() === 'IPC' || d.department?.toLowerCase() === 'ipc').length },
-      { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: budgets.length + documents.filter((d) => d.department?.toUpperCase() === 'BUDGET').length },
+      { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: ((project.integrations || []).filter((i: any) => i.module === 'budget' || i.module === 'budgets' || i.module === 'progress' || i.module === 'cost')).length },
       { key: 'scheduling', label: 'Scheduling & Timeline', description: `Upload Program of Works (Expected: MPP/Excel). ${contractContext}`, icon: Calendar, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'program_of_works').length },
       { key: 'activity_schedule', label: 'Activity Schedule', description: `Upload Activity Schedule files (Expected: Excel). ${contractContext}`, icon: FileSpreadsheet, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'activity_schedule').length },
       { key: 'milestone_payments', label: 'Milestone Payments', description: `Upload milestone claims (Expected: PDF/Word). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'milestone_claims').length },
@@ -420,7 +420,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                   notes={notes.filter((n: any) => n.department?.toLowerCase() === 'budget' || n.department?.toLowerCase() === 'budgets')}
                   documents={documents.filter((d: any) => d.department?.toLowerCase() === 'budget' || d.department?.toLowerCase() === 'budgets')}
                   onAddNote={handleAddNote}
-                  integrations={(project.integrations || []).filter((i: any) => i.module === 'budget' || i.module === 'budgets')}
+                  integrations={(project.integrations || []).filter((i: any) => i.module === 'budget' || i.module === 'budgets' || i.module === 'progress' || i.module === 'cost')}
                   boqDocuments={project.boq_documents || []}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
