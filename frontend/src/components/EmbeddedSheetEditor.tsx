@@ -31,7 +31,7 @@ export default function EmbeddedSheetEditor({
   const [retryCount, setRetryCount] = useState<number>(0);
 
   const isGoogle = provider === 'google_sheets';
-  const providerName = isGoogle ? 'Google Sheets' : 'OneDrive Excel';
+  const providerName = isGoogle ? 'Google Drive' : 'OneDrive';
 
   useEffect(() => {
     async function fetchEmbedUrl() {
@@ -77,7 +77,7 @@ export default function EmbeddedSheetEditor({
           <button
             onClick={handleReload}
             className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-200/50 rounded-lg active:scale-95 transition-all"
-            title="Reload Spreadsheet"
+            title="Reload Document"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -92,20 +92,20 @@ export default function EmbeddedSheetEditor({
                 ? 'bg-emerald-600 hover:bg-emerald-700'
                 : 'bg-indigo-650 hover:bg-indigo-750 bg-indigo-600'
               }`}
-            title={`Open and edit spreadsheet directly in ${isGoogle ? 'Google Sheets' : 'Excel Online'}`}
+            title={`Open directly in ${isGoogle ? 'Google Drive' : 'OneDrive'}`}
           >
             <Edit className="w-3.5 h-3.5" />
-            <span>Edit in {isGoogle ? 'Google Sheets' : 'Excel Online'}</span>
+            <span>Open in {isGoogle ? 'Google Drive' : 'OneDrive'}</span>
           </a>
         </div>
       </div>
 
       {/* Editor Frame Container */}
-      <div className="relative min-h-[1200px] w-full bg-gray-50 flex flex-col justify-center items-center">
+      <div className="relative min-h-[700px] w-full bg-gray-50 flex flex-col justify-center items-center">
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50/90 z-10 animate-fade-in">
             <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-            <p className="text-xs text-gray-500 font-medium mt-3">Loading spreadsheet from {providerName}...</p>
+            <p className="text-xs text-gray-500 font-medium mt-3">Loading document from {providerName}...</p>
           </div>
         )}
 
@@ -133,7 +133,7 @@ export default function EmbeddedSheetEditor({
             src={embedUrl}
             width="100%"
             height="700"
-            className="border-none w-full shadow-inner animate-fade-in"
+            className="border-none w-full shadow-inner animate-fade-in flex-grow"
             allow="autoplay; clipboard-write; encrypted-media"
           />
         )}

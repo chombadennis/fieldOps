@@ -38,6 +38,28 @@ def run_migrations():
             conn.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS values_map JSONB;"))
             conn.execute(text("ALTER TABLE notes ADD COLUMN IF NOT EXISTS is_issue BOOLEAN DEFAULT FALSE;"))
             conn.execute(text("ALTER TABLE notes ADD COLUMN IF NOT EXISTS priority VARCHAR DEFAULT 'Normal';"))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS analysis_schedule_references (
+                    id SERIAL PRIMARY KEY,
+                    reference_source_id INTEGER NOT NULL,
+                    reference_source_type VARCHAR NOT NULL,
+                    activity_schedule_document_id INTEGER NOT NULL REFERENCES activity_schedule_documents(id) ON DELETE CASCADE,
+                    relationship_mode VARCHAR NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS analysis_boq_references (
+                    id SERIAL PRIMARY KEY,
+                    reference_source_id INTEGER NOT NULL,
+                    reference_source_type VARCHAR NOT NULL,
+                    boq_document_id INTEGER NOT NULL REFERENCES boq_documents(id) ON DELETE CASCADE,
+                    relationship_mode VARCHAR NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
             conn.commit()
         except Exception as e:
             print(f"Migration notice: {e}")

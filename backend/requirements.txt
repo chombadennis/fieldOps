@@ -20,3 +20,4 @@ alembic
 pydantic-settings
 pypdf
 cryptography
+python-docx

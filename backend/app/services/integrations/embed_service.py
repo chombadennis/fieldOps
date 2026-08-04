@@ -59,6 +59,7 @@ async def get_onedrive_embed_url(web_url: str, mode: str = "edit", is_office: bo
                     embed_url += "&action=edit.html"
                 else:
                     embed_url += "&action=embedview"
+            
             return embed_url
 
         # Business / SharePoint Format: tenant.sharepoint.com

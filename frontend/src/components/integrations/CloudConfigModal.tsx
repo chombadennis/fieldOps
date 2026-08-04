@@ -89,7 +89,7 @@ export default function CloudConfigModal(props: any) {
                       return (
                         <>
                           <h3 className="text-xl font-extrabold text-white mb-2 tracking-tight z-10">
-                            {moduleContext === 'budget' ? 'Workbook Linkage Setup' : (isSpreadsheet ? 'Processing Spreadsheet' : 'Linking Document')}
+                            {moduleContext === 'budget' ? 'Workbook Linkage Setup' : moduleContext === 'activity_schedule' ? 'Activity Schedule Linkage Setup' : (isSpreadsheet ? 'Processing Spreadsheet' : 'Linking Document')}
                           </h3>
 
                           {/* Active Step Badge */}
@@ -161,10 +161,10 @@ export default function CloudConfigModal(props: any) {
               </div>
             )}
             <h3 className="text-xl font-bold text-gray-800 mb-2 flex-shrink-0">
-              {moduleContext === 'budget' ? 'Workbook Linkage Setup' : 'Link Cloud Document'}
+              {moduleContext === 'budget' ? 'Workbook Linkage Setup' : moduleContext === 'activity_schedule' ? 'Activity Schedule Linkage Setup' : 'Link Cloud Document'}
             </h3>
             <p className="text-sm text-gray-500 mb-4 flex-shrink-0">
-              Successfully authenticated with <span className="font-semibold capitalize text-gray-700">{oauthProvider?.replace('_', ' ')}</span>. {moduleContext === 'budget' ? 'Select a budget spreadsheet workbook below:' : 'Select a document or spreadsheet file below:'}
+              Successfully authenticated with <span className="font-semibold capitalize text-gray-700">{oauthProvider === 'google_sheets' || oauthProvider === 'google' ? 'Google Drive' : oauthProvider === 'onedrive' ? 'OneDrive' : oauthProvider?.replace('_', ' ')}</span>. {moduleContext === 'budget' ? 'Select a budget spreadsheet workbook below:' : moduleContext === 'activity_schedule' ? 'Select an Activity Schedule (Excel, PDF, or Word) below:' : 'Select a document or spreadsheet file below:'}
             </p>
 
             <form onSubmit={handleSaveConfig} className="flex-1 flex flex-col min-h-0">
@@ -184,7 +184,7 @@ export default function CloudConfigModal(props: any) {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-gray-600 uppercase">
-                        {moduleContext === 'budget' ? 'Select Workbook' : 'Select File or Document'}
+                        {moduleContext === 'budget' ? 'Select Workbook' : moduleContext === 'activity_schedule' ? 'Select Activity Schedule Document' : 'Select File or Document'}
                       </label>
                       {navigationHistory.length > 0 && (
                         <button
@@ -250,7 +250,7 @@ export default function CloudConfigModal(props: any) {
                                   <div
                                     onClick={() => {
                                       if (file.already_linked_module) return;
-                                      isFolder ? handleFolderClick(file.id, file.name) : handleSelectFile(file.id);
+                                      isFolder ? handleFolderClick(file.id, file.name) : handleSelectFile(file);
                                     }}
                                     className={`flex-1 flex items-center space-x-3 min-w-0 ${file.already_linked_module ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                   >
@@ -321,11 +321,11 @@ export default function CloudConfigModal(props: any) {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                    {moduleContext === 'budget' ? 'Workbook Title / Label (Optional)' : 'Document Title / Label (Optional)'}
+                    {moduleContext === 'budget' ? 'Workbook Title / Label (Optional)' : moduleContext === 'activity_schedule' ? 'Activity Schedule Title / Label (Optional)' : 'Document Title / Label (Optional)'}
                   </label>
                   <input
                     type="text"
-                    placeholder={moduleContext === 'budget' ? 'e.g. Master Project Budget / Structural Trade' : 'e.g. IPC Claim No. 8 / Structural Report'}
+                    placeholder={moduleContext === 'budget' ? 'e.g. Master Project Budget / Structural Trade' : moduleContext === 'activity_schedule' ? 'e.g. Master Activity Schedule Rev 2' : 'e.g. IPC Claim No. 8 / Structural Report'}
                     value={boqName}
                     onChange={(e) => setBoqName(e.target.value)}
                     className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-800"
@@ -399,13 +399,17 @@ export default function CloudConfigModal(props: any) {
                                 <label key={sheet.id} className="flex items-start space-x-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-gray-100/70 transition-colors">
                                   <input
                                     type="checkbox"
-                                    checked={!!selectedSheets[sheet.id]}
-                                    onChange={(e) =>
-                                      props.setSelectedSheets((prev: any) => ({
-                                        ...prev,
-                                        [sheet.id]: e.target.checked,
-                                      }))
-                                    }
+                                    checked={!!selectedSheets[sheet.id] || !!selectedSheets[sheet.name]}
+                                    onChange={(e) => {
+                                      if (typeof props.setSelectedSheets === 'function') {
+                                        props.setSelectedSheets((prev: any) => ({
+                                          ...prev,
+                                          [sheet.id]: e.target.checked,
+                                        }));
+                                      } else if (typeof handleSheetSelection === 'function') {
+                                        handleSheetSelection(moduleContext === 'activity_schedule' ? sheet.name : (sheet.id || sheet.name));
+                                      }
+                                    }}
                                     className="mt-0.5 w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                                   />
                                   <div className="flex-1 min-w-0">
@@ -437,7 +441,9 @@ export default function CloudConfigModal(props: any) {
                     selectedFile.is_google_sheet ||
                     /\.(xlsx|xls|csv|ods|gsheet)$/i.test(selectedFile.name)
                   );
-                  const buttonLabel = isSpreadsheet ? 'Link Workbook' : 'Link Document';
+                  const buttonLabel = moduleContext === 'activity_schedule'
+                    ? (isSpreadsheet ? 'Link Schedule Workbook' : 'Link Schedule Document')
+                    : (isSpreadsheet ? 'Link Workbook' : 'Link Document');
                   const isNoSheets = isSpreadsheet && sheetsList.length === 0;
                   const isLocked = selectedFile?.already_linked_module;
                   const isButtonDisabled = savingConfig || fetchingSheets || !spreadsheetId || isNoSheets || isLocked || (moduleContext === 'ipc' && !ipcCertificateNumber);

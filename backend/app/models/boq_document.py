@@ -23,3 +23,16 @@ class BoqDocument(Base, CustomBase):
     # Relationships
     project = relationship("Project", back_populates="boq_documents")
     boq_items = relationship("BoqItem", back_populates="boq_document", cascade="all, delete-orphan")
+
+
+class AnalysisBoqReference(Base, CustomBase):
+    __tablename__ = 'analysis_boq_references'
+
+    id = Column(Integer, primary_key=True, index=True)
+    reference_source_id = Column(Integer, nullable=False, index=True)
+    reference_source_type = Column(String, nullable=False)
+    boq_document_id = Column(Integer, ForeignKey('boq_documents.id', ondelete="CASCADE"), nullable=False)
+    relationship_mode = Column(String, nullable=False, default="INDEPENDENT") # "AGGREGATE", "COMPARE", "INDEPENDENT"
+
+    boq_document = relationship("BoqDocument")
+

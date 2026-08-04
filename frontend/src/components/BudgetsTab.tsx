@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info } from 'lucide-react';
+import { MessageSquare, Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info, Edit3, Check, X, Loader2 } from 'lucide-react';
 import BudgetIntegrations from '@/components/BudgetIntegrations';
-import { getProjectBudgets } from '@/services/api';
+import { getProjectBudgets, updateBudgetWorkbookMatrix } from '@/services/api';
 
 interface Note {
   id: number;
@@ -53,6 +53,9 @@ export default function BudgetsTab({
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
   const [budgetRecord, setBudgetRecord] = useState<any>(null);
+  const [editingHeaderKey, setEditingHeaderKey] = useState<string | null>(null);
+  const [headerInput, setHeaderInput] = useState('');
+  const [savingHeader, setSavingHeader] = useState(false);
 
   const fetchBudgetRecord = async () => {
     try {
@@ -99,6 +102,32 @@ export default function BudgetsTab({
   const formatCurrency = (val: number | null | undefined) => {
     if (val === null || val === undefined || isNaN(val)) return '$0.00';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(val);
+  };
+
+  const handleSaveHeader = async (oldLabel: string) => {
+    if (!headerInput.trim() || headerInput === oldLabel) {
+      setEditingHeaderKey(null);
+      return;
+    }
+    setSavingHeader(true);
+    try {
+      const valuesMap = budgetRecord?.values_map || {};
+      const masterMatrix: any[] = valuesMap.master_bundle_matrix || [];
+      const matchedWb = masterMatrix.find((wb) => wb.trade_label === oldLabel || wb.title === oldLabel);
+      await updateBudgetWorkbookMatrix({
+        project_id: projectId,
+        integration_id: matchedWb?.integration_id,
+        old_trade_label: oldLabel,
+        trade_label: headerInput.trim(),
+      });
+      setEditingHeaderKey(null);
+      await fetchBudgetRecord();
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Error updating trade header:', err);
+    } finally {
+      setSavingHeader(false);
+    }
   };
 
   const valuesMap = budgetRecord?.values_map || {};
@@ -222,56 +251,191 @@ export default function BudgetsTab({
         </div>
 
         {/* Master Reconciled Category Table */}
-        {categories.length > 0 && (
-          <div className="pt-4 border-t border-gray-100 space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold font-lexend text-gray-900">Reconciled Master Category Breakdowns</h4>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{categories.length} Categories</span>
-            </div>
+        {categories.length > 0 && (() => {
+          // Group categories by source trade / workbook
+          const groupedData: { [key: string]: { label: string; integrationId?: number; items: any[] } } = {};
 
-            <div className="overflow-x-auto border border-gray-150 rounded-2xl">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px] border-b border-gray-100">
-                  <tr>
-                    <th className="px-4 py-3">Category Name</th>
-                    <th className="px-4 py-3 text-right">Original ($)</th>
-                    <th className="px-4 py-3 text-right">Appraised ($)</th>
-                    <th className="px-4 py-3 text-right">Earned Value ($)</th>
-                    <th className="px-4 py-3 text-right">Variance (Delta)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                  {categories.map((cat, idx) => {
-                    const orig = cat.original_amount || 0;
-                    const appr = cat.appraised_amount !== undefined && cat.appraised_amount !== null ? cat.appraised_amount : orig;
-                    const delta = cat.appraisal_delta ?? (appr - orig);
-                    const isCatAppraised = cat.is_appraised || appr !== orig;
+          if (masterMatrix && masterMatrix.length > 0) {
+            masterMatrix.forEach((wb) => {
+              const label = wb.trade_label || wb.title || 'General Trade';
+              groupedData[label] = { label, integrationId: wb.integration_id, items: [] };
+            });
+          }
 
-                    return (
-                      <tr key={idx} className="hover:bg-gray-50/80 transition">
-                        <td className="px-4 py-3 font-bold text-gray-900">{cat.category_name}</td>
-                        <td className="px-4 py-3 text-right text-gray-700 font-semibold">{formatCurrency(orig)}</td>
-                        <td className="px-4 py-3 text-right font-bold text-indigo-950">
-                          {isCatAppraised ? formatCurrency(appr) : <span className="text-gray-400 font-normal">-</span>}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-emerald-950">{formatCurrency(cat.earned_value_to_date || 0)}</td>
-                        <td className="px-4 py-3 text-right font-bold">
-                          {isCatAppraised ? (
-                            <span className={delta >= 0 ? 'text-indigo-600' : 'text-red-600'}>
-                              {delta >= 0 ? '+' : ''}{formatCurrency(delta)}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 font-normal">-</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          categories.forEach((cat) => {
+            let key = cat.source_trade || cat.trade_label;
+            if (!key) {
+              if (masterMatrix.length === 1) {
+                key = masterMatrix[0].trade_label || 'General Master Budget';
+              } else {
+                key = 'General Master Budget';
+              }
+            }
+            if (!groupedData[key]) {
+              groupedData[key] = { label: key, items: [] };
+            }
+            groupedData[key].items.push(cat);
+          });
+
+          const groupEntries = Object.entries(groupedData).filter(([_, g]) => g.items.length > 0);
+
+          return (
+            <div className="pt-4 border-t border-gray-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <h4 className="text-xs font-bold font-lexend text-gray-900">Reconciled Master Category Breakdowns</h4>
+                  <span className="text-[10px] text-gray-500 font-semibold">(Grouped by Source Workbook/Trade)</span>
+                </div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{categories.length} Categories ({groupEntries.length} Trade Groups)</span>
+              </div>
+
+              <div className="overflow-x-auto border border-gray-150 rounded-2xl shadow-xs">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px] border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-3">Category Component / Trade Header</th>
+                      <th className="px-4 py-3 text-right">Original ($)</th>
+                      <th className="px-4 py-3 text-right">Appraised ($)</th>
+                      <th className="px-4 py-3 text-right">Earned Value ($)</th>
+                      <th className="px-4 py-3 text-right">Variance (Delta)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                    {groupEntries.map(([groupKey, group]) => {
+                      const groupItems = group.items;
+                      const isEditingThis = editingHeaderKey === groupKey;
+
+                      const sumOrig = groupItems.reduce((acc, c) => acc + (Number(c.original_amount) || 0), 0);
+                      const sumAppr = groupItems.reduce((acc, c) => {
+                        const a = c.appraised_amount !== undefined && c.appraised_amount !== null ? Number(c.appraised_amount) : Number(c.original_amount);
+                        return acc + (a || 0);
+                      }, 0);
+                      const sumEv = groupItems.reduce((acc, c) => acc + (Number(c.earned_value_to_date) || 0), 0);
+                      const sumDelta = sumAppr - sumOrig;
+                      const isGroupAppraised = groupItems.some((c) => (c.appraised_amount !== undefined && c.appraised_amount !== null && Number(c.appraised_amount) !== Number(c.original_amount)) || c.is_appraised);
+
+                      return (
+                        <React.Fragment key={groupKey}>
+                          {/* Group Section Header Row */}
+                          <tr className="bg-slate-100/90 border-t-2 border-b border-slate-200">
+                            <td colSpan={5} className="px-4 py-2.5">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2.5">
+                                  <span className="px-2 py-0.5 rounded-md bg-dark-teal-900 text-emerald-300 font-extrabold text-[10px] uppercase tracking-wider">
+                                    Source Table / Trade
+                                  </span>
+                                  
+                                  {isEditingThis ? (
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="text"
+                                        value={headerInput}
+                                        onChange={(e) => setHeaderInput(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveHeader(groupKey); }}
+                                        className="p-2 px-3 bg-white border border-dark-teal-500 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-dark-teal-500 min-w-[260px] shadow-xs"
+                                        autoFocus
+                                      />
+                                      <button
+                                        onClick={() => handleSaveHeader(groupKey)}
+                                        disabled={savingHeader}
+                                        className="p-1 bg-dark-teal-800 text-white rounded-lg hover:bg-dark-teal-900 transition"
+                                        title="Save Header Title"
+                                      >
+                                        {savingHeader ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingHeaderKey(null)}
+                                        className="p-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                                        title="Cancel"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div
+                                      onClick={() => {
+                                        setEditingHeaderKey(groupKey);
+                                        setHeaderInput(group.label);
+                                      }}
+                                      className="flex items-center space-x-2 group cursor-pointer"
+                                      title="Click to edit group header title"
+                                    >
+                                      <h5 className="text-xs font-extrabold font-lexend text-gray-900 group-hover:text-dark-teal-700 transition">
+                                        {group.label}
+                                      </h5>
+                                      <Edit3 className="w-3.5 h-3.5 text-gray-400 group-hover:text-dark-teal-600 transition opacity-70 group-hover:opacity-100" />
+                                    </div>
+                                  )}
+                                </div>
+
+                                <span className="text-[10px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200">
+                                  {groupItems.length} {groupItems.length === 1 ? 'component' : 'components'}
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Component Rows */}
+                          {groupItems.map((cat, idx) => {
+                            const orig = Number(cat.original_amount) || 0;
+                            const appr = cat.appraised_amount !== undefined && cat.appraised_amount !== null ? Number(cat.appraised_amount) : orig;
+                            const delta = cat.appraisal_delta ?? (appr - orig);
+                            const isCatAppraised = cat.is_appraised || appr !== orig;
+
+                            return (
+                              <tr key={idx} className="hover:bg-gray-50/80 transition">
+                                <td className="px-4 py-3 font-bold text-gray-900 pl-8 flex items-center space-x-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-dark-teal-600"></span>
+                                  <span>{cat.category_name}</span>
+                                </td>
+                                <td className="px-4 py-3 text-right text-gray-700 font-semibold">{formatCurrency(orig)}</td>
+                                <td className="px-4 py-3 text-right font-bold text-indigo-950">
+                                  {isCatAppraised ? formatCurrency(appr) : <span className="text-gray-400 font-normal">-</span>}
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-emerald-950">{formatCurrency(cat.earned_value_to_date || 0)}</td>
+                                <td className="px-4 py-3 text-right font-bold">
+                                  {isCatAppraised ? (
+                                    <span className={delta >= 0 ? 'text-indigo-600' : 'text-red-600'}>
+                                      {delta >= 0 ? '+' : ''}{formatCurrency(delta)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400 font-normal">-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {/* Group Subtotal Autosum Row */}
+                          <tr className="bg-emerald-50/60 font-bold border-t border-b border-emerald-200/80 text-emerald-950">
+                            <td className="px-4 py-2.5 pl-8 font-lexend text-xs flex items-center space-x-2">
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-700 text-white font-mono text-[10px]">∑ Subtotal</span>
+                              <span className="font-extrabold">{group.label}</span>
+                            </td>
+                            <td className="px-4 py-2.5 text-right text-gray-900 font-extrabold">{formatCurrency(sumOrig)}</td>
+                            <td className="px-4 py-2.5 text-right text-indigo-950 font-extrabold">
+                              {isGroupAppraised ? formatCurrency(sumAppr) : <span className="text-gray-400 font-normal">-</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-right text-emerald-950 font-extrabold">{formatCurrency(sumEv)}</td>
+                            <td className="px-4 py-2.5 text-right font-extrabold">
+                              {isGroupAppraised ? (
+                                <span className={sumDelta >= 0 ? 'text-indigo-600' : 'text-red-600'}>
+                                  {sumDelta >= 0 ? '+' : ''}{formatCurrency(sumDelta)}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400 font-normal">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Internal Navigation Ribbon */}
@@ -307,6 +471,7 @@ export default function BudgetsTab({
           })}
           documents={documents}
           masterMatrix={masterMatrix}
+          persistedBundleConfig={bundleConfig}
           onRefresh={() => {
             onRefresh();
             fetchBudgetRecord();

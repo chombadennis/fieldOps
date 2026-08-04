@@ -237,6 +237,7 @@ async def list_cloud_files(
     project_id: Optional[int] = Query(None),
     folder_id: Optional[str] = None,
     filter_type: Optional[str] = "spreadsheets",
+    module: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -254,17 +255,18 @@ async def list_cloud_files(
     rejected_map = {}
     active_linked_map = {}
     if project_id:
+        rejected_module = f"{module}_rejected" if module else "budget_rejected"
         rejected = db.query(ProjectIntegration).filter(
             ProjectIntegration.project_id == project_id,
             ProjectIntegration.provider == provider,
-            ProjectIntegration.module == "budget_rejected"
+            ProjectIntegration.module == rejected_module
         ).all()
         for r in rejected:
             rejected_map[r.spreadsheet_id] = r.meta_data.get("identified_document_type", "Unknown Document") if r.meta_data else "Unknown Document"
 
         active_integrations = db.query(ProjectIntegration).filter(
             ProjectIntegration.project_id == project_id,
-            ProjectIntegration.module != "budget_rejected"
+            ProjectIntegration.module != rejected_module
         ).all()
         for ai in active_integrations:
             active_linked_map[ai.spreadsheet_id] = ai.module.upper()
@@ -561,7 +563,7 @@ def save_integration(
     existing_other = db.query(ProjectIntegration).filter(
         ProjectIntegration.project_id == project_id,
         ProjectIntegration.spreadsheet_id == spreadsheet_id,
-        ProjectIntegration.module != "budget_rejected"
+        ~ProjectIntegration.module.endswith("_rejected")
     ).first()
     if existing_other and (module is None or existing_other.module != module):
         raise HTTPException(
@@ -939,7 +941,14 @@ async def get_integration_embed_url(
 
         if integration.provider == "google_sheets":
             from ..services.integrations.embed_service import get_google_embed_url
-            embed_url = await get_google_embed_url(integration.spreadsheet_id, mode)
+            
+            # Check if it's a PDF or other non-sheet document by looking at the filename or sheet_name
+            is_sheet = True
+            name = (integration.boq_name or integration.sheet_name or "").lower()
+            if name.endswith((".pdf", ".doc", ".docx", ".jpg", ".png")):
+                is_sheet = False
+                
+            embed_url = await get_google_embed_url(integration.spreadsheet_id, mode, is_sheet=is_sheet)
             return {"url": embed_url}
 
         elif integration.provider == "onedrive":
@@ -949,8 +958,8 @@ async def get_integration_embed_url(
             
             access_token = await refresh_onedrive_access_token(decrypted)
             
-            # Fetch webUrl from MS Graph
-            url = f"https://graph.microsoft.com/v1.0/me/drive/items/{integration.spreadsheet_id}?select=webUrl"
+            # Fetch webUrl and name from MS Graph
+            url = f"https://graph.microsoft.com/v1.0/me/drive/items/{integration.spreadsheet_id}?select=webUrl,name"
             headers = {"Authorization": f"Bearer {access_token}"}
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(url, headers=headers)
@@ -959,11 +968,29 @@ async def get_integration_embed_url(
                         status_code=resp.status_code, 
                         detail=f"Microsoft Graph API error while fetching webUrl: {resp.text}"
                     )
-                web_url = resp.json().get("webUrl")
+                
+                data = resp.json()
+                web_url = data.get("webUrl")
+                name = data.get("name", "").lower()
+                
                 if not web_url:
                     raise HTTPException(status_code=500, detail="No webUrl found for the spreadsheet in Microsoft Graph.")
+                
+                # Check if it's an Office file (Excel)
+                is_office = name.endswith((".xlsx", ".xls", ".csv"))
             
-            embed_url = await get_onedrive_embed_url(web_url, mode)
+            if not is_office:
+                # Use MS Graph /preview API to generate an embed URL for PDFs that bypasses CSP
+                preview_url = f"https://graph.microsoft.com/v1.0/me/drive/items/{integration.spreadsheet_id}/preview"
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    preview_resp = await client.post(preview_url, headers=headers)
+                    if preview_resp.status_code == 200:
+                        preview_data = preview_resp.json()
+                        embed_url = preview_data.get("getUrl")
+                        if embed_url:
+                            return {"url": embed_url}
+            
+            embed_url = await get_onedrive_embed_url(web_url, mode, is_office=is_office)
             return {"url": embed_url}
         else:
             raise HTTPException(status_code=400, detail="Unsupported provider.")
@@ -1462,6 +1489,17 @@ async def commit_budget_extraction(
     bundle_config = values_map.get("bundle_config", {})
     expected_cnt = request.expected_count or bundle_config.get("expected_count", 1)
 
+    # Determine tracking_mode: preserve existing, or infer from integration meta / expected_count
+    existing_tracking_mode = bundle_config.get("tracking_mode")
+    if existing_tracking_mode:
+        tracking_mode_value = existing_tracking_mode
+    elif request.integration_id:
+        int_record = db.query(ProjectIntegration).filter(ProjectIntegration.id == request.integration_id).first()
+        int_meta = (int_record.meta_data or {}) if int_record else {}
+        tracking_mode_value = int_meta.get("tracking_mode", "split" if expected_cnt > 1 else "single")
+    else:
+        tracking_mode_value = "split" if expected_cnt > 1 else "single"
+
     # Master Bundle Matrix array
     matrix = values_map.get("master_bundle_matrix", [])
     # Update existing entry if integration_id matches or append new
@@ -1498,6 +1536,7 @@ async def commit_budget_extraction(
     # Store master JSON matrix and cleaned master table in values_map
     values_map.update({
         "bundle_config": {
+            "tracking_mode": tracking_mode_value,
             "expected_count": expected_cnt,
             "linked_count": linked_cnt,
             "is_complete": linked_cnt >= expected_cnt
@@ -1576,5 +1615,189 @@ async def update_integration_module(
         "integration_id": integration.id,
         "module": integration.module
     }
+
+
+def _consolidate_master_bundle_deterministic(master_bundle_matrix: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Direct deterministic consolidation of linked workbooks in master_bundle_matrix.
+    Combines categories and sums metrics directly when users manually edit linked workbook tables.
+    """
+    tot_orig = 0.0
+    tot_appr = 0.0
+    has_appraised = False
+    tot_ev = 0.0
+    all_reconciled_categories = []
+
+    for wb in master_bundle_matrix:
+        m = wb.get("summary_metrics") or {}
+        orig = float(m.get("original_contract_sum") or 0.0)
+        appr = m.get("appraised_budget")
+        ev = float(m.get("earned_value") or 0.0)
+
+        tot_orig += orig
+        if appr is not None and str(appr).strip() != "" and float(appr) > 0:
+            tot_appr += float(appr)
+            has_appraised = True
+        else:
+            tot_appr += orig
+        tot_ev += ev
+
+        trade = wb.get("trade_label") or "General Trade"
+        for c in wb.get("categories") or []:
+            c_orig = float(c.get("original_amount") or 0.0)
+            c_appr = c.get("appraised_amount")
+            c_ev = float(c.get("earned_value_to_date") or 0.0)
+            
+            all_reconciled_categories.append({
+                "category_name": c.get("category_name") or "Unassigned Component",
+                "original_amount": c_orig,
+                "appraised_amount": float(c_appr) if (c_appr is not None and str(c_appr).strip() != "") else None,
+                "earned_value_to_date": c_ev,
+                "source_trade": trade,
+                "is_reconciled": True
+            })
+
+    final_appr = tot_appr if has_appraised else None
+    eff = tot_appr if has_appraised else tot_orig
+    rem = max(0.0, eff - tot_ev)
+    pct = (tot_ev / eff * 100.0) if eff > 0 else 0.0
+
+    return {
+        "original_contract_sum": tot_orig,
+        "appraised_budget": final_appr,
+        "earned_value": tot_ev,
+        "remaining_balance": rem,
+        "percent_used": pct,
+        "reconciled_categories": all_reconciled_categories,
+        "detected_overlaps": []
+    }
+
+
+class UpdateBudgetMatrixRequest(BaseModel):
+    project_id: int
+    integration_id: Optional[int] = None
+    old_trade_label: Optional[str] = None
+    trade_label: Optional[str] = None
+    categories: Optional[List[Dict[str, Any]]] = None
+
+@router.post("/integrations/budget/update-matrix")
+async def update_budget_matrix(
+    request: UpdateBudgetMatrixRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Updates specific trade/workbook matrix items or trade titles in master_bundle_matrix,
+    re-calculates metrics deterministically, and updates Master Table in sync.
+    """
+    from ..models.budget import Budget
+    from ..models.project import Project
+
+    budget = db.query(Budget).filter(Budget.project_id == request.project_id).first()
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget record not found for this project.")
+
+    values_map = budget.values_map or {}
+    matrix = values_map.get("master_bundle_matrix", [])
+
+    matched = False
+    for idx, item in enumerate(matrix):
+        is_id_match = request.integration_id is not None and item.get("integration_id") == request.integration_id
+        is_label_match = request.old_trade_label and item.get("trade_label") == request.old_trade_label
+        
+        if is_id_match or is_label_match:
+            matched = True
+            new_trade_label = request.trade_label or item.get("trade_label") or "General Trade"
+            item["trade_label"] = new_trade_label
+            
+            if request.categories is not None:
+                item["categories"] = request.categories
+                # Recalculate summary metrics for this workbook item
+                tot_orig = sum(float(c.get("original_amount") or 0.0) for c in request.categories)
+                tot_appr_vals = [float(c["appraised_amount"]) for c in request.categories if c.get("appraised_amount") is not None and str(c.get("appraised_amount")).strip() != ""]
+                tot_appr = sum(tot_appr_vals) if tot_appr_vals else None
+                tot_ev = sum(float(c.get("earned_value_to_date") or 0.0) for c in request.categories)
+                eff = tot_appr if (tot_appr is not None and tot_appr > 0) else tot_orig
+                rem = max(0.0, eff - tot_ev)
+                pct = (tot_ev / eff * 100.0) if eff > 0 else 0.0
+                
+                item["summary_metrics"] = {
+                    "original_contract_sum": tot_orig,
+                    "appraised_budget": tot_appr,
+                    "earned_value": tot_ev,
+                    "remaining_balance": rem,
+                    "percent_used": pct
+                }
+            matrix[idx] = item
+            
+            if request.integration_id:
+                integration = db.query(ProjectIntegration).filter(ProjectIntegration.id == request.integration_id).first()
+                if integration:
+                    meta = integration.meta_data or {}
+                    meta["trade_label"] = new_trade_label
+                    integration.meta_data = meta
+                    flag_modified(integration, "meta_data")
+                    db.commit()
+            break
+
+    if not matched and (request.categories or request.trade_label):
+        # If matrix was empty or no match, append a new matrix item
+        new_trade_label = request.trade_label or "General Trade"
+        new_cats = request.categories or []
+        tot_orig = sum(float(c.get("original_amount") or 0.0) for c in new_cats)
+        tot_appr_vals = [float(c["appraised_amount"]) for c in new_cats if c.get("appraised_amount") is not None and str(c.get("appraised_amount")).strip() != ""]
+        tot_appr = sum(tot_appr_vals) if tot_appr_vals else None
+        tot_ev = sum(float(c.get("earned_value_to_date") or 0.0) for c in new_cats)
+        eff = tot_appr if (tot_appr is not None and tot_appr > 0) else tot_orig
+        rem = max(0.0, eff - tot_ev)
+        pct = (tot_ev / eff * 100.0) if eff > 0 else 0.0
+        
+        matrix.append({
+            "integration_id": request.integration_id,
+            "trade_label": new_trade_label,
+            "title": f"{new_trade_label} Sheet",
+            "summary_metrics": {
+                "original_contract_sum": tot_orig,
+                "appraised_budget": tot_appr,
+                "earned_value": tot_ev,
+                "remaining_balance": rem,
+                "percent_used": pct
+            },
+            "categories": new_cats
+        })
+
+    # Direct deterministic consolidation without AI LLM call
+    reconciled_master = _consolidate_master_bundle_deterministic(matrix)
+
+    master_orig = reconciled_master.get("original_contract_sum") or 0.0
+    master_appr = reconciled_master.get("appraised_budget")
+    master_ev = reconciled_master.get("earned_value") or 0.0
+
+    budget.amount = master_orig
+    budget.revised_amount = master_appr if master_appr is not None else master_orig
+    budget.earned_value = master_ev
+
+    values_map["master_bundle_matrix"] = matrix
+    values_map["master_cleaned_table"] = reconciled_master
+    values_map["original_contract_sum"] = master_orig
+    values_map["appraised_budget"] = master_appr
+    values_map["is_appraised"] = master_appr is not None and master_appr != master_orig
+    values_map["earned_value"] = master_ev
+    values_map["remaining_balance"] = reconciled_master.get("remaining_balance", 0.0)
+    values_map["percent_used"] = reconciled_master.get("percent_used", 0.0)
+    values_map["summary_breakdown"] = reconciled_master.get("reconciled_categories", [])
+
+    budget.values_map = values_map
+    flag_modified(budget, "values_map")
+    db.commit()
+    db.refresh(budget)
+
+    return {
+        "status": "success",
+        "message": "Workbook matrix updated and Master Budget consolidated.",
+        "master_cleaned_table": reconciled_master,
+        "values_map": budget.values_map
+    }
+
+
 
 

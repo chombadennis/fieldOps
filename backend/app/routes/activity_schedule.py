@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -223,3 +224,420 @@ def delete_activity_schedule_document(
     db.delete(doc)
     db.commit()
     return {"status": "deleted", "message": "Document data and integration permanently deleted from database"}
+
+
+# --- Integration, Preview & Commit Endpoints for Activity Schedule ---
+
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+
+class ActivitySchedulePreviewRequest(BaseModel):
+    project_id: int
+    provider: str
+    spreadsheet_id: str
+    filename: str
+    refresh_token: Optional[str] = None
+    selected_sheets: Optional[List[str]] = None
+    trade_label: Optional[str] = None
+
+class ActivityScheduleCommitRequest(BaseModel):
+    project_id: int
+    contract_id: Optional[int] = None
+    integration_id: Optional[int] = None
+    file_url: Optional[str] = None
+    title: Optional[str] = "Activity Schedule"
+    items: List[Dict[str, Any]] = []
+
+class ActivityScheduleItemsUpdateRequest(BaseModel):
+    items: List[Dict[str, Any]]
+
+
+async def _download_cloud_file(provider: str, file_id: str, refresh_token: str) -> str:
+    """Downloads a file from Google Drive or OneDrive and saves it to a temp path."""
+    import httpx
+    import tempfile
+    import os
+    from ..utils.security import decrypt_token
+    from ..services.integrations.google_sheets import refresh_google_access_token
+    from ..services.integrations.onedrive import refresh_onedrive_access_token
+
+    decrypted = decrypt_token(refresh_token)
+    if provider == "google_sheets":
+        access_token = await refresh_google_access_token(decrypted)
+        url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+        headers = {"Authorization": f"Bearer {access_token}"}
+    elif provider == "onedrive":
+        access_token = await refresh_onedrive_access_token(decrypted)
+        url = f"https://graph.microsoft.com/v1.0/me/drive/items/{file_id}/content"
+        headers = {"Authorization": f"Bearer {access_token}"}
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported cloud provider")
+
+    fd, temp_path = tempfile.mkstemp()
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.get(url, headers=headers, follow_redirects=True)
+        if resp.status_code != 200:
+            os.close(fd)
+            os.remove(temp_path)
+            raise HTTPException(status_code=resp.status_code, detail=f"Cloud download failed: {resp.text}")
+        with os.fdopen(fd, 'wb') as f:
+            f.write(resp.content)
+            
+    return temp_path
+
+
+async def _extract_content_and_process(
+    temp_path: str,
+    filename: str,
+    project_name: str,
+    selected_sheets: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """Parses file contents based on file extension and calls process_activity_schedule_with_ai."""
+    import os
+    import pandas as pd
+    import docx
+    from ..services.integrations.activity_schedule_ai_engine import process_activity_schedule_with_ai
+
+    ext = os.path.splitext(filename.lower())[1]
+    
+    try:
+        if ext == ".pdf":
+            return await process_activity_schedule_with_ai(
+                file_path=temp_path,
+                mime_type="application/pdf",
+                project_name=project_name
+            )
+        elif ext in [".docx", ".doc"]:
+            # Extract word text
+            doc = docx.Document(temp_path)
+            full_text = []
+            for para in doc.paragraphs:
+                if para.text.strip():
+                    full_text.append(para.text.strip())
+            for table in doc.tables:
+                for row in table.rows:
+                    row_cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                    if row_cells:
+                        full_text.append(" | ".join(row_cells))
+            text_content = "\n".join(full_text)
+            return await process_activity_schedule_with_ai(
+                text_content=text_content,
+                project_name=project_name
+            )
+        elif ext in [".xlsx", ".xls"]:
+            # Read Excel sheets
+            xls = pd.ExcelFile(temp_path)
+            sheets_data = {}
+            
+            # Determine which sheets to load
+            target_sheets = selected_sheets
+            if not target_sheets:
+                target_sheets = xls.sheet_names[:5]
+            else:
+                target_sheets = [s for s in target_sheets if s in xls.sheet_names]
+                if not target_sheets:
+                    target_sheets = xls.sheet_names[:5]
+                    
+            for sheet_name in target_sheets:
+                df = pd.read_excel(xls, sheet_name=sheet_name)
+                rows = [df.columns.tolist()] + df.values.tolist()
+                sheets_data[sheet_name] = rows
+            return await process_activity_schedule_with_ai(
+                sheets_data=sheets_data,
+                project_name=project_name
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file format '{ext}'")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse document format '{ext}': {str(e)}")
+
+
+@router.post("/validate")
+async def validate_activity_schedule_document(
+    project_id: int,
+    request: ActivitySchedulePreviewRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Validates if the linked file (workbook, PDF, or Word) contains a valid Activity Schedule document.
+    """
+    from ..models.project import Project
+    from ..models.project_integration import ProjectIntegration
+
+    # Check duplicate linkage across modules
+    existing_link = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == project_id,
+        ProjectIntegration.spreadsheet_id == request.spreadsheet_id,
+        ProjectIntegration.module != "activity_schedule_rejected"
+    ).first()
+    if existing_link and existing_link.module != "activity_schedule":
+        raise HTTPException(
+            status_code=400,
+            detail=f"This document is already linked under the {existing_link.module.upper()} tab. Duplicate linkages are prohibited."
+        )
+
+    # Check duplicate rejections and remove old rejections for this document
+    existing_rejected = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == project_id,
+        ProjectIntegration.spreadsheet_id == request.spreadsheet_id,
+        ProjectIntegration.module == "activity_schedule_rejected"
+    ).first()
+    if existing_rejected:
+        db.delete(existing_rejected)
+        db.flush()
+
+    # Fetch token
+    ref_token = request.refresh_token
+    if not ref_token:
+        integration = db.query(ProjectIntegration).filter(
+            ProjectIntegration.project_id == project_id,
+            ProjectIntegration.provider == request.provider
+        ).first()
+        if integration:
+            ref_token = integration.refresh_token
+
+    if not ref_token:
+        raise HTTPException(status_code=400, detail="OAuth credentials missing.")
+
+    temp_path = await _download_cloud_file(request.provider, request.spreadsheet_id, ref_token)
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        proj_name = project.name if project else ""
+        
+        extracted_data = await _extract_content_and_process(
+            temp_path,
+            request.filename,
+            proj_name,
+            selected_sheets=request.selected_sheets
+        )
+        
+        if not extracted_data.get("is_activity_schedule_document"):
+            doc_type = extracted_data.get("identified_document_type", "Unknown Document")
+            
+            # Persist rejection record
+            db_integration = ProjectIntegration(
+                project_id=project_id,
+                provider=request.provider,
+                spreadsheet_id=request.spreadsheet_id,
+                refresh_token=ref_token or "rejected_no_token",
+                sheet_name="Rejected",
+                module="activity_schedule_rejected",
+                meta_data={"identified_document_type": doc_type, "rejection_reason": doc_type}
+            )
+            db.add(db_integration)
+            db.commit()
+
+            return {"valid": False, "reason": f"Expected Activity Schedule, identified as '{doc_type}'"}
+            
+        if existing_rejected:
+            db.commit()
+            
+        return {"valid": True, "reason": None, "extracted_data": extracted_data}
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except PermissionError:
+                pass
+
+
+@router.post("/preview")
+async def preview_activity_schedule_extraction(
+    project_id: int,
+    request: ActivitySchedulePreviewRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Previews structured Activity Schedule extraction for human-in-the-loop validation.
+    """
+    from ..models.project import Project
+    from ..models.project_integration import ProjectIntegration
+
+    ref_token = request.refresh_token
+    if not ref_token:
+        integration = db.query(ProjectIntegration).filter(
+            ProjectIntegration.project_id == project_id,
+            ProjectIntegration.provider == request.provider
+        ).first()
+        if integration:
+            ref_token = integration.refresh_token
+
+    if not ref_token:
+        raise HTTPException(status_code=400, detail="OAuth credentials missing.")
+
+    temp_path = await _download_cloud_file(request.provider, request.spreadsheet_id, ref_token)
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        proj_name = project.name if project else ""
+        
+        extracted_data = await _extract_content_and_process(
+            temp_path,
+            request.filename,
+            proj_name,
+            selected_sheets=request.selected_sheets
+        )
+        return extracted_data
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+@router.post("/commit")
+async def commit_activity_schedule_extraction(
+    project_id: int,
+    request: ActivityScheduleCommitRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Saves document details and writes/overwrites parsed items to activity_schedule_items in Postgres.
+    """
+    from ..models.activity_schedule import ActivityScheduleDocument, ActivityScheduleItem
+    from ..models.project_integration import ProjectIntegration
+    from ..models.contract import Contract
+
+    # Resolve contract_id
+    contract_id = request.contract_id
+    if not contract_id:
+        gen_contract = db.query(Contract).filter(
+            Contract.project_id == project_id,
+            Contract.contract_type == "GENERAL"
+        ).first()
+        if not gen_contract:
+            gen_contract = Contract(project_id=project_id, name="General Contract", contract_type="GENERAL")
+            db.add(gen_contract)
+            db.commit()
+            db.refresh(gen_contract)
+        contract_id = gen_contract.id
+
+    # Check for existing document by integration_id or file_url
+    doc = None
+    if request.integration_id:
+        doc = db.query(ActivityScheduleDocument).filter(
+            ActivityScheduleDocument.project_id == project_id,
+            ActivityScheduleDocument.integration_id == request.integration_id
+        ).first()
+    
+    if not doc and request.file_url:
+        doc = db.query(ActivityScheduleDocument).filter(
+            ActivityScheduleDocument.project_id == project_id,
+            ActivityScheduleDocument.file_url == request.file_url
+        ).first()
+
+    # Create document container if not exists
+    if not doc:
+        doc = ActivityScheduleDocument(
+            project_id=project_id,
+            contract_id=contract_id,
+            name=request.title or "Activity Schedule",
+            file_url=request.file_url,
+            origin="cloud_integration" if request.integration_id else "file_upload",
+            integration_id=request.integration_id,
+            file_type="xlsx" if (request.file_url and (".xls" in request.file_url.lower() or ".csv" in request.file_url.lower())) else "pdf"
+        )
+        db.add(doc)
+        db.flush()
+    else:
+        # Update details
+        doc.name = request.title or doc.name
+        doc.file_url = request.file_url or doc.file_url
+        
+        # Clear out existing items
+        db.query(ActivityScheduleItem).filter(ActivityScheduleItem.document_id == doc.id).delete()
+        db.flush()
+
+    # Insert items
+    for item in request.items:
+        db_item = ActivityScheduleItem(
+            document_id=doc.id,
+            activity_id=item.get("activity_id"),
+            description=item.get("description", ""),
+            weight_percentage=float(item.get("weight_percentage") or 0.0),
+            fixed_price=float(item.get("fixed_price") or 0.0),
+            values_map=item.get("values_map")
+        )
+        db.add(db_item)
+
+    db.commit()
+    db.refresh(doc)
+
+    # Tag the integration module
+    if request.integration_id:
+        integration = db.query(ProjectIntegration).filter(ProjectIntegration.id == request.integration_id).first()
+        if integration:
+            integration.module = "activity_schedule"
+            db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Successfully committed Activity Schedule '{doc.name}' with {len(request.items)} items.",
+        "document_id": doc.id
+    }
+
+
+@router.get("/documents/{document_id}/items")
+def get_activity_schedule_items(
+    project_id: int,
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieves the parsed/stored items under a specific Activity Schedule document.
+    """
+    from ..models.activity_schedule import ActivityScheduleDocument, ActivityScheduleItem
+
+    doc = db.query(ActivityScheduleDocument).filter(
+        ActivityScheduleDocument.id == document_id,
+        ActivityScheduleDocument.project_id == project_id
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Activity Schedule document not found")
+
+    items = db.query(ActivityScheduleItem).filter(
+        ActivityScheduleItem.document_id == document_id
+    ).order_by(ActivityScheduleItem.id.asc()).all()
+
+    return items
+
+
+@router.post("/documents/{document_id}/items")
+def update_activity_schedule_items(
+    project_id: int,
+    document_id: int,
+    request: ActivityScheduleItemsUpdateRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Updates (edits, appends, deletes) the items for an active Activity Schedule document.
+    """
+    from ..models.activity_schedule import ActivityScheduleDocument, ActivityScheduleItem
+
+    doc = db.query(ActivityScheduleDocument).filter(
+        ActivityScheduleDocument.id == document_id,
+        ActivityScheduleDocument.project_id == project_id
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Activity Schedule document not found")
+
+    # Clear old items
+    db.query(ActivityScheduleItem).filter(ActivityScheduleItem.document_id == document_id).delete()
+    db.flush()
+
+    # Insert updated items
+    for item in request.items:
+        db_item = ActivityScheduleItem(
+            document_id=document_id,
+            activity_id=item.get("activity_id"),
+            description=item.get("description", ""),
+            weight_percentage=float(item.get("weight_percentage") or 0.0),
+            fixed_price=float(item.get("fixed_price") or 0.0),
+            values_map=item.get("values_map")
+        )
+        db.add(db_item)
+
+    db.commit()
+    
+    return {
+        "status": "success",
+        "message": f"Successfully updated {len(request.items)} activity items."
+    }
+

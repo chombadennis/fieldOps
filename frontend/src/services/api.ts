@@ -185,9 +185,9 @@ export const listActiveIntegrationSheets = async (integrationId: number) => {
   return response.data;
 };
 
-export const listCloudFiles = async (provider: string, refreshToken: string, folderId?: string, filterType?: string, projectId?: string | number) => {
+export const listCloudFiles = async (provider: string, refreshToken: string, folderId?: string, filterType?: string, projectId?: string | number, module?: string) => {
   const response = await apiClient.get('/integrations/list-files', {
-    params: { provider, refresh_token: refreshToken, folder_id: folderId, filter_type: filterType, project_id: projectId }
+    params: { provider, refresh_token: refreshToken, folder_id: folderId, filter_type: filterType, project_id: projectId, module }
   });
   return response.data;
 };
@@ -356,4 +356,65 @@ export const updateIntegrationModule = async (integrationId: string | number, mo
   const response = await apiClient.put(`/integrations/${integrationId}/module`, { module });
   return response.data;
 };
+
+export const updateBudgetWorkbookMatrix = async (data: {
+  project_id: number;
+  integration_id?: number;
+  old_trade_label?: string;
+  trade_label?: string;
+  categories?: any[];
+}) => {
+  const response = await apiClient.post('/integrations/budget/update-matrix', data);
+  return response.data;
+};
+
+export const validateActivitySchedule = async (projectId: string | number, data: {
+  project_id: number;
+  provider: string;
+  spreadsheet_id: string;
+  filename: string;
+  refresh_token?: string;
+  trade_label?: string;
+  selected_sheets?: string[];
+}): Promise<{ valid: boolean; reason?: string; extracted_data?: any }> => {
+  const response = await apiClient.post(`/projects/${projectId}/activity_schedule/validate`, data);
+  return response.data;
+};
+
+export const previewActivityScheduleExtraction = async (projectId: string | number, data: {
+  project_id: number;
+  provider: string;
+  spreadsheet_id: string;
+  filename: string;
+  refresh_token?: string;
+  trade_label?: string;
+  selected_sheets?: string[];
+}) => {
+  const response = await apiClient.post(`/projects/${projectId}/activity_schedule/preview`, data);
+  return response.data;
+};
+
+export const commitActivityScheduleExtraction = async (projectId: string | number, data: {
+  project_id: number;
+  contract_id?: number;
+  integration_id?: number;
+  file_url?: string;
+  title?: string;
+  items?: any[];
+}) => {
+  const response = await apiClient.post(`/projects/${projectId}/activity_schedule/commit`, data);
+  return response.data;
+};
+
+export const getActivityScheduleItems = async (projectId: string | number, documentId: string | number) => {
+  const response = await apiClient.get(`/projects/${projectId}/activity_schedule/documents/${documentId}/items`);
+  return response.data;
+};
+
+export const updateActivityScheduleItems = async (projectId: string | number, documentId: string | number, items: any[]) => {
+  const response = await apiClient.post(`/projects/${projectId}/activity_schedule/documents/${documentId}/items`, { items });
+  return response.data;
+};
+
+
 

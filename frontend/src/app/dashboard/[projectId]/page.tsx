@@ -25,6 +25,7 @@ import RoleSwitcher, { UserRole, ROLES_CONFIG } from '@/components/RoleSwitcher'
 import BudgetsTab from '@/components/BudgetsTab';
 import IpcsTab from '@/components/IpcsTab';
 import DepartmentTab from '@/components/DepartmentTab';
+import ActivityScheduleTab from '@/components/ActivityScheduleTab';
 import DiscussionBoard from '@/components/DiscussionBoard';
 import { AlertTriangle, X, FileSpreadsheet, DollarSign, FileCheck, HardHat, Wrench, Users, Scale, Building2, Calendar } from 'lucide-react';
 
@@ -74,7 +75,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
   const fetchProjectData = async () => {
     try {
       const [
-        projData, bData, iData, nData, 
+        projData, bData, iData, nData,
         dData, techData, fieldOpsData, activityData, milestoneData, rateData, reimbursableData, programData, ipcDocsData
       ] = await Promise.all([
         getProject(projectId),
@@ -82,7 +83,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
         getProjectIPCs(projectId).catch(() => []),
         getProjectNotes(projectId).catch(() => []),
         getProjectDocuments(projectId).catch(() => []), // standard documents
-        
+
         // Decoupled Documents
         import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'tech')).catch(() => []),
         import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'field_ops')).catch(() => []),
@@ -93,12 +94,12 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
         import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'program_of_works')).catch(() => []),
         import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'ipc')).catch(() => []),
       ]);
-      
+
       const allDocs = [
-        ...dData, ...techData, ...fieldOpsData, ...activityData, 
+        ...dData, ...techData, ...fieldOpsData, ...activityData,
         ...milestoneData, ...rateData, ...reimbursableData, ...programData, ...ipcDocsData
       ];
-      
+
       setProject(projData);
       setBudgets(bData);
       setIpcs(iData);
@@ -236,11 +237,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`inline-flex items-center px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
-                isActive
+              className={`inline-flex items-center px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${isActive
                   ? 'bg-dark-teal-900 text-white shadow-md font-lexend'
                   : 'text-gray-600 hover:bg-dark-teal-50 hover:text-dark-teal-900'
-              }`}
+                }`}
             >
               <Icon className="w-4 h-4 mr-2" />
               {tab.label}
@@ -297,19 +297,17 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                       <button
                         key={sub.key}
                         onClick={() => setPmoSubTab(sub.key)}
-                        className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 flex items-center justify-between group ${
-                          isSubActive
+                        className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 flex items-center justify-between group ${isSubActive
                             ? 'bg-gradient-to-r from-dark-teal-900 to-dark-teal-950 text-white shadow-md scale-[1.01]'
                             : 'bg-gray-50/80 hover:bg-dark-teal-50/50 text-gray-700 hover:text-dark-teal-900 border border-gray-100 hover:border-dark-teal-100'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center space-x-3">
                           <div
-                            className={`p-2.5 rounded-xl transition ${
-                              isSubActive
+                            className={`p-2.5 rounded-xl transition ${isSubActive
                                 ? 'bg-white/10 text-white'
                                 : 'bg-white text-dark-teal-700 shadow-sm border border-gray-100 group-hover:scale-110'
-                            }`}
+                              }`}
                           >
                             <SubIcon className="w-4 h-4" />
                           </div>
@@ -322,11 +320,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                         </div>
                         {sub.badgeCount !== undefined && (
                           <span
-                            className={`ml-2 px-2 py-0.5 text-[10px] font-black rounded-full whitespace-nowrap ${
-                              isSubActive
+                            className={`ml-2 px-2 py-0.5 text-[10px] font-black rounded-full whitespace-nowrap ${isSubActive
                                 ? 'bg-white/20 text-white'
                                 : 'bg-gray-200/80 text-gray-600'
-                            }`}
+                              }`}
                           >
                             {sub.badgeCount}
                           </span>
@@ -386,7 +383,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                     onDeleteDocument={handleDeleteBoqDocument}
                     integrations={(project.integrations || []).filter((i: any) => i.module === 'boq')}
                   />
-                  
+
                   {/* Discussion Board for BoQ */}
                   <DiscussionBoard
                     notes={notes.filter((n: any) => n.department?.toLowerCase() === 'boq')}
@@ -429,21 +426,15 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
               )}
               {/* PMO Subtab: Activity Schedule */}
               {pmoSubTab === 'activity_schedule' && (
-                <DepartmentTab
+                <ActivityScheduleTab
                   projectId={project.id}
-                  departmentName="Activity Schedule"
-                  departmentKey="activity_schedule"
-                  apiEndpoint="activity_schedule"
-                  description="Upload and link Lump Sum Activity Schedule files. Expected format: Excel Workbooks."
-                  colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
-                  notes={notes.filter((n: any) => n.department?.toLowerCase() === 'activity_schedule')}
-                  documents={documents.filter((d: any) => d.department?.toLowerCase() === 'activity_schedule')}
+                  notes={notes}
+                  documents={documents}
                   onAddNote={handleAddNote}
                   integrations={(project.integrations || []).filter((i: any) => i.module === 'activity_schedule')}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
                   setGlobalLoading={setGlobalProcessing}
-                  activeTab="pmo"
                 />
               )}
 

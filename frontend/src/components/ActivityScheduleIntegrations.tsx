@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import {
-  FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Layers, Lock
+  FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Lock
 } from 'lucide-react';
 import {
-  getGoogleAuthUrl, getOneDriveAuthUrl, listActiveIntegrationSheets, deleteIntegration, previewBudgetExtraction, commitBudgetExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateBudget, updateIntegrationModule
+  getGoogleAuthUrl, getOneDriveAuthUrl, deleteIntegration, previewActivityScheduleExtraction, commitActivityScheduleExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateActivitySchedule
 } from '@/services/api';
-import BudgetExtractionPreviewModal from './integrations/BudgetExtractionPreviewModal';
-import BudgetBundleSetupModal from './integrations/BudgetBundleSetupModal';
-import WorkbookInlinePreviewDrawer from './integrations/WorkbookInlinePreviewDrawer';
+import ActivityScheduleExtractionPreviewModal from './integrations/ActivityScheduleExtractionPreviewModal';
 import CloudConfigModal from './integrations/CloudConfigModal';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 
@@ -22,44 +20,25 @@ interface Integration {
   module?: string;
 }
 
-interface PersistedBundleConfig {
-  tracking_mode?: string;
-  expected_count?: number;
-  linked_count?: number;
-  is_complete?: boolean;
-}
-
-interface BudgetIntegrationsProps {
+interface ActivityScheduleIntegrationsProps {
   projectId: number;
   integrations: Integration[];
   documents: any[];
-  masterMatrix: any[];
-  persistedBundleConfig?: PersistedBundleConfig;
   onRefresh: () => void;
   globalLoading?: boolean;
   setGlobalLoading?: (val: boolean) => void;
-  moduleContext?: string;
 }
 
-export default function BudgetIntegrations({
+export default function ActivityScheduleIntegrations({
   projectId,
   integrations,
   documents,
-  masterMatrix,
-  persistedBundleConfig,
   onRefresh,
   globalLoading,
   setGlobalLoading,
-  moduleContext = 'budget'
-}: BudgetIntegrationsProps) {
+}: ActivityScheduleIntegrationsProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [pendingProvider, setPendingProvider] = useState<'google' | 'onedrive' | null>(null);
-  const [showSetupModal, setShowSetupModal] = useState(false);
-  const [bundleConfig, setBundleConfig] = useState<{ isBundle: boolean; expectedCount: number; tradeLabel: string }>({
-    isBundle: false,
-    expectedCount: 1,
-    tradeLabel: 'General Master Budget',
-  });
 
   const [oauthProvider, setOauthProvider] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
@@ -87,23 +66,24 @@ export default function BudgetIntegrations({
 
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
-  const [extractingIntegrationId, setExtractingIntegrationId] = useState<number | null>(null);
   const [extractedData, setExtractedData] = useState<any>(null);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [modalSuccess, setModalSuccess] = useState<string | null>(null);
   const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
   const [rejectedDocumentContext, setRejectedDocumentContext] = useState<string | null>(null);
   const [warningFileContext, setWarningFileContext] = useState<any>(null);
+  const [modalMessage, setModalMessage] = useState<{ type: 'info' | 'success' | 'error' | 'warning'; text: string } | null>(null);
 
+  // ─── OAuth Setup (matches Budget flow) ───────────────────────────
   const handleOpenSetup = async (provider: 'google' | 'onedrive') => {
     setLoadingProvider(provider);
     setActionError(null);
     setPendingProvider(provider);
 
-    // 1. Open the popup synchronously immediately within the click handler to avoid popup blockers
     const width = 600;
     const height = 650;
     const left = window.screen.width / 2 - width / 2;
@@ -133,23 +113,18 @@ export default function BudgetIntegrations({
       `);
     }
 
-    let hasValidToken = false;
     const dbProvider = provider === 'google' ? 'google_sheets' : 'onedrive';
 
     try {
-      // 2. Check if a valid cached token exists in the database
       const authCheck = await getGlobalAuthToken(projectId, dbProvider);
       if (authCheck && authCheck.has_auth) {
         try {
-          await listCloudFiles(dbProvider, authCheck.refresh_token, undefined, 'spreadsheets', projectId);
-          // Token is valid!
-          hasValidToken = true;
+          await listCloudFiles(dbProvider, authCheck.refresh_token, undefined, 'all', projectId, 'activity_schedule');
           setOauthProvider(dbProvider);
           setRefreshToken(authCheck.refresh_token);
-          setShowSetupModal(true);
+          setShowConfigModal(true);
           setLoadingProvider(null);
 
-          // Close the popup since we don't need it
           if (popup) popup.close();
           return;
         } catch (tokenErr) {
@@ -160,7 +135,6 @@ export default function BudgetIntegrations({
       console.error("Global auth check failed:", err);
     }
 
-    // 3. No valid token found — proceed with OAuth flow inside the already opened popup
     if (popup) {
       try {
         const msgEl = popup.document.getElementById('status-msg');
@@ -168,17 +142,17 @@ export default function BudgetIntegrations({
           msgEl.innerText = `Connecting to ${provider === 'google' ? 'Google' : 'Microsoft'}...`;
         }
       } catch (e) {
-        // Ignore cross-origin context issues if document is unloaded/reloading
+        // ignore
       }
     }
 
     try {
       let url = '';
       if (provider === 'google') {
-        const res = await getGoogleAuthUrl(projectId, 'pmo', 'budgets');
+        const res = await getGoogleAuthUrl(projectId, 'pmo', 'activity_schedule');
         url = res.url;
       } else {
-        const res = await getOneDriveAuthUrl(projectId, 'pmo', 'budgets');
+        const res = await getOneDriveAuthUrl(projectId, 'pmo', 'activity_schedule');
         url = res.url;
       }
 
@@ -190,7 +164,7 @@ export default function BudgetIntegrations({
               setLoadingProvider(null);
             }
           } catch (e) {
-            // Ignore COOP errors
+            // ignore
           }
         }, 500);
         popup.location.href = url;
@@ -205,7 +179,7 @@ export default function BudgetIntegrations({
     }
   };
 
-  // Check URL parameters on mount to capture OAuth returns
+  // ─── OAuth callback listeners (matches Budget flow with BroadcastChannel) ───
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
@@ -221,9 +195,7 @@ export default function BudgetIntegrations({
             const bc = new BroadcastChannel('oauth_channel');
             bc.postMessage({ type: 'OAUTH_ERROR', error: decodeURIComponent(err) });
             bc.close();
-          } catch (e) {
-            // ignore
-          }
+          } catch (e) { /* ignore */ }
         }
 
         window.close();
@@ -243,9 +215,7 @@ export default function BudgetIntegrations({
             const bc = new BroadcastChannel('oauth_channel');
             bc.postMessage({ type: 'OAUTH_CALLBACK', provider, token });
             bc.close();
-          } catch (e) {
-            // ignore
-          }
+          } catch (e) { /* ignore */ }
         }
 
         window.close();
@@ -254,7 +224,7 @@ export default function BudgetIntegrations({
           if (!window.closed) {
             setOauthProvider(provider);
             setRefreshToken(token);
-            setShowSetupModal(true);
+            setShowConfigModal(true);
             setLoadingProvider(null);
             window.history.replaceState({}, document.title, window.location.pathname);
           }
@@ -271,7 +241,7 @@ export default function BudgetIntegrations({
         const { provider, token } = event.data;
         setOauthProvider(provider);
         setRefreshToken(token);
-        setShowSetupModal(true);
+        setShowConfigModal(true);
         setLoadingProvider(null);
       } else if (event.data?.type === 'OAUTH_ERROR') {
         setActionError(event.data.error || 'Authorization failed.');
@@ -292,25 +262,20 @@ export default function BudgetIntegrations({
     };
   }, []);
 
-  const handleConfirmSetup = async (config: { isBundle: boolean; expectedCount: number; tradeLabel: string }) => {
-    setShowSetupModal(false);
-    setBundleConfig(config);
-    setShowConfigModal(true);
-  };
-
+  // ─── File listing effect (matches Budget useEffect pattern) ──────
   React.useEffect(() => {
     let active = true;
     const fetchFiles = async () => {
       if (!showConfigModal || !oauthProvider || !refreshToken) return;
       setFetchingFiles(true);
       try {
-        const filterType = 'spreadsheets';
         const files = await listCloudFiles(
           oauthProvider,
           refreshToken,
           currentFolderId || undefined,
-          filterType,
-          projectId
+          'all',
+          projectId,
+          'activity_schedule'
         );
         if (active) {
           setAvailableFiles(files || []);
@@ -329,6 +294,7 @@ export default function BudgetIntegrations({
     return () => { active = false; };
   }, [showConfigModal, oauthProvider, currentFolderId, projectId, refreshToken]);
 
+  // ─── Sheet listing effect (matches Budget useEffect pattern) ─────
   React.useEffect(() => {
     let active = true;
     const fetchSheetsForFile = async () => {
@@ -338,6 +304,13 @@ export default function BudgetIntegrations({
       const isSpreadsheet = file.is_google_sheet || /\.(xlsx|xls|csv|ods|gsheet)$/i.test(file.name);
       if (!isSpreadsheet) {
         setSheetsList([]);
+        // For non-spreadsheet files (PDF, Word), set pending details immediately
+        setPendingFileDetails({
+          selectedFile: file,
+          sheetsNames: 'Main Content',
+          isSpreadsheet: false,
+          boqName: boqName || file.name
+        });
         return;
       }
       setFetchingSheets(true);
@@ -353,7 +326,7 @@ export default function BudgetIntegrations({
           setSheetsList(sheets);
           const initialSelection: { [key: string]: boolean } = {};
           sheets.forEach((s: any) => {
-            initialSelection[s.id] = true;
+            initialSelection[s.name] = true;
           });
           setSelectedSheets(initialSelection);
 
@@ -361,6 +334,15 @@ export default function BudgetIntegrations({
             const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
             setBoqName(nameWithoutExt);
           }
+
+          // Set pending file details
+          const sheetsNames = sheets.map((s: any) => s.name).join(', ') || file.name;
+          setPendingFileDetails({
+            selectedFile: file,
+            sheetsNames,
+            isSpreadsheet: true,
+            boqName: boqName || file.name
+          });
         }
       } catch (err) {
         console.error(err);
@@ -372,6 +354,7 @@ export default function BudgetIntegrations({
     return () => { active = false; };
   }, [spreadsheetId, availableFiles, showConfigModal, oauthProvider, projectId, refreshToken]);
 
+  // ─── Navigation helpers ──────────────────────────────────────────
   const handleFolderClick = (id: string, name: string) => {
     setNavigationHistory(prev => [...prev, { id, name }]);
     setCurrentFolderId(id);
@@ -388,6 +371,15 @@ export default function BudgetIntegrations({
   const handleSelectFile = (file: any) => {
     const fileId = typeof file === 'object' ? file.id : file;
     setSpreadsheetId(fileId);
+    if (file?.name && !boqName) {
+      setBoqName(file.name.replace(/\.[^/.]+$/, ""));
+    }
+
+    if (file.is_rejected) {
+      setWarningFileContext(file);
+      setShowConfigModal(false);
+      return;
+    }
   };
   const resetConfigModal = () => {
     setSpreadsheetId('');
@@ -397,13 +389,23 @@ export default function BudgetIntegrations({
     setSelectedSheets({});
     setAvailableFiles([]);
     setBoqName('');
+    setPendingFileDetails(null);
+    setModalMessage(null);
   };
 
-  const handleSheetSelection = (sheetId: string) => {
-    setSelectedSheets(prev => ({
-      ...prev,
-      [sheetId]: !prev[sheetId]
-    }));
+  const handleSheetSelection = (sheetName: string) => {
+    setSelectedSheets(prev => {
+      const next = { ...prev, [sheetName]: !prev[sheetName] };
+      // Update pending file details with new sheet selection
+      const activeNames = Object.keys(next).filter(k => next[k]).join(', ');
+      if (pendingFileDetails) {
+        setPendingFileDetails({
+          ...pendingFileDetails,
+          sheetsNames: activeNames || sheetName
+        });
+      }
+      return next;
+    });
   };
 
   const handleCloseConfig = () => {
@@ -411,45 +413,57 @@ export default function BudgetIntegrations({
     resetConfigModal();
   };
 
+  // ─── handleSaveConfig: Validate & Extract INSIDE modal with animated overlay ──
   const handleSaveConfig = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    let selectedFile = availableFiles.find(f => f.id === spreadsheetId);
+    const selectedFile = availableFiles.find(f => f.id === spreadsheetId);
     if (!selectedFile) {
-      setActionError('Please select a document from your drive.');
+      setModalMessage({ type: 'error', text: 'Please select a document from your drive.' });
       return;
     }
 
     const isSpreadsheet = selectedFile.is_google_sheet || /\.(xlsx|xls|csv|ods|gsheet)$/i.test(selectedFile.name);
-    const checkedSheets = sheetsList.filter(s => selectedSheets[s.id]);
+    const checkedSheets = sheetsList.filter(s => selectedSheets[s.name]);
 
     if (isSpreadsheet && checkedSheets.length === 0) {
-      setActionError('Please select at least one worksheet.');
+      setModalMessage({ type: 'error', text: 'Please select at least one worksheet.' });
       return;
     }
 
     const sheetsNames = isSpreadsheet ? (checkedSheets.map(s => s.name).join(', ') || selectedFile.name) : selectedFile.name;
+    const selectedSheetsList = isSpreadsheet ? checkedSheets.map(s => s.name) : [];
+
     setSavingConfig(true);
     if (setGlobalLoading) setGlobalLoading(true);
+
+    // Show scanning overlay inside the CloudConfigModal
+    setModalMessage({ type: 'info', text: 'Validating document as Activity Schedule…' });
 
     try {
       if (oauthProvider && refreshToken) {
         // Step 1: Validate the document first (decoupled from extraction)
-        const validationResult = await validateBudget({
-          project_id: projectId,
+        const validationResult = await validateActivitySchedule(projectId, {
+          project_id: typeof projectId === 'string' ? parseInt(projectId as any) : projectId,
           provider: oauthProvider,
           spreadsheet_id: selectedFile.id,
+          filename: selectedFile.name,
           refresh_token: refreshToken,
-          trade_label: bundleConfig.tradeLabel,
+          selected_sheets: selectedSheetsList.length > 0 ? selectedSheetsList : undefined
         });
 
         if (!validationResult.valid) {
-          // Document is not a budget — show rejection modal with OK only
+          // Document is not a valid Activity Schedule — close modal, show rejection popup
+          setModalMessage(null);
+          setSavingConfig(false);
+          if (setGlobalLoading) setGlobalLoading(false);
           setRejectedDocumentContext(validationResult.reason || 'Unknown Document');
           setShowConfigModal(false);
-          return; // Do NOT proceed to extraction
+          return; // Do NOT proceed to extraction or save
         }
 
-        // Step 2: Document is valid — proceed to extraction preview
+        // Step 2: Document is valid — update overlay and proceed to extraction preview
+        setModalMessage({ type: 'info', text: 'Validation passed ✓ — Extracting schedule data…' });
+
         setPendingFileDetails({
           selectedFile,
           sheetsNames,
@@ -457,140 +471,95 @@ export default function BudgetIntegrations({
           boqName: boqName || selectedFile.name
         });
 
-        const res = await previewBudgetExtraction({
-          project_id: projectId,
-          provider: oauthProvider,
-          spreadsheet_id: selectedFile.id,
-          refresh_token: refreshToken,
-          trade_label: bundleConfig.tradeLabel,
-        });
-
-        if (res?.extracted_data) {
-          setExtractedData(res.extracted_data);
+        if (validationResult.extracted_data) {
+          setModalMessage(null);
+          setExtractedData(validationResult.extracted_data);
           setShowPreviewModal(true);
           setShowConfigModal(false);
         } else {
-          setActionError('Failed to extract Budget data from cloud workbook.');
+          setModalMessage({ type: 'error', text: 'Failed to extract Activity Schedule data from cloud document.' });
         }
       }
     } catch (err: any) {
       console.error(err);
       const detail = err?.response?.data?.detail;
-      if (detail && detail.error_code === 'INVALID_BUDGET_DOCUMENT') {
-        setRejectedDocumentContext(detail.identified_document_type);
+      if (detail && typeof detail === 'object' && detail.error_code === 'INVALID_ACTIVITY_SCHEDULE_DOCUMENT') {
+        setModalMessage(null);
+        setSavingConfig(false);
+        if (setGlobalLoading) setGlobalLoading(false);
+        setRejectedDocumentContext(detail.identified_document_type || 'Invalid Document');
         setShowConfigModal(false);
-      } else {
-        setActionError(typeof detail === 'string' ? detail : err.message || 'Failed to save linked document.');
+        return;
       }
+
+      // Show user-friendly error inside the modal overlay
+      const errorMsg = typeof detail === 'string'
+        ? detail
+        : err?.response?.status
+          ? `Server error (${err.response.status}): ${err.response.statusText || 'Please try again.'}`
+          : err.code === 'ERR_NETWORK'
+            ? 'Unable to reach the server. Please check your internet connection and try again.'
+            : err.message?.includes('timeout')
+              ? 'The request timed out. The document may be too large — please try a smaller file.'
+              : 'Failed to process the document. Please try again.';
+      setModalMessage({ type: 'error', text: errorMsg });
     } finally {
       setSavingConfig(false);
       if (setGlobalLoading) setGlobalLoading(false);
     }
   };
 
-  const handleRunAiExtraction = async (integration: Integration) => {
-    setExtractingIntegrationId(integration.id);
-    setSelectedIntegration(integration);
-    if (setGlobalLoading) setGlobalLoading(true);
-
-    try {
-      const res = await previewBudgetExtraction({
-        project_id: projectId,
-        provider: integration.provider,
-        spreadsheet_id: integration.spreadsheet_id,
-      });
-
-      if (res?.extracted_data) {
-        setExtractedData(res.extracted_data);
-        setShowPreviewModal(true);
-      } else {
-        setActionError('Failed to extract Budget data from cloud workbook.');
-      }
-    } catch (err: any) {
-      setActionError(err.response?.data?.detail || 'Budget extraction failed.');
-    } finally {
-      setExtractingIntegrationId(null);
-      if (setGlobalLoading) setGlobalLoading(false);
-    }
-  };
-
-  const handleConfirmCommit = async (finalData: any) => {
+  // ─── handleConfirmCommit: Save integration + commit (matches Budget flow) ─────
+  const handleConfirmCommit = async (finalItems: any[], finalTitle: string) => {
     setIsCommitting(true);
-    if (setGlobalLoading) setGlobalLoading(true);
+    setActionError(null);
     try {
       let integrationId = selectedIntegration?.id;
-      const targetModule = finalData.module || moduleContext;
 
+      // Save integration on commit (not before validation) — matches Budget flow
       if (!integrationId && pendingFileDetails && oauthProvider && refreshToken) {
+        const sheetNameStr = pendingFileDetails.isSpreadsheet
+          ? Object.keys(selectedSheets).filter(k => selectedSheets[k]).join(', ') || 'Sheet1'
+          : 'Main Content';
+
         const savedInt = await saveIntegration({
-          project_id: typeof projectId === 'string' ? parseInt(projectId) : projectId,
+          project_id: typeof projectId === 'string' ? parseInt(projectId as any) : projectId,
           provider: oauthProvider,
           spreadsheet_id: pendingFileDetails.selectedFile.id,
-          sheet_name: pendingFileDetails.sheetsNames,
-          refresh_token: refreshToken,
+          sheet_name: sheetNameStr,
           boq_name: pendingFileDetails.boqName,
-          module: targetModule,
-          trade_label: finalData.trade_label || bundleConfig.tradeLabel,
-          tracking_mode: bundleConfig.isBundle ? 'split' : 'single'
+          refresh_token: refreshToken,
+          module: 'activity_schedule'
         });
         integrationId = savedInt.integration_id;
       }
 
-      await commitBudgetExtraction({
-        project_id: projectId,
-        original_contract_sum: finalData.original_contract_sum,
-        appraised_budget: finalData.appraised_budget,
-        earned_value: finalData.earned_value,
-        remaining_balance: finalData.remaining_balance,
-        percent_used: finalData.percent_used,
-        categories: finalData.categories,
+      const fileUrl = selectedIntegration?.provider === 'google_sheets'
+        ? `https://docs.google.com/spreadsheets/d/${selectedIntegration.spreadsheet_id}`
+        : pendingFileDetails?.selectedFile?.web_url || `cloud://${pendingFileDetails?.selectedFile?.id || selectedIntegration?.spreadsheet_id}`;
+
+      await commitActivityScheduleExtraction(projectId, {
+        project_id: typeof projectId === 'string' ? parseInt(projectId as any) : projectId,
         integration_id: integrationId,
-        module: targetModule,
-        title: (targetModule === 'progress' ? '[Progress] ' : targetModule === 'cost' ? '[Cost] ' : '[Budget] ') + (pendingFileDetails?.boqName || selectedIntegration?.boq_name || 'Master Budget & EVM'),
-        trade_label: finalData.trade_label || bundleConfig.tradeLabel,
-        expected_count: bundleConfig.expectedCount,
-        project_title_found: finalData.project_metadata?.extracted_project_name,
+        file_url: fileUrl,
+        title: finalTitle,
+        items: finalItems
       });
 
-      setShowPreviewModal(false);
       setPendingFileDetails(null);
       resetConfigModal();
-      setSuccess('Budget workbook data committed successfully and Master Table reconciled.');
-      setTimeout(() => {
-        setSuccess(null);
-      }, 4000);
+      setModalSuccess('Activity Schedule data committed successfully.');
       onRefresh();
     } catch (err: any) {
-      setActionError(err.response?.data?.detail || 'Failed to save Budget to database.');
+      const detail = err?.response?.data?.detail;
+      setActionError(typeof detail === 'string' ? detail : 'Failed to save Activity Schedule to database.');
     } finally {
       setIsCommitting(false);
-      if (setGlobalLoading) setGlobalLoading(false);
     }
   };
 
-  const handleUpdateModule = async (integrationId: number, newModule: string) => {
-    if (setGlobalLoading) setGlobalLoading(true);
-    setActionError(null);
-    setSuccess(null);
-    try {
-      await updateIntegrationModule(integrationId, newModule);
-      setSuccess(`Updated workbook destination tag to '${newModule === 'progress' ? 'Work Progress Calculations' : 'Project Budget'}'.`);
-      setTimeout(() => {
-        setSuccess(null);
-      }, 4000);
-      onRefresh();
-    } catch (err: any) {
-      console.error(err);
-      setActionError(err.response?.data?.detail || 'Failed to update workbook tag.');
-    } finally {
-      if (setGlobalLoading) setGlobalLoading(false);
-    }
-  };
-
+  // ─── Delete / Disconnect ─────────────────────────────────────────
   const handleDisconnect = async (integrationId: number, purgeData: boolean = false) => {
-    if (purgeData) {
-      // Confirmation handled by modal UI
-    }
     setDeletingId(integrationId);
     if (setGlobalLoading) setGlobalLoading(true);
     try {
@@ -608,13 +577,6 @@ export default function BudgetIntegrations({
     }
   };
 
-  // Compute quota from persisted bundle config
-  const pExpected = persistedBundleConfig?.expected_count || 1;
-  const pLinked = persistedBundleConfig?.linked_count || 0;
-  const remainingSlots = Math.max(0, pExpected - pLinked);
-  const isQuotaFull = pLinked >= pExpected && pLinked > 0;
-  const hasPersistedConfig = !!(persistedBundleConfig && pLinked > 0);
-
   return (
     <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-6">
 
@@ -623,54 +585,34 @@ export default function BudgetIntegrations({
         <div>
           <div className="flex items-center space-x-2 flex-wrap gap-y-1">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-dark-teal-700 font-inter">
-              Cloud Budget Integrations
+              Cloud Activity Schedule Integrations
             </span>
-            {hasPersistedConfig && (
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                isQuotaFull
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  : 'bg-dark-teal-50 text-dark-teal-800 border-dark-teal-200'
-              }`}>
-                <Layers className="w-3 h-3 mr-1" />
-                {isQuotaFull
-                  ? `All ${pExpected} workbook${pExpected > 1 ? 's' : ''} linked ✓`
-                  : `${pLinked} of ${pExpected} linked · ${remainingSlots} remaining`
-                }
-              </span>
-            )}
           </div>
-          <h3 className="text-base font-bold font-lexend text-gray-900 mt-0.5">Live Spreadsheet Sync & Extraction</h3>
+          <h3 className="text-base font-bold font-lexend text-gray-900 mt-0.5">Linked Activity Schedules</h3>
           <p className="text-xs text-gray-500 mt-0.5">
-            Connect your Google Drive or OneDrive budget workbooks (up to 5 trade workbooks) for 150-row scanning and cross-workbook reconciliation.
+            Link schedules in PDF, Word, or Excel format from your Cloud Storage for AI-powered extraction and audit.
           </p>
         </div>
 
-        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-          {isQuotaFull && (
-            <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
-              <Lock className="w-3 h-3" /> Delete a workbook to free a slot
-            </span>
-          )}
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handleOpenSetup('google')}
-              disabled={!!loadingProvider || globalLoading || isQuotaFull}
-              className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={isQuotaFull ? `All ${pExpected} workbooks linked. Delete one to free a slot.` : 'Connect a Google Sheets workbook'}
-            >
-              {loadingProvider === 'google' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-              <span>Connect Google Sheets</span>
-            </button>
-            <button
-              onClick={() => handleOpenSetup('onedrive')}
-              disabled={!!loadingProvider || globalLoading || isQuotaFull}
-              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={isQuotaFull ? `All ${pExpected} workbooks linked. Delete one to free a slot.` : 'Connect a OneDrive workbook'}
-            >
-              {loadingProvider === 'onedrive' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-              <span>Connect OneDrive</span>
-            </button>
-          </div>
+        <div className="flex items-center space-x-2 flex-shrink-0">
+          <button
+            onClick={() => handleOpenSetup('google')}
+            disabled={!!loadingProvider || globalLoading}
+            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Connect a Google Drive document"
+          >
+            {loadingProvider === 'google' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+            <span>Connect Google Drive</span>
+          </button>
+          <button
+            onClick={() => handleOpenSetup('onedrive')}
+            disabled={!!loadingProvider || globalLoading}
+            className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Connect a OneDrive document"
+          >
+            {loadingProvider === 'onedrive' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+            <span>Connect OneDrive</span>
+          </button>
         </div>
       </div>
 
@@ -678,32 +620,22 @@ export default function BudgetIntegrations({
       {integrations.length === 0 ? (
         <div className="bg-gray-50/70 rounded-2xl p-8 text-center border border-dashed border-gray-200">
           <FileSpreadsheet className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-xs font-semibold text-gray-600">No cloud budget workbooks linked yet.</p>
+          <p className="text-xs font-semibold text-gray-600">No linked cloud schedules yet.</p>
           <p className="text-[11px] text-gray-400 mt-1 max-w-sm mx-auto">
-            Click one of the buttons above to link your master or trade budget spreadsheets from Google Sheets or OneDrive.
+            Click one of the buttons above to link baseline workbooks or PDF milestone sheets from Google Drive or OneDrive.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Linked Workbooks</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Linked Documents</h4>
             <span className="text-[11px] font-bold text-dark-teal-700 bg-dark-teal-50 px-2.5 py-0.5 rounded-full border border-dark-teal-100">
-              {integrations.length} {integrations.length > 1 ? 'workbooks' : 'workbook'}
+              {integrations.length} {integrations.length > 1 ? 'documents' : 'document'}
             </span>
           </div>
 
           <div className="space-y-4">
             {integrations.map((integration) => {
-              const isExtracting = extractingIntegrationId === integration.id;
-              // Find matching matrix entry for this integration
-              const matchedMatrix = masterMatrix.find((m) => m.integration_id === integration.id) || {
-                integration_id: integration.id,
-                trade_label: integration.boq_name || 'Trade Workbook',
-                title: integration.boq_name || 'Master Budget Sheet',
-                summary_metrics: {},
-                categories: []
-              };
-
               return (
                 <div key={integration.id} className="space-y-2">
                   <div className="bg-white rounded-2xl p-5 border border-gray-150 shadow-sm flex flex-col sm:flex-row items-start justify-between gap-4">
@@ -713,29 +645,25 @@ export default function BudgetIntegrations({
                       </div>
                       <div className="space-y-1">
                         <h4 className="text-xs font-bold font-lexend text-gray-900 leading-tight">
-                          {integration.boq_name || 'Master Budget Sheet'}
+                          {integration.boq_name || 'Activity Schedule Document'}
                         </h4>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="text-[10px] text-gray-400 font-medium capitalize">
                             Provider: {integration.provider.replace('_', ' ')} • Tab: {integration.sheet_name}
                           </span>
-                          <span className="text-gray-300 hidden sm:inline">•</span>
-                          <div className="flex items-center space-x-1">
-                            <span className="text-[9px] font-bold text-gray-400 uppercase">Tag:</span>
-                            <select
-                              value={integration.module === 'progress' ? 'progress' : 'budget'}
-                              onChange={(e) => handleUpdateModule(integration.id, e.target.value)}
-                              disabled={globalLoading}
-                              className="p-1 px-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-700 hover:bg-gray-100 transition focus:outline-none cursor-pointer"
-                            >
-                              <option value="budget">Project Budget</option>
-                              <option value="progress">Work Progress</option>
-                            </select>
-                          </div>
+                          {integration.last_synced_at && (
+                            <>
+                              <span className="text-gray-300 hidden sm:inline">•</span>
+                              <span className="text-[10px] text-gray-400 font-medium">
+                                Linked: {new Date(integration.last_synced_at).toLocaleDateString()}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
+                    {/* Action toolbar — matches Budget tab icon-only pill layout */}
                     <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={globalLoading || deletingId !== null}
@@ -753,7 +681,7 @@ export default function BudgetIntegrations({
                         disabled={globalLoading || deletingId !== null}
                         onClick={() => handleDisconnect(integration.id, false)}
                         className="p-2 hover:bg-white text-amber-600 hover:text-amber-800 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
-                        title="Unlink / Disconnect workbook link (keeps database records)"
+                        title="Unlink / Disconnect document link (keeps database records)"
                       >
                         <Unlink className="w-4 h-4" />
                       </button>
@@ -762,7 +690,7 @@ export default function BudgetIntegrations({
                         disabled={globalLoading || deletingId !== null}
                         onClick={() => setIntegrationToDelete(integration)}
                         className="p-2 hover:bg-white text-red-655 hover:text-red-700 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm flex items-center justify-center"
-                        title="Delete workbook data permanently from database"
+                        title="Delete document data permanently from database"
                       >
                         {deletingId === integration.id ? (
                           <Loader2 className="w-4 h-4 animate-spin text-red-600" />
@@ -783,13 +711,6 @@ export default function BudgetIntegrations({
                       />
                     </div>
                   )}
-
-                  {/* Inline Preview Table Drawer for this specific workbook */}
-                  <WorkbookInlinePreviewDrawer
-                    projectId={projectId}
-                    onRefresh={onRefresh}
-                    workbookData={matchedMatrix}
-                  />
                 </div>
               );
             })}
@@ -797,18 +718,19 @@ export default function BudgetIntegrations({
         </div>
       )}
 
+      {/* Delete integration warning modal — matches Budget pattern */}
       {integrationToDelete && (
         <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
-            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Delete Workbook Permanently</h3>
+            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Delete Document Permanently</h3>
             <p className="text-sm text-gray-600 mb-6">
-              This will permanently delete the workbook integration and all associated database records. The original spreadsheet file remains unchanged.
+              This will permanently delete the linked document integration and all associated database records. The original file remains unchanged.
             </p>
             <p className="text-xs text-gray-500 mb-4">
-              Workbook: <strong className="text-gray-900">{integrationToDelete?.boq_name || integrationToDelete?.sheet_name}</strong>
+              Document: <strong className="text-gray-900">{integrationToDelete?.boq_name || integrationToDelete?.sheet_name}</strong>
             </p>
             <div className="flex gap-2 justify-center">
               <button
@@ -834,7 +756,7 @@ export default function BudgetIntegrations({
         </div>
       )}
 
-      {/* Validation Rejection Modal */}
+      {/* Validation Rejection Modal — matches Budget pattern */}
       {rejectedDocumentContext && (
         <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
@@ -845,11 +767,11 @@ export default function BudgetIntegrations({
             <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Document Validation Failed</h3>
 
             <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-              You attempted to link a Budget workbook, but our system scanned the contents and identified this document as an <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{rejectedDocumentContext}</strong>.
+              You attempted to link an Activity Schedule, but our system scanned the contents and identified this document as an <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{rejectedDocumentContext}</strong>.
             </p>
 
             <div className="bg-amber-50 p-4 rounded-xl text-xs text-amber-800 font-medium text-left mb-8 border border-amber-200/60">
-              To protect project integrity, this document has been rejected and was not saved to the database. Please select a valid Budget or EVM document.
+              To protect project integrity, this document has been rejected and was not saved to the database. Please select a valid Activity Schedule, Milestones, or Payment Schedule document.
             </div>
 
             <button
@@ -865,42 +787,6 @@ export default function BudgetIntegrations({
               className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-xl text-sm font-bold shadow-md transition active:scale-95"
             >
               Acknowledge & Try Again
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Historical Rejection Modal — OK button only, no Proceed Anyway */}
-      {warningFileContext && (
-        <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
-            <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
-              <AlertTriangle className="w-8 h-8 text-red-500" />
-            </div>
-
-            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Document Rejected</h3>
-
-            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-              This document was previously flagged as a <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{warningFileContext.rejected_reason || 'Invalid Document'}</strong> and cannot be used as a Budget workbook.
-            </p>
-
-            <div className="bg-amber-50 p-4 rounded-xl text-xs text-amber-800 font-medium text-left mb-8 border border-amber-200/60">
-              To protect project integrity, this document has been blocked. Please select a valid Budget or EVM document instead.
-            </div>
-
-            <button
-              onClick={() => {
-                setWarningFileContext(null);
-                // Clear the rejected file's selection state so scanning doesn't restart
-                setSpreadsheetId('');
-                setSheetsList([]);
-                setSelectedSheets({});
-                setBoqName('');
-                setShowConfigModal(true);
-              }}
-              className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-xl text-sm font-bold shadow-md transition active:scale-95"
-            >
-              OK
             </button>
           </div>
         </div>
@@ -932,18 +818,8 @@ export default function BudgetIntegrations({
         </div>
       )}
 
-      {/* Setup Bundle & Trade Modal */}
-      <BudgetBundleSetupModal
-        showModal={showSetupModal}
-        onClose={() => setShowSetupModal(false)}
-        onConfirm={handleConfirmSetup}
-        provider={pendingProvider || 'google'}
-        currentLinkedCount={integrations.length}
-        persistedBundleConfig={persistedBundleConfig}
-      />
-
-      {/* Interactive 150-Row Validation Preview Modal */}
-      <BudgetExtractionPreviewModal
+      {/* Preview Modal */}
+      <ActivityScheduleExtractionPreviewModal
         showModal={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
         onConfirm={handleConfirmCommit}
@@ -956,18 +832,102 @@ export default function BudgetIntegrations({
             ? `https://docs.google.com/spreadsheets/d/${selectedIntegration?.spreadsheet_id}`
             : undefined)
         }
-        tradeLabel={bundleConfig.tradeLabel}
-        expectedCount={bundleConfig.expectedCount}
-        currentWorkbookIndex={
-          selectedIntegration ? integrations.findIndex((i) => i.id === selectedIntegration.id) + 1 : 1
-        }
-        initialModule={moduleContext}
+        actionError={actionError}
+        onClearError={() => setActionError(null)}
+        actionSuccess={modalSuccess}
+        onSuccessClose={() => {
+          setModalSuccess(null);
+          setShowPreviewModal(false);
+        }}
       />
 
+      {/* Active Validation Rejection Modal */}
+      {rejectedDocumentContext && (
+        <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+            <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+
+            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Document Validation Failed</h3>
+
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              You attempted to link an Activity Schedule, but our system scanned the contents and identified this document as an <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{rejectedDocumentContext}</strong>.
+            </p>
+
+            <div className="bg-amber-50 p-4 rounded-xl text-xs text-amber-800 font-medium text-left mb-8 border border-amber-200/60">
+              To protect project integrity, this document has been rejected and was not saved to the database. Please select a valid Activity Schedule document.
+            </div>
+
+            <button
+              onClick={() => {
+                setRejectedDocumentContext(null);
+                // Clear the rejected file's selection state so scanning doesn't restart
+                setSpreadsheetId('');
+                setSheetsList([]);
+                setSelectedSheets({});
+                setBoqName('');
+                setShowConfigModal(true);
+              }}
+              className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-xl text-sm font-bold shadow-md transition active:scale-95"
+            >
+              Acknowledge & Try Again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Historical Rejection Modal — Warning but allows proceeding */}
+      {warningFileContext && (
+        <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+            <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+
+            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Document Flagged</h3>
+
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              This document was previously flagged as a <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{warningFileContext.rejected_reason || 'Invalid Document'}</strong> and may not be a valid Activity Schedule.
+            </p>
+
+            <div className="bg-amber-50 p-4 rounded-xl text-xs text-amber-800 font-medium text-left mb-8 border border-amber-200/60">
+              If you have updated the document or believe this was an error, you can choose to rescan it. Otherwise, please select a different file.
+            </div>
+
+            <div className="flex flex-col space-y-3">
+              <button
+                onClick={() => {
+                  setWarningFileContext(null);
+                  setShowConfigModal(true);
+                }}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md transition active:scale-95 flex items-center justify-center space-x-2"
+              >
+                <span>Rescan Document</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setWarningFileContext(null);
+                  setSpreadsheetId('');
+                  setSheetsList([]);
+                  setSelectedSheets({});
+                  setBoqName('');
+                  setShowConfigModal(true);
+                }}
+                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-sm font-bold shadow-sm transition active:scale-95"
+              >
+                Back to Files
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <CloudConfigModal
-        moduleContext="budget"
+        moduleContext="activity_schedule"
         showConfigModal={showConfigModal}
-        modalMessage={null}
+        modalMessage={modalMessage}
         oauthProvider={oauthProvider}
         availableFiles={availableFiles}
         spreadsheetId={spreadsheetId}
@@ -976,10 +936,10 @@ export default function BudgetIntegrations({
         refreshToken={refreshToken}
         navigationHistory={navigationHistory}
         fetchingFiles={fetchingFiles}
-        formatGuidelines="Only .xlsx and .xls files are permitted."
+        formatGuidelines="Permitted documents: Spreadsheets (.xlsx, .xls), PDF (.pdf), or Word (.docx, .doc)."
         isFileAllowed={(file: any) => {
           if (file.type === 'folder') return true;
-          return file.is_google_sheet || (file.name && file.name.toLowerCase().match(/\.(xlsx|xls|csv)$/));
+          return file.is_google_sheet || (file.name && file.name.toLowerCase().match(/\.(xlsx|xls|pdf|docx|doc)$/));
         }}
         handleSaveConfig={handleSaveConfig}
         handleNavigateBack={handleNavigateBack}

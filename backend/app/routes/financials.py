@@ -43,7 +43,16 @@ def get_project_budgets(project_id: int, contract_id: Optional[int] = None, db: 
         else:
             query = query.filter(Budget.contract_id == contract_id)
 
-    return query.order_by(Budget.created_at.desc()).all()
+    budgets = query.order_by(Budget.created_at.desc()).all()
+
+    # Backfill tracking_mode in bundle_config for legacy records missing it
+    for b in budgets:
+        if b.values_map and isinstance(b.values_map, dict):
+            bc = b.values_map.get("bundle_config")
+            if bc and isinstance(bc, dict) and "tracking_mode" not in bc:
+                bc["tracking_mode"] = "split" if bc.get("expected_count", 1) > 1 else "single"
+
+    return budgets
 
 @router.post("/projects/{project_id}/budgets", response_model=platform_schemas.Budget)
 def create_project_budget(project_id: int, budget_in: platform_schemas.BudgetCreate, db: Session = Depends(get_db)):

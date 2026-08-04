@@ -34,3 +34,16 @@ class ActivityScheduleItem(Base, CustomBase):
     
     document = relationship("ActivityScheduleDocument", back_populates="items")
     children = relationship("ActivityScheduleItem", backref=sqlalchemy.orm.backref('parent', remote_side=[id]))
+
+
+class AnalysisScheduleReference(Base, CustomBase):
+    __tablename__ = 'analysis_schedule_references'
+
+    id = Column(Integer, primary_key=True, index=True)
+    reference_source_id = Column(Integer, nullable=False, index=True)
+    reference_source_type = Column(String, nullable=False)
+    activity_schedule_document_id = Column(Integer, ForeignKey('activity_schedule_documents.id', ondelete="CASCADE"), nullable=False)
+    relationship_mode = Column(String, nullable=False, default="INDEPENDENT") # "AGGREGATE", "COMPARE", "INDEPENDENT"
+
+    activity_schedule_document = relationship("ActivityScheduleDocument")
+
