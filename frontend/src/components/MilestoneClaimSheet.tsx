@@ -2,30 +2,31 @@ import React, { useState } from 'react';
 import { Save, FileText, CheckCircle, Clock, AlertTriangle, DollarSign, Calendar, Code } from 'lucide-react';
 import SourceExtractionViewerModal from './integrations/SourceExtractionViewerModal';
 
-interface IpcValuationSheetProps {
-  ipc?: any; // The selected IPC object
+interface MilestoneClaimSheetProps {
+  claim?: any; // The selected Milestone Claim object
   contractParams?: any;
   onSave: (data: any) => Promise<void> | void;
   onClose: () => void;
 }
 
-export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose }: IpcValuationSheetProps) {
+export default function MilestoneClaimSheet({ claim, contractParams, onSave, onClose }: MilestoneClaimSheetProps) {
   // State for the document lifecycle
-  const [status, setStatus] = useState(ipc?.status || 'Draft');
-  const [valuationDate, setValuationDate] = useState(ipc?.valuation_date || '');
+  const [status, setStatus] = useState(claim?.status || 'Draft');
+  const [claimNumber, setClaimNumber] = useState(claim?.claim_number || '');
+  const [valuationDate, setValuationDate] = useState(claim?.valuation_date || '');
   const [showExtractionModal, setShowExtractionModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
   // State for the financial amounts (Stored in values_map.valuation to keep DB ingested data clean)
-  const [grossClaimed, setGrossClaimed] = useState(ipc?.values_map?.valuation?.gross_claimed || 0);
-  const [grossCertified, setGrossCertified] = useState(ipc?.values_map?.valuation?.gross_certified || 0);
-  const [netAmountDue, setNetAmountDue] = useState(ipc?.values_map?.valuation?.net_amount_due || 0);
-  const [isValuationEditing, setIsValuationEditing] = useState(ipc?.values_map?.valuation?.net_amount_due ? false : true);
+  const [grossClaimed, setGrossClaimed] = useState(claim?.values_map?.valuation?.gross_claimed || 0);
+  const [grossCertified, setGrossCertified] = useState(claim?.values_map?.valuation?.gross_certified || 0);
+  const [netAmountDue, setNetAmountDue] = useState(claim?.values_map?.valuation?.net_amount_due || 0);
+  const [isValuationEditing, setIsValuationEditing] = useState(claim?.values_map?.valuation?.net_amount_due ? false : true);
   const [valuationError, setValuationError] = useState('');
 
   // State for payment lifecycle (Ledger-based)
   const [payments, setPayments] = useState<{date: string, amount: number}[]>(
-    ipc?.values_map?.valuation?.payments?.filter((p: any) => p.amount > 0) || []
+    claim?.values_map?.valuation?.payments?.filter((p: any) => p.amount > 0) || []
   );
 
   // Active New Payment Row State
@@ -44,9 +45,9 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
     remainingBeforeNew === 0 ? 'PAID' : 'PARTIAL';
 
   const handleSaveValuationAmounts = () => {
-      const ingestedNet = ipc?.net_amount_due || 0;
+      const ingestedNet = claim?.net_amount_due || 0;
       if (netAmountDue !== ingestedNet) {
-          setValuationError(`Validation Failed: The inputted Net Amount Due ($${netAmountDue}) does not match the ingested IPC database value ($${ingestedNet}).`);
+          setValuationError(`Validation Failed: The inputted Net Amount Due ($${netAmountDue}) does not match the ingested Milestone Claim database value ($${ingestedNet}).`);
       } else {
           setValuationError('');
           setIsValuationEditing(false);
@@ -71,13 +72,13 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
         {/* Header */}
         <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <div>
-            <h2 className="text-xl font-bold font-lexend text-gray-900">IPC Certificate Details</h2>
+            <h2 className="text-xl font-bold font-lexend text-gray-900">Milestone Claim Claim Details</h2>
             <p className="text-xs text-gray-500 font-medium mt-1">
-              Certificate No: {ipc?.certificate_number || 'New'}
+              Claim No: {claim?.claim_number || 'New'}
             </p>
           </div>
           <div className="flex space-x-3">
-            {ipc?.values_map?.extraction && (
+            {claim?.values_map?.extraction && (
               <button 
                 onClick={() => setShowExtractionModal(true)} 
                 className="px-4 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-xl transition flex items-center space-x-1.5"
@@ -95,10 +96,11 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
                 try {
                   await onSave({
                     status, valuation_date: valuationDate,
+                    claim_number: claimNumber,
                     payment_status: derivedPaymentStatus, 
                     unpaid_amount: remainingBeforeNew, 
                     values_map: { 
-                        ...(ipc?.values_map || {}), 
+                        ...(claim?.values_map || {}), 
                         valuation: { gross_claimed: grossClaimed, gross_certified: grossCertified, net_amount_due: netAmountDue, payments }
                     }
                   });
@@ -132,14 +134,24 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
             <SourceExtractionViewerModal 
               show={showExtractionModal} 
               onClose={() => setShowExtractionModal(false)} 
-              extractionData={ipc?.values_map?.extraction}
-              certificateNumber={ipc?.certificate_number || 'New'}
+              extractionData={claim?.values_map?.extraction}
+              certificateNumber={claim?.claim_number || 'New'}
             />
             
             {/* Section 1: Approval Lifecycle */}
             <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center"><FileText className="w-4 h-4 mr-2 text-dark-teal-600"/> 1. Certification & Approval</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-2">Claim Number</label>
+                        <input 
+                            type="text" 
+                            value={claimNumber}
+                            onChange={(e) => setClaimNumber(e.target.value)}
+                            placeholder="e.g. MC-001"
+                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-dark-teal-500"
+                        />
+                    </div>
                     <div>
                         <label className="block text-xs font-bold text-gray-700 mb-2">Approval Status</label>
                         <select 
@@ -332,7 +344,7 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
                  {derivedPaymentStatus === 'PAID' && (
                      <div className="flex items-center text-emerald-600 font-bold text-sm bg-emerald-50 px-4 py-2 rounded-xl">
                          <CheckCircle className="w-4 h-4 mr-2" />
-                         IPC Fully Paid
+                         Milestone Claim Fully Paid
                      </div>
                  )}
             </div>

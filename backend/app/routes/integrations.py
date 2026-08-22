@@ -154,7 +154,8 @@ async def google_callback(
         if not refresh_token:
             existing = db.query(ProjectIntegration).filter(
                 ProjectIntegration.project_id == project_id,
-                ProjectIntegration.provider == "google_sheets"
+                ProjectIntegration.provider == "google_sheets",
+                ProjectIntegration.refresh_token.isnot(None)
             ).first()
             if existing:
                 refresh_token = existing.refresh_token
@@ -165,6 +166,29 @@ async def google_callback(
                 )
         else:
             refresh_token = encrypt_token(refresh_token)
+            # Update ALL existing integrations for this provider in this project with the fresh token
+            db.query(ProjectIntegration).filter(
+                ProjectIntegration.project_id == project_id,
+                ProjectIntegration.provider == "google_sheets"
+            ).update({"refresh_token": refresh_token})
+            
+            # Create a global AUTH_ONLY integration if it doesn't exist
+            existing_auth = db.query(ProjectIntegration).filter(
+                ProjectIntegration.project_id == project_id,
+                ProjectIntegration.provider == "google_sheets",
+                ProjectIntegration.spreadsheet_id == "AUTH_ONLY"
+            ).first()
+            if not existing_auth:
+                auth_integration = ProjectIntegration(
+                    project_id=project_id,
+                    provider="google_sheets",
+                    spreadsheet_id="AUTH_ONLY",
+                    sheet_name="AUTH_ONLY",
+                    refresh_token=refresh_token,
+                    module="auth"
+                )
+                db.add(auth_integration)
+            db.commit()
             
         frontend_url = f"{settings.FRONTEND_URL}/dashboard/{project_id}?oauth_provider=google_sheets&refresh_token={refresh_token}"
         if active_tab:
@@ -205,7 +229,8 @@ async def onedrive_callback(
         if not refresh_token:
             existing = db.query(ProjectIntegration).filter(
                 ProjectIntegration.project_id == project_id,
-                ProjectIntegration.provider == "onedrive"
+                ProjectIntegration.provider == "onedrive",
+                ProjectIntegration.refresh_token.isnot(None)
             ).first()
             if existing:
                 refresh_token = existing.refresh_token
@@ -213,6 +238,29 @@ async def onedrive_callback(
                 raise HTTPException(status_code=400, detail="No refresh token returned by Microsoft Graph OAuth API.")
         else:
             refresh_token = encrypt_token(refresh_token)
+            # Update ALL existing integrations for this provider in this project with the fresh token
+            db.query(ProjectIntegration).filter(
+                ProjectIntegration.project_id == project_id,
+                ProjectIntegration.provider == "onedrive"
+            ).update({"refresh_token": refresh_token})
+            
+            # Create a global AUTH_ONLY integration if it doesn't exist
+            existing_auth = db.query(ProjectIntegration).filter(
+                ProjectIntegration.project_id == project_id,
+                ProjectIntegration.provider == "onedrive",
+                ProjectIntegration.spreadsheet_id == "AUTH_ONLY"
+            ).first()
+            if not existing_auth:
+                auth_integration = ProjectIntegration(
+                    project_id=project_id,
+                    provider="onedrive",
+                    spreadsheet_id="AUTH_ONLY",
+                    sheet_name="AUTH_ONLY",
+                    refresh_token=refresh_token,
+                    module="auth"
+                )
+                db.add(auth_integration)
+            db.commit()
             
         frontend_url = f"{settings.FRONTEND_URL}/dashboard/{project_id}?oauth_provider=onedrive&refresh_token={refresh_token}"
         if active_tab:

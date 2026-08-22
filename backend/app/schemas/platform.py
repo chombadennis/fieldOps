@@ -149,3 +149,40 @@ class Note(NoteBase):
 
     class Config:
         from_attributes = True
+
+# --- Milestone Claim Schema ---
+class MilestoneClaimItemSchema(BaseModel):
+    activity_id: Optional[str] = None
+    description: str
+    percentage_complete_this_period: Optional[float] = 0.0
+    amount_claimed_this_period: Optional[float] = 0.0
+    amount_certified: Optional[float] = 0.0
+    status: Optional[str] = "pending"
+    values_map: Optional[dict] = None
+
+class MilestoneClaimSchema(BaseModel):
+    id: Optional[int] = None
+    project_id: int
+    contract_id: Optional[int] = None
+    name: str
+    file_url: Optional[str] = None
+    file_type: Optional[str] = "pdf"
+    gross_amount_claimed: Optional[float] = 0.0
+    retention_deducted: Optional[float] = 0.0
+    net_amount_due: Optional[float] = 0.0
+    status: str = "Draft"
+    payment_status: str = "UNPAID"
+    values_map: Optional[dict] = None
+    integration_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+class FullMilestoneExtractionSchema(BaseModel):
+    metrics: dict
+    items: List[MilestoneClaimItemSchema]
+    is_milestone_document: bool
+    identified_document_type: str
+    validation_status: str
+    confidence_score: int
+    validation_issues: List[str]

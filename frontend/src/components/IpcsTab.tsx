@@ -411,7 +411,7 @@ export default function IpcsTab({
             <button
               type="submit"
               disabled={posting || !content.trim()}
-              className="px-5 py-3 bg-dark-teal-800 hover:bg-dark-teal-900 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50 transition active:scale-95 flex items-center space-x-1.5"
+              className="px-5 py-3 bg-gradient-to-r from-dark-teal-700 to-dark-teal-900 hover:from-dark-teal-600 hover:to-dark-teal-800 text-white font-extrabold rounded-xl text-xs shadow-lg shadow-dark-teal-900/30 disabled:opacity-50 disabled:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center space-x-1.5"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{posting ? 'Posting...' : 'Post Entry'}</span>
@@ -424,7 +424,7 @@ export default function IpcsTab({
         <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Discussion Feed</h4>
         {filteredNotes.length === 0 ? (
           <div className="bg-white rounded-3xl p-10 text-center border border-dashed border-gray-200">
-            <MessageSquare className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <MessageSquare className="w-8 h-8 text-slate-200 drop-shadow-sm mx-auto mb-2" />
             <p className="text-xs text-gray-400 font-medium">No notes recorded for IPC claims yet.</p>
           </div>
         ) : (

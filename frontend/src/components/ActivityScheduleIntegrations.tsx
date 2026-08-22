@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Lock
 } from 'lucide-react';
@@ -8,14 +8,15 @@ import {
 import ActivityScheduleExtractionPreviewModal from './integrations/ActivityScheduleExtractionPreviewModal';
 import CloudConfigModal from './integrations/CloudConfigModal';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
+import CloudConnectionCards from './integrations/CloudConnectionCards';
 
 interface Integration {
   id: number;
   provider: string;
   spreadsheet_id: string;
   sheet_name: string;
-  boq_name?: string;
-  last_synced_at?: string;
+  boq_name: string | null;
+  last_synced_at: string | null;
   meta_data?: any;
   module?: string;
 }
@@ -78,8 +79,12 @@ export default function ActivityScheduleIntegrations({
   const [warningFileContext, setWarningFileContext] = useState<any>(null);
   const [modalMessage, setModalMessage] = useState<{ type: 'info' | 'success' | 'error' | 'warning'; text: string } | null>(null);
 
+
+
   // ─── OAuth Setup (matches Budget flow) ───────────────────────────
   const handleOpenSetup = async (provider: 'google' | 'onedrive') => {
+    const dbProvider = provider === 'google' ? 'google_sheets' : 'onedrive';
+
     setLoadingProvider(provider);
     setActionError(null);
     setPendingProvider(provider);
@@ -113,7 +118,7 @@ export default function ActivityScheduleIntegrations({
       `);
     }
 
-    const dbProvider = provider === 'google' ? 'google_sheets' : 'onedrive';
+
 
     try {
       const authCheck = await getGlobalAuthToken(projectId, dbProvider);
@@ -139,10 +144,9 @@ export default function ActivityScheduleIntegrations({
       try {
         const msgEl = popup.document.getElementById('status-msg');
         if (msgEl) {
-          msgEl.innerText = `Connecting to ${provider === 'google' ? 'Google' : 'Microsoft'}...`;
+          msgEl.innerText = "Connecting to " + (provider === 'google' ? 'Google' : 'Microsoft') + "...";
         }
       } catch (e) {
-        // ignore
       }
     }
 
@@ -179,7 +183,7 @@ export default function ActivityScheduleIntegrations({
     }
   };
 
-  // ─── OAuth callback listeners (matches Budget flow with BroadcastChannel) ───
+  // ─── OAuth Check URL parameters on mount to capture OAuth returns
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
@@ -195,11 +199,16 @@ export default function ActivityScheduleIntegrations({
             const bc = new BroadcastChannel('oauth_channel');
             bc.postMessage({ type: 'OAUTH_ERROR', error: decodeURIComponent(err) });
             bc.close();
-          } catch (e) { /* ignore */ }
+          } catch (e) {
+            // ignore
+          }
         }
-
+        
+        // Attempt to close the popup
         window.close();
-
+        
+        // If window.close() failed (often happens if browser blocks script close),
+        // fallback to just showing the error in the current window.
         setTimeout(() => {
           if (!window.closed) {
             setActionError(`OAuth Authorization Failed: ${decodeURIComponent(err)}`);
@@ -215,11 +224,15 @@ export default function ActivityScheduleIntegrations({
             const bc = new BroadcastChannel('oauth_channel');
             bc.postMessage({ type: 'OAUTH_CALLBACK', provider, token });
             bc.close();
-          } catch (e) { /* ignore */ }
+          } catch (e) {
+            // ignore
+          }
         }
-
+        
+        // Attempt to close the popup
         window.close();
-
+        
+        // If window.close() failed, render the dashboard here as fallback
         setTimeout(() => {
           if (!window.closed) {
             setOauthProvider(provider);
@@ -235,8 +248,10 @@ export default function ActivityScheduleIntegrations({
 
   React.useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
-      if (event.origin && event.origin !== window.location.origin) return;
-
+      // For window.postMessage, verify origin. BroadcastChannel doesn't have event.origin in the same way, 
+      // but it's restricted to same-origin by the browser automatically.
+      if (event.origin && event.origin !== window.location.origin && event.origin !== '') return;
+      
       if (event.data?.type === 'OAUTH_CALLBACK') {
         const { provider, token } = event.data;
         setOauthProvider(provider);
@@ -248,13 +263,16 @@ export default function ActivityScheduleIntegrations({
         setLoadingProvider(null);
       }
     };
-
+    
     window.addEventListener('message', handleOAuthMessage);
+    
     let bc: BroadcastChannel | null = null;
     try {
       bc = new BroadcastChannel('oauth_channel');
       bc.onmessage = handleOAuthMessage;
-    } catch (e) { }
+    } catch (e) {
+      // ignore
+    }
 
     return () => {
       window.removeEventListener('message', handleOAuthMessage);
@@ -581,40 +599,16 @@ export default function ActivityScheduleIntegrations({
     <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-6">
 
       {/* Top Title & Connect Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
-        <div>
-          <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-dark-teal-700 font-inter">
-              Cloud Activity Schedule Integrations
-            </span>
-          </div>
-          <h3 className="text-base font-bold font-lexend text-gray-900 mt-0.5">Linked Activity Schedules</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Link schedules in PDF, Word, or Excel format from your Cloud Storage for AI-powered extraction and audit.
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-2 flex-shrink-0">
-          <button
-            onClick={() => handleOpenSetup('google')}
-            disabled={!!loadingProvider || globalLoading}
-            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Connect a Google Drive document"
-          >
-            {loadingProvider === 'google' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-            <span>Connect Google Drive</span>
-          </button>
-          <button
-            onClick={() => handleOpenSetup('onedrive')}
-            disabled={!!loadingProvider || globalLoading}
-            className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Connect a OneDrive document"
-          >
-            {loadingProvider === 'onedrive' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-            <span>Connect OneDrive</span>
-          </button>
-        </div>
-      </div>
+      <CloudConnectionCards
+        success={actionError ? null : (success ? success : null)}
+        moduleContext="activity_schedule"
+        departmentName="General"
+        googleIntegration={integrations.find((i) => i.provider === 'google_sheets' || i.provider === 'google')}
+        onedriveIntegration={integrations.find((i) => i.provider === 'onedrive')}
+        isLoading={!!loadingProvider || !!globalLoading}
+        handleOAuthInitiate={handleOpenSetup}
+        formatGuidelines="Link schedules in PDF, Word, or Excel format from your Cloud Storage for AI-powered extraction and audit."
+      />
 
       {/* Active Integrations List */}
       {integrations.length === 0 ? (
@@ -825,7 +819,7 @@ export default function ActivityScheduleIntegrations({
         onConfirm={handleConfirmCommit}
         extractedData={extractedData}
         isSaving={isCommitting}
-        documentTitle={pendingFileDetails?.boqName || selectedIntegration?.boq_name}
+        documentTitle={pendingFileDetails?.boqName || selectedIntegration?.boq_name || undefined}
         documentUrl={
           pendingFileDetails?.selectedFile?.web_url ||
           (selectedIntegration?.provider === 'google_sheets'

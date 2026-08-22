@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info, Edit3, Check, X, Loader2 } from 'lucide-react';
+import { MessageSquare, Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info, Edit3, Check, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import BudgetIntegrations from '@/components/BudgetIntegrations';
 import { getProjectBudgets, updateBudgetWorkbookMatrix } from '@/services/api';
 
@@ -56,6 +56,7 @@ export default function BudgetsTab({
   const [editingHeaderKey, setEditingHeaderKey] = useState<string | null>(null);
   const [headerInput, setHeaderInput] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
+  const [isMasterCategoriesOpen, setIsMasterCategoriesOpen] = useState(false);
 
   const fetchBudgetRecord = async () => {
     try {
@@ -166,6 +167,51 @@ export default function BudgetsTab({
             <p className="text-[10px] font-bold text-emerald-200 uppercase">Master EV / % Used</p>
             <p className="text-sm font-bold font-lexend text-white mt-0.5">{formatCurrency(earnedValue)} ({percentUsed.toFixed(1)}%)</p>
           </div>
+        </div>
+      </div>
+
+      {/* Cloud Integration Manager Component with Inline Preview Drawers */}
+      {integrations && onRefresh && setGlobalLoading && (
+        <BudgetIntegrations
+          projectId={projectId}
+          moduleContext={internalTab === 'progress' ? 'progress' : internalTab === 'cost' ? 'cost' : 'budget'}
+          integrations={integrations.filter(i => {
+            if (internalTab === 'progress') return i.module === 'progress';
+            if (internalTab === 'cost') return i.module === 'cost';
+            return i.module === 'budgets' || i.module === 'budget';
+          })}
+          documents={documents}
+          masterMatrix={masterMatrix}
+          persistedBundleConfig={bundleConfig}
+          onRefresh={() => {
+            onRefresh();
+            fetchBudgetRecord();
+          }}
+          globalLoading={globalLoading}
+          setGlobalLoading={setGlobalLoading}
+        />
+      )}
+
+      {/* Internal Navigation Ribbon */}
+      <div className="flex items-center justify-start mb-2">
+        <div className="flex items-center space-x-1.5 bg-gray-100/80 p-1.5 rounded-2xl w-fit shadow-inner border border-gray-200/60">
+          {[
+            { key: 'budget', label: 'Project Budget' },
+            { key: 'progress', label: 'Work Progress Calculations' },
+            { key: 'cost', label: 'Cost Tracking' }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setInternalTab(tab.key as any)}
+              className={`px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all duration-300 flex-1 min-w-[140px] text-center ${
+                internalTab === tab.key 
+                  ? 'bg-white text-dark-teal-900 shadow-md shadow-gray-200/50 transform scale-[1.02] border border-gray-100 ring-1 ring-black/5' 
+                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -281,15 +327,20 @@ export default function BudgetsTab({
 
           return (
             <div className="pt-4 border-t border-gray-100 space-y-3">
-              <div className="flex items-center justify-between">
+              <div 
+                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 -mx-2 rounded-lg transition"
+                onClick={() => setIsMasterCategoriesOpen(!isMasterCategoriesOpen)}
+              >
                 <div className="flex items-center space-x-2">
                   <h4 className="text-xs font-bold font-lexend text-gray-900">Reconciled Master Category Breakdowns</h4>
                   <span className="text-[10px] text-gray-500 font-semibold">(Grouped by Source Workbook/Trade)</span>
+                  {isMasterCategoriesOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
                 </div>
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{categories.length} Categories ({groupEntries.length} Trade Groups)</span>
               </div>
 
-              <div className="overflow-x-auto border border-gray-150 rounded-2xl shadow-xs">
+              {isMasterCategoriesOpen && (
+                <div className="overflow-x-auto border border-gray-150 rounded-2xl shadow-xs animate-fade-in">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px] border-b border-gray-100">
                     <tr>
@@ -433,53 +484,11 @@ export default function BudgetsTab({
                   </tbody>
                 </table>
               </div>
+              )}
             </div>
           );
         })()}
       </div>
-
-      {/* Internal Navigation Ribbon */}
-      <div className="flex items-center space-x-2 border-b border-gray-100 pb-2">
-        {[
-          { key: 'budget', label: 'Project Budget' },
-          { key: 'progress', label: 'Work Progress Calculations' },
-          { key: 'cost', label: 'Cost Tracking' }
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setInternalTab(tab.key as any)}
-            className={`px-4 py-2 text-xs font-bold rounded-xl transition ${
-              internalTab === tab.key 
-                ? 'bg-dark-teal-50 text-dark-teal-900 border border-dark-teal-100 shadow-sm' 
-                : 'text-gray-500 hover:bg-gray-50'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Cloud Integration Manager Component with Inline Preview Drawers */}
-      {integrations && onRefresh && setGlobalLoading && (
-        <BudgetIntegrations
-          projectId={projectId}
-          moduleContext={internalTab === 'progress' ? 'progress' : internalTab === 'cost' ? 'cost' : 'budget'}
-          integrations={integrations.filter(i => {
-            if (internalTab === 'progress') return i.module === 'progress';
-            if (internalTab === 'cost') return i.module === 'cost';
-            return i.module === 'budgets' || i.module === 'budget';
-          })}
-          documents={documents}
-          masterMatrix={masterMatrix}
-          persistedBundleConfig={bundleConfig}
-          onRefresh={() => {
-            onRefresh();
-            fetchBudgetRecord();
-          }}
-          globalLoading={globalLoading}
-          setGlobalLoading={setGlobalLoading}
-        />
-      )}
 
 
       {/* Discussion & Note Form */}
@@ -526,7 +535,7 @@ export default function BudgetsTab({
             <button
               type="submit"
               disabled={posting || !content.trim()}
-              className="px-5 py-3 bg-dark-teal-800 hover:bg-dark-teal-900 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50 transition active:scale-95 flex items-center space-x-1.5"
+              className="px-5 py-3 bg-gradient-to-r from-dark-teal-700 to-dark-teal-900 hover:from-dark-teal-600 hover:to-dark-teal-800 text-white font-extrabold rounded-xl text-xs shadow-lg shadow-dark-teal-900/30 disabled:opacity-50 disabled:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center space-x-1.5"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{posting ? 'Posting...' : 'Post Entry'}</span>
@@ -540,7 +549,7 @@ export default function BudgetsTab({
         <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Discussion Feed</h4>
         {filteredNotes.length === 0 ? (
           <div className="bg-white rounded-3xl p-10 text-center border border-dashed border-gray-200">
-            <MessageSquare className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <MessageSquare className="w-8 h-8 text-slate-200 drop-shadow-sm mx-auto mb-2" />
             <p className="text-xs text-gray-400 font-medium">No notes recorded for budgets yet.</p>
           </div>
         ) : (

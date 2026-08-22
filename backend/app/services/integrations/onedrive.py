@@ -20,7 +20,8 @@ def get_onedrive_auth_url(project_id: int, state: Optional[str] = None) -> str:
         "response_mode": "query",
         "state": state if state else str(project_id)
     }
-    query = "&".join(f"{k}={httpx.URL(v)}" for k, v in params.items() if v is not None)
+    import urllib.parse
+    query = urllib.parse.urlencode(params)
     return f"{MS_AUTH_URL}?{query}"
 
 async def exchange_onedrive_code_for_tokens(code: str) -> Dict[str, Any]:

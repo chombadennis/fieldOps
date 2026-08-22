@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, AlertTriangle, FileSpreadsheet, Layers, Info } from 'lucide-react';
-import ActivityScheduleIntegrations from '@/components/ActivityScheduleIntegrations';
-import ActivityScheduleInlineEditor from '@/components/integrations/ActivityScheduleInlineEditor';
-import { getDecoupledDocuments } from '@/services/api';
+import MilestoneClaimsIntegrations from '@/components/MilestoneClaimsIntegrations';
+import MilestoneClaimSheet from '@/components/MilestoneClaimSheet';
+import { getDecoupledDocuments, updateProjectMilestoneClaim } from '@/services/api';
 
 interface Note {
   id: number;
@@ -23,9 +23,15 @@ interface Document {
   department?: string;
   created_at?: string;
   integration_id?: number;
+  claim_number?: string;
+  status?: string;
+  payment_status?: string;
+  net_amount_due?: number;
+  gross_amount_claimed?: number;
+  values_map?: any;
 }
 
-interface ActivityScheduleTabProps {
+interface MilestonesTabProps {
   projectId: number;
   notes: Note[];
   documents: Document[];
@@ -36,7 +42,7 @@ interface ActivityScheduleTabProps {
   setGlobalLoading?: (loading: boolean) => void;
 }
 
-export default function ActivityScheduleTab({
+export default function MilestonesTab({
   projectId,
   notes = [],
   documents = [],
@@ -45,21 +51,22 @@ export default function ActivityScheduleTab({
   onRefresh,
   globalLoading,
   setGlobalLoading,
-}: ActivityScheduleTabProps) {
+}: MilestonesTabProps) {
   const [content, setContent] = useState('');
   const [isIssue, setIsIssue] = useState(false);
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
   const [activeDocuments, setActiveDocuments] = useState<Document[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
+  const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
 
   const fetchActiveDocuments = async () => {
     setLoadingDocs(true);
     try {
-      const docs = await getDecoupledDocuments(projectId, 'activity_schedule');
+      const docs = await getDecoupledDocuments(projectId, 'milestone_claims');
       setActiveDocuments(docs || []);
     } catch (err) {
-      console.error('Failed to fetch activity schedule documents:', err);
+      console.error('Failed to fetch milestone claim documents:', err);
     } finally {
       setLoadingDocs(false);
     }
@@ -76,7 +83,7 @@ export default function ActivityScheduleTab({
     try {
       await onAddNote({
         content,
-        department: 'activity_schedule',
+        department: 'milestone_claims',
         is_issue: isIssue,
         priority: isIssue ? priority : 'Normal',
       });
@@ -91,7 +98,7 @@ export default function ActivityScheduleTab({
   };
 
   // Filter notes for this workspace
-  const filteredNotes = notes.filter((note) => note.department?.toLowerCase() === 'activity_schedule');
+  const filteredNotes = notes.filter((note) => note.department?.toLowerCase() === 'milestone_claims');
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -99,8 +106,8 @@ export default function ActivityScheduleTab({
       {/* Header Summary Banner */}
       <div className="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950 text-white rounded-3xl p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
         <div className="relative z-10">
-          <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Baseline & Progress Module</span>
-          <h2 className="text-xl font-bold font-lexend mt-1">Lump Sum Activity Schedules</h2>
+          <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Milestone Payments Module</span>
+          <h2 className="text-xl font-bold font-lexend mt-1">Milestone Claims</h2>
           <p className="text-xs text-emerald-100/80 mt-1 max-w-xl leading-relaxed">
             Link and audit work progress weighting schedules. Support for Excel spreadsheets, Word templates, and visual PDF files with inline table overrides.
           </p>
@@ -108,7 +115,7 @@ export default function ActivityScheduleTab({
       </div>
 
       {/* Integrations panel */}
-      <ActivityScheduleIntegrations
+      <MilestoneClaimsIntegrations
         projectId={projectId}
         integrations={integrations}
         documents={documents}
@@ -123,44 +130,119 @@ export default function ActivityScheduleTab({
       {/* Main Table Breakdown List */}
       <div className="space-y-4">
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-          <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 font-inter">Active Schedules Matrix</h3>
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 font-inter">Active Milestone Claims</h3>
           <span className="text-[10px] font-bold text-dark-teal-700 bg-dark-teal-50 px-2 py-0.5 rounded border border-dark-teal-100">
-            {activeDocuments.length} Schedule{activeDocuments.length !== 1 ? 's' : ''} Linked
+            {activeDocuments.length} Claim{activeDocuments.length !== 1 ? 's' : ''} Linked
           </span>
         </div>
 
         {loadingDocs ? (
           <div className="bg-white rounded-3xl p-12 border border-gray-100 text-center flex flex-col items-center justify-center space-y-2 text-gray-400 shadow-sm">
             <div className="w-8 h-8 border-4 border-dark-teal-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-xs font-semibold">Loading schedules from database...</p>
+            <p className="text-xs font-semibold">Loading milestone claims from database...</p>
           </div>
         ) : activeDocuments.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 border border-gray-100 text-center shadow-sm space-y-3">
             <FileSpreadsheet className="w-12 h-12 text-slate-200 drop-shadow-sm mx-auto" />
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-gray-700">No Active Schedules Found</h4>
+              <h4 className="text-xs font-bold text-gray-700">No Active Milestone Claims Found</h4>
               <p className="text-[11px] text-gray-400 max-w-md mx-auto">
-                No database records exist for activity schedules. Connect a workbook or upload a PDF document in the panel below to initiate AI parsing.
+                No database records exist for milestone claims. Connect a workbook or upload a PDF document in the panel below to initiate AI parsing.
               </p>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            {activeDocuments.map((doc) => (
-              <ActivityScheduleInlineEditor
-                key={doc.id}
-                projectId={projectId}
-                documentId={doc.id}
-                documentTitle={doc.title}
-                onRefresh={() => {
-                  fetchActiveDocuments();
-                  if (onRefresh) onRefresh();
-                }}
-              />
+            {activeDocuments.map((doc: any) => (
+              <div key={doc.id} className="bg-white/90 backdrop-blur-md rounded-3xl p-5 border border-gray-200/60 shadow-lg shadow-gray-200/30 hover:shadow-xl hover:-translate-y-1 hover:border-gray-300/60 transition-all duration-300 flex flex-col space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-3 bg-dark-teal-50 rounded-xl text-dark-teal-800 border border-dark-teal-100">
+                      <FileSpreadsheet className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold font-lexend text-gray-900 leading-tight">
+                        {doc.title || 'Milestone Claim Document'}
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {doc.file_type || 'Cloud Document'} • Linked {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recently'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setSelectedClaim(doc)}
+                      className="px-4 py-2 bg-gradient-to-b from-indigo-50 to-indigo-100/50 hover:from-indigo-100 hover:to-indigo-200/50 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-extrabold shadow-sm hover:shadow hover:-translate-y-0.5 transition-all duration-300 flex items-center shadow-sm"
+                    >
+                      View / Edit Claim
+                    </button>
+                    <a
+                      href={doc.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-gradient-to-b from-white to-gray-50 hover:from-gray-50 hover:to-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-extrabold shadow-sm hover:shadow hover:-translate-y-0.5 transition-all duration-300 flex items-center"
+                    >
+                      View Source
+                    </a>
+                  </div>
+                </div>
+                
+                {/* Info grid */}
+                <div className="grid grid-cols-5 gap-4 pt-4 border-t border-gray-50">
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Claim No</p>
+                    <p className="text-sm font-bold text-gray-800">{doc.claim_number || 'Pending'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Valuation Date</p>
+                    <p className="text-sm font-bold text-gray-800">{doc.valuation_date ? new Date(doc.valuation_date).toLocaleDateString() : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status</p>
+                    <p className="text-sm font-bold text-gray-800">
+                      <span className={`px-2 py-1 rounded text-xs ${doc.status === 'Certified' ? 'bg-emerald-100 text-emerald-800' : doc.status === 'Submitted' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {doc.status || 'Draft'}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Payment</p>
+                    <p className="text-sm font-bold text-gray-800">
+                      <span className={`px-2 py-1 rounded text-xs ${doc.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : doc.payment_status === 'PARTIAL' ? 'bg-blue-100 text-blue-800' : 'bg-rose-100 text-rose-800'}`}>
+                        {doc.payment_status || 'UNPAID'}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Net Due</p>
+                    <p className="text-sm font-bold text-dark-teal-600">${(doc.net_amount_due || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                  </div>
+                </div>
+              </div>
             ))}
-          </div>
+            </div>
+          )}
+        </div>
+
+        {selectedClaim && (
+          <MilestoneClaimSheet
+            claim={selectedClaim}
+            onClose={() => setSelectedClaim(null)}
+            onSave={async (data) => {
+              if (setGlobalLoading) setGlobalLoading(true);
+              try {
+                await updateProjectMilestoneClaim(projectId, selectedClaim.id, data);
+                setSelectedClaim(null);
+                fetchActiveDocuments();
+              } catch (err) {
+                console.error('Failed to update claim:', err);
+              } finally {
+                if (setGlobalLoading) setGlobalLoading(false);
+              }
+            }}
+          />
         )}
-      </div>
+
 
 
       {/* Discussions & Notes */}
@@ -173,7 +255,7 @@ export default function ActivityScheduleTab({
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Log progress comments or flag schedule revisions..."
+              placeholder="Log progress comments or flag claim revisions..."
               rows={3}
               className="w-full p-4 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-dark-teal-500/20 focus:border-dark-teal-500 focus:outline-none transition shadow-inner resize-none"
             />
@@ -221,7 +303,7 @@ export default function ActivityScheduleTab({
           {filteredNotes.length === 0 ? (
             <div className="bg-gray-50/70 rounded-3xl p-8 text-center border border-dashed border-gray-200">
               <MessageSquare className="w-8 h-8 text-slate-200 drop-shadow-sm mx-auto mb-2" />
-              <p className="text-xs text-gray-400 font-medium">No notes recorded for this schedule yet.</p>
+              <p className="text-xs text-gray-400 font-medium">No notes recorded for this milestone claim yet.</p>
             </div>
           ) : (
             <div className="space-y-4">

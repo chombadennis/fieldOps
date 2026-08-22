@@ -89,7 +89,7 @@ export default function CloudConfigModal(props: any) {
                       return (
                         <>
                           <h3 className="text-xl font-extrabold text-white mb-2 tracking-tight z-10">
-                            {moduleContext === 'budget' ? 'Workbook Linkage Setup' : moduleContext === 'activity_schedule' ? 'Activity Schedule Linkage Setup' : (isSpreadsheet ? 'Processing Spreadsheet' : 'Linking Document')}
+                            {moduleContext === 'budget' ? 'Workbook Linkage Setup' : moduleContext === 'activity_schedule' ? 'Activity Schedule Linkage Setup' : moduleContext === 'milestone_claims' ? 'Milestone Claim Linkage Setup' : (isSpreadsheet ? 'Processing Spreadsheet' : 'Linking Document')}
                           </h3>
 
                           {/* Active Step Badge */}
@@ -161,10 +161,10 @@ export default function CloudConfigModal(props: any) {
               </div>
             )}
             <h3 className="text-xl font-bold text-gray-800 mb-2 flex-shrink-0">
-              {moduleContext === 'budget' ? 'Workbook Linkage Setup' : moduleContext === 'activity_schedule' ? 'Activity Schedule Linkage Setup' : 'Link Cloud Document'}
+              {moduleContext === 'budget' ? 'Workbook Linkage Setup' : moduleContext === 'activity_schedule' ? 'Activity Schedule Linkage Setup' : moduleContext === 'milestone_claims' ? 'Milestone Claim Setup' : 'Link Cloud Document'}
             </h3>
             <p className="text-sm text-gray-500 mb-4 flex-shrink-0">
-              Successfully authenticated with <span className="font-semibold capitalize text-gray-700">{oauthProvider === 'google_sheets' || oauthProvider === 'google' ? 'Google Drive' : oauthProvider === 'onedrive' ? 'OneDrive' : oauthProvider?.replace('_', ' ')}</span>. {moduleContext === 'budget' ? 'Select a budget spreadsheet workbook below:' : moduleContext === 'activity_schedule' ? 'Select an Activity Schedule (Excel, PDF, or Word) below:' : 'Select a document or spreadsheet file below:'}
+              Successfully authenticated with <span className="font-semibold capitalize text-gray-700">{oauthProvider === 'google_sheets' || oauthProvider === 'google' ? 'Google Drive' : oauthProvider === 'onedrive' ? 'OneDrive' : oauthProvider?.replace('_', ' ')}</span>. {moduleContext === 'budget' ? 'Select a budget spreadsheet workbook below:' : moduleContext === 'activity_schedule' ? 'Select an Activity Schedule (Excel, PDF, or Word) below:' : moduleContext === 'milestone_claims' ? 'Select a Milestone Claim document (Excel, PDF, or Word) below:' : 'Select a document or spreadsheet file below:'}
             </p>
 
             <form onSubmit={handleSaveConfig} className="flex-1 flex flex-col min-h-0">
@@ -184,7 +184,7 @@ export default function CloudConfigModal(props: any) {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-gray-600 uppercase">
-                        {moduleContext === 'budget' ? 'Select Workbook' : moduleContext === 'activity_schedule' ? 'Select Activity Schedule Document' : 'Select File or Document'}
+                        {moduleContext === 'budget' ? 'Select Workbook' : moduleContext === 'activity_schedule' ? 'Select Activity Schedule Document' : moduleContext === 'milestone_claims' ? 'Select Milestone Claim Document' : 'Select File or Document'}
                       </label>
                       {navigationHistory.length > 0 && (
                         <button
@@ -206,13 +206,13 @@ export default function CloudConfigModal(props: any) {
                       ))}
                     </div>
 
-                    {oauthProvider === 'google_sheets' && (
+                    {oauthProvider === 'google_sheets' && moduleContext === 'budget' && (
                       <div className="mb-2 bg-blue-50/80 border border-blue-200 rounded-lg p-2.5 text-xs text-blue-900 leading-relaxed">
                         <span className="font-bold">Google Drive Format:</span> Any Excel file (<code className="font-mono bg-blue-100 px-1 rounded text-[11px]">.xlsx</code>) you click will be automatically converted to native Google Sheets format so its worksheets can be loaded. If auto-conversion is restricted by Drive permissions, open the file in Google Drive and select <strong>File &gt; Save as Google Sheets</strong>.
                       </div>
                     )}
 
-                    {oauthProvider === 'onedrive' && (
+                    {oauthProvider === 'onedrive' && moduleContext === 'budget' && (
                       <div className="mb-2 bg-blue-50/80 border border-blue-200 rounded-lg p-2.5 text-xs text-blue-900 leading-relaxed">
                         <span className="font-bold">OneDrive Format:</span> Microsoft OneDrive integration only supports native Excel Workbooks (<code className="font-mono bg-blue-100 px-1 rounded text-[11px]">.xlsx</code>). CSV files are not supported and are hidden from this list. If you need to link a CSV file, please open it in OneDrive and save it as an Excel Workbook first.
                       </div>
@@ -241,10 +241,10 @@ export default function CloudConfigModal(props: any) {
                                 <div
                                   key={file.id}
                                   className={`flex items-center justify-between p-3 transition-all duration-150 ${file.already_linked_module
-                                      ? 'opacity-60 bg-gray-50 cursor-not-allowed border-l-4 border-gray-300'
-                                      : isSelected
-                                        ? 'bg-emerald-50 text-emerald-950 font-bold border-l-4 border-emerald-500'
-                                        : 'hover:bg-gray-50 text-gray-700 font-medium'
+                                    ? 'opacity-60 bg-gray-50 cursor-not-allowed border-l-4 border-gray-300'
+                                    : isSelected
+                                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-4 border-emerald-500'
+                                      : 'hover:bg-gray-50 text-gray-700 font-medium'
                                     }`}
                                 >
                                   <div
@@ -321,11 +321,11 @@ export default function CloudConfigModal(props: any) {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                    {moduleContext === 'budget' ? 'Workbook Title / Label (Optional)' : moduleContext === 'activity_schedule' ? 'Activity Schedule Title / Label (Optional)' : 'Document Title / Label (Optional)'}
+                    {moduleContext === 'budget' ? 'Workbook Title / Label (Optional)' : moduleContext === 'activity_schedule' ? 'Activity Schedule Title / Label (Optional)' : moduleContext === 'milestone_claims' ? 'Milestone Claim Title / Label (Optional)' : 'Document Title / Label (Optional)'}
                   </label>
                   <input
                     type="text"
-                    placeholder={moduleContext === 'budget' ? 'e.g. Master Project Budget / Structural Trade' : moduleContext === 'activity_schedule' ? 'e.g. Master Activity Schedule Rev 2' : 'e.g. IPC Claim No. 8 / Structural Report'}
+                    placeholder={moduleContext === 'budget' ? 'e.g. Master Project Budget / Structural Trade' : moduleContext === 'activity_schedule' ? 'e.g. Master Activity Schedule Rev 2' : moduleContext === 'milestone_claims' ? 'e.g. Milestone Claim No. 5' : 'e.g. IPC Claim No. 8 / Structural Report'}
                     value={boqName}
                     onChange={(e) => setBoqName(e.target.value)}
                     className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-800"

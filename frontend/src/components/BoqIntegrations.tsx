@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getGoogleAuthUrl, getOneDriveAuthUrl, saveIntegration, triggerSyncImport, listCloudFiles, listCloudSheets, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, createProjectDocument, convertGoogleCloudFile } from '@/services/api';
-import { Folder, FileSpreadsheet, ChevronRight, ArrowLeft, Loader2, Trash2, AlertTriangle, ExternalLink, X, Unlink, Eye, Sparkles, Paperclip, RefreshCw } from 'lucide-react';
+import { getGoogleAuthUrl, getOneDriveAuthUrl, saveIntegration, triggerSyncImport, listCloudFiles, listCloudSheets, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, createProjectDocument, convertGoogleCloudFile, getGlobalAuthToken } from '@/services/api';
+import { Folder, FileSpreadsheet, ChevronRight, ArrowLeft, Loader2, Trash2, AlertTriangle, ExternalLink, X, Unlink, Eye, Sparkles, Paperclip, RefreshCw, Link2, Layers, Lock } from 'lucide-react';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
+import CloudConnectionCards from './integrations/CloudConnectionCards';
 
 
 interface Integration {
@@ -107,6 +108,8 @@ export default function BoqIntegrations({
     if (i.id === deletingId) return false;
     return i.module === 'boq';
   });
+
+
 
   // Check if spreadsheets are out of sync on load/refresh, and poll every 30 seconds
   useEffect(() => {
@@ -273,21 +276,53 @@ export default function BoqIntegrations({
       if (err) {
         if (window.opener) {
           window.opener.postMessage({ type: 'OAUTH_ERROR', error: decodeURIComponent(err) }, window.location.origin);
-          window.close();
-          return;
+        } else {
+          try {
+            const bc = new BroadcastChannel('oauth_channel');
+            bc.postMessage({ type: 'OAUTH_ERROR', error: decodeURIComponent(err) });
+            bc.close();
+          } catch (e) {
+            // ignore
+          }
         }
-        setError(`OAuth Authorization Failed: ${decodeURIComponent(err)}`);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Attempt to close the popup
+        window.close();
+        
+        // If window.close() failed (often happens if browser blocks script close),
+        // fallback to just showing the error in the current window.
+        setTimeout(() => {
+          if (!window.closed) {
+            setError(`OAuth Authorization Failed: ${decodeURIComponent(err)}`);
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }, 500);
+
       } else if (provider && token) {
         if (window.opener) {
           window.opener.postMessage({ type: 'OAUTH_CALLBACK', provider, token }, window.location.origin);
-          window.close();
-          return;
+        } else {
+          try {
+            const bc = new BroadcastChannel('oauth_channel');
+            bc.postMessage({ type: 'OAUTH_CALLBACK', provider, token });
+            bc.close();
+          } catch (e) {
+            // ignore
+          }
         }
-        setOauthProvider(provider);
-        setRefreshToken(token);
-        setShowConfigModal(true);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Attempt to close the popup
+        window.close();
+        
+        // If window.close() failed, render the dashboard here as fallback
+        setTimeout(() => {
+          if (!window.closed) {
+            setOauthProvider(provider);
+            setRefreshToken(token);
+            setShowConfigModal(true);
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }, 500);
       }
     }
   }, []);
@@ -295,7 +330,10 @@ export default function BoqIntegrations({
   // Listen to message events from popup window
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      // For window.postMessage, verify origin. BroadcastChannel doesn't have event.origin in the same way, 
+      // but it's restricted to same-origin by the browser automatically.
+      if (event.origin && event.origin !== window.location.origin && event.origin !== '') return;
+      
       if (event.data?.type === 'OAUTH_CALLBACK') {
         const { provider, token } = event.data;
         setOauthProvider(provider);
@@ -307,8 +345,21 @@ export default function BoqIntegrations({
         setLoading(false);
       }
     };
+    
     window.addEventListener('message', handleOAuthMessage);
-    return () => window.removeEventListener('message', handleOAuthMessage);
+    
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('oauth_channel');
+      bc.onmessage = handleOAuthMessage;
+    } catch (e) {
+      // ignore
+    }
+
+    return () => {
+      window.removeEventListener('message', handleOAuthMessage);
+      if (bc) bc.close();
+    };
   }, []);
 
   const handleFolderClick = (id: string, name: string) => {
@@ -377,6 +428,8 @@ export default function BoqIntegrations({
   };
 
   const handleOAuthInitiate = async (provider: 'google' | 'onedrive') => {
+    const dbProvider = provider === 'google' ? 'google_sheets' : 'onedrive';
+
     setLoading(true);
     setError(null);
 
@@ -403,10 +456,39 @@ export default function BoqIntegrations({
           </head>
           <body>
             <div class="spinner"></div>
-            <div>Connecting to ${provider === 'google' ? 'Google' : 'Microsoft'}...</div>
+            <div id="status-msg">Checking existing connection...</div>
           </body>
         </html>
       `);
+    }
+
+    try {
+      const authCheck = await getGlobalAuthToken(projectId, dbProvider);
+      if (authCheck && authCheck.has_auth) {
+        try {
+          await listCloudFiles(dbProvider, authCheck.refresh_token, undefined, 'spreadsheets', projectId, 'boq');
+          setOauthProvider(dbProvider);
+          setRefreshToken(authCheck.refresh_token);
+          setShowConfigModal(true);
+          setLoading(false);
+          if (popup) popup.close();
+          return;
+        } catch (tokenErr) {
+          console.warn(`Cached ${provider} token is expired, proceeding to re-authenticate...`);
+        }
+      }
+    } catch (err) {
+      console.error("Global auth check failed:", err);
+    }
+
+    if (popup) {
+      try {
+        const msgEl = popup.document.getElementById('status-msg');
+        if (msgEl) {
+          msgEl.innerText = "Connecting to " + (provider === 'google' ? 'Google' : 'Microsoft') + "...";
+        }
+      } catch (e) {
+      }
     }
 
     try {
@@ -677,96 +759,16 @@ export default function BoqIntegrations({
     <div className="space-y-6">
       {/* Connect providers cards */}
       {showConnect && (
-        <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100 transition-all duration-300">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Cloud Integrations</h2>
-            <p className="text-sm text-gray-500 mt-1">Connect your project database with live spreadsheets for bi-directional updates.</p>
-          </div>
-
-          {success && (
-            <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-md mb-6 text-sm">
-              {success}
-            </div>
-          )}
-
-          <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 text-xs sm:text-sm text-amber-900 leading-relaxed mb-6">
-            <div className="flex items-center space-x-2 text-amber-800 font-bold mb-1">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span className="text-sm font-bold">Spreadsheet Compatibility Requirements</span>
-            </div>
-            To sync successfully, your cloud spreadsheets must use standard BOQ structures (columns for <strong className="font-bold text-amber-950">Description, Qty, Rate, and Amount</strong>). Avoid connecting progress tracking spreadsheets, weighted task matrices, or draft scratchpads.
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Google Sheets Card */}
-            <div className="bg-gradient-to-br from-emerald-50 to-white rounded-xl p-6 border border-emerald-100 flex flex-col justify-between hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-                    <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10H7v-2h10v2m0-4H7V7h10v2m0 8H7v-2h10v2z" />
-                    </svg>
-                  </div>
-                  {googleIntegration ? (
-                    <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full flex items-center">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full mr-1.5 animate-ping" />
-                      Connected
-                    </span>
-                  ) : (
-                    <span className="text-xs bg-gray-150 text-gray-700 font-bold px-3 py-1 rounded-full">
-                      Not Linked
-                    </span>
-                  )}
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">Google Sheets</h3>
-                <p className="text-sm text-gray-600 leading-relaxed mb-6">
-                  Link sheets directly from Google Drive. Access updates in real-time or trigger imports on demand.
-                </p>
-              </div>
-              <button
-                disabled={isLoading}
-                onClick={() => handleOAuthInitiate('google')}
-                className="w-full flex justify-center py-2.5 px-4 border border-emerald-600 rounded-xl shadow-sm text-sm font-bold text-emerald-700 bg-white hover:bg-emerald-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Connect Google Sheets
-              </button>
-            </div>
-
-            {/* OneDrive Excel Card */}
-            <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl p-6 border border-indigo-100 flex flex-col justify-between hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-                    <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
-                    </svg>
-                  </div>
-                  {onedriveIntegration ? (
-                    <span className="text-xs bg-indigo-100 text-indigo-800 font-bold px-3 py-1 rounded-full flex items-center">
-                      <span className="w-2 h-2 bg-indigo-500 rounded-full mr-1.5 animate-ping" />
-                      Connected
-                    </span>
-                  ) : (
-                    <span className="text-xs bg-gray-150 text-gray-700 font-bold px-3 py-1 rounded-full">
-                      Not Linked
-                    </span>
-                  )}
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">Microsoft OneDrive</h3>
-                <p className="text-sm text-gray-600 leading-relaxed mb-6">
-                  Import Microsoft Excel spreadsheets securely from Microsoft 365 OneDrive.
-                </p>
-              </div>
-              <button
-                disabled={isLoading}
-                onClick={() => handleOAuthInitiate('onedrive')}
-                className="w-full flex justify-center py-2.5 px-4 border border-indigo-600 rounded-xl shadow-sm text-sm font-bold text-indigo-700 bg-white hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Connect OneDrive
-              </button>
-            </div>
-          </div>
-        </div>
+        <CloudConnectionCards
+          success={success}
+          moduleContext="boq"
+          departmentName="General"
+          googleIntegration={googleIntegration}
+          onedriveIntegration={onedriveIntegration}
+          isLoading={isLoading}
+          handleOAuthInitiate={handleOAuthInitiate}
+          formatGuidelines="To sync successfully, your cloud spreadsheets must use standard BOQ structures (columns for Description, Qty, Rate, and Amount). Avoid connecting progress tracking spreadsheets, weighted task matrices, or draft scratchpads."
+        />
       )}
 
       {/* Config Modal after successful OAuth Callback */}

@@ -21,8 +21,8 @@ def get_google_auth_url(project_id: int, state: Optional[str] = None) -> str:
         "prompt": "consent",
         "state": state if state else str(project_id)
     }
-    # Formulate string manually or via httpx URL params
-    query = "&".join(f"{k}={httpx.URL(v)}" for k, v in params.items() if v is not None)
+    import urllib.parse
+    query = urllib.parse.urlencode(params)
     return f"{GOOGLE_AUTH_URL}?{query}"
 
 async def exchange_google_code_for_tokens(code: str) -> Dict[str, Any]:

@@ -321,6 +321,11 @@ export const updateProjectIPC = async (projectId: string | number, ipcId: string
   return response.data;
 };
 
+export const updateProjectMilestoneClaim = async (projectId: string | number, claimId: string | number, data: any) => {
+  const response = await apiClient.put(`/projects/${projectId}/milestone_claims/${claimId}`, data);
+  return response.data;
+};
+
 export const validateBudget = async (data: { project_id: number; provider: string; spreadsheet_id: string; refresh_token?: string; trade_label?: string }): Promise<{ valid: boolean; reason?: string; previously_flagged?: boolean }> => {
   const response = await apiClient.post('/integrations/budget/validate', data);
   return response.data;
@@ -416,5 +421,41 @@ export const updateActivityScheduleItems = async (projectId: string | number, do
   return response.data;
 };
 
+// --- Milestone Claims APIs ---
 
+export const validateMilestoneClaim = async (projectId: string | number, data: {
+  project_id: number;
+  provider: string;
+  spreadsheet_id: string;
+  filename: string;
+  refresh_token?: string;
+  selected_sheets?: string[];
+}): Promise<{ valid: boolean; reason?: string; extracted_data?: any }> => {
+  const response = await apiClient.post(`/projects/${projectId}/milestone_claims/validate`, data);
+  return response.data;
+};
 
+export const previewMilestoneClaimExtraction = async (projectId: string | number, data: {
+  project_id: number;
+  provider: string;
+  spreadsheet_id: string;
+  filename: string;
+  refresh_token?: string;
+  selected_sheets?: string[];
+}) => {
+  const response = await apiClient.post(`/projects/${projectId}/milestone_claims/preview`, data);
+  return response.data;
+};
+
+export const commitMilestoneClaimExtraction = async (projectId: string | number, data: {
+  project_id: number;
+  contract_id?: number;
+  integration_id?: number;
+  file_url?: string;
+  title?: string;
+  metrics?: any;
+  items?: any[];
+}) => {
+  const response = await apiClient.post(`/projects/${projectId}/milestone_claims/commit`, data);
+  return response.data;
+};

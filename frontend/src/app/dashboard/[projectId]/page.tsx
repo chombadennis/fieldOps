@@ -26,6 +26,7 @@ import BudgetsTab from '@/components/BudgetsTab';
 import IpcsTab from '@/components/IpcsTab';
 import DepartmentTab from '@/components/DepartmentTab';
 import ActivityScheduleTab from '@/components/ActivityScheduleTab';
+import MilestonesTab from '@/components/MilestonesTab';
 import DiscussionBoard from '@/components/DiscussionBoard';
 import { AlertTriangle, X, FileSpreadsheet, DollarSign, FileCheck, HardHat, Wrench, Users, Scale, Building2, Calendar } from 'lucide-react';
 
@@ -440,21 +441,15 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
 
               {/* PMO Subtab: Milestone Payments */}
               {pmoSubTab === 'milestone_payments' && (
-                <DepartmentTab
+                <MilestonesTab
                   projectId={project.id}
-                  departmentName="Milestone Payments"
-                  departmentKey="milestone_claims"
-                  apiEndpoint="milestone_claims"
-                  description="Upload milestone payment claims and certificates. Expected format: PDF or Word."
-                  colorTheme="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950"
-                  notes={notes.filter((n: any) => n.department?.toLowerCase() === 'milestone_claims')}
-                  documents={documents.filter((d: any) => d.department?.toLowerCase() === 'milestone_claims')}
+                  notes={notes}
+                  documents={documents}
                   onAddNote={handleAddNote}
                   integrations={(project.integrations || []).filter((i: any) => i.module === 'milestone_claims')}
                   onRefresh={fetchProjectData}
                   globalLoading={globalProcessing}
                   setGlobalLoading={setGlobalProcessing}
-                  activeTab="pmo"
                 />
               )}
 

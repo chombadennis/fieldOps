@@ -15,6 +15,14 @@ class MilestoneClaimDocument(Base, CustomBase):
     file_type = Column(String, default="pdf", nullable=True)
     origin = Column(String, nullable=True, default="file_upload")
     integration_id = Column(Integer, ForeignKey('project_integrations.id', ondelete="SET NULL"), nullable=True, index=True)
+    claim_number = Column(String, nullable=True, index=True)
+    valuation_date = Column(String, nullable=True)
+    gross_amount_claimed = Column(Float, nullable=True, default=0.0)
+    retention_deducted = Column(Float, nullable=True, default=0.0)
+    net_amount_due = Column(Float, nullable=True, default=0.0)
+    status = Column(String, nullable=True, default='Draft')
+    payment_status = Column(String, nullable=True, default='UNPAID')
+    values_map = Column(JSONB, nullable=True, default=None)
 
     items = relationship("MilestoneClaimItem", back_populates="document", cascade="all, delete-orphan")
 
@@ -24,9 +32,10 @@ class MilestoneClaimItem(Base, CustomBase):
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey('milestone_claim_documents.id', ondelete="CASCADE"), nullable=False)
     
-    claim_number = Column(String, nullable=True, index=True)
+    activity_id = Column(String, nullable=True, index=True)
     description = Column(Text, nullable=False)
-    amount_claimed = Column(Float, nullable=True, default=0.0)
+    percentage_complete_this_period = Column(Float, nullable=True, default=0.0)
+    amount_claimed_this_period = Column(Float, nullable=True, default=0.0)
     amount_certified = Column(Float, nullable=True, default=0.0)
     status = Column(String, nullable=True, default='pending')
     values_map = Column(JSONB, nullable=True, default=None)

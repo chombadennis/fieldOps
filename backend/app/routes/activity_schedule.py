@@ -264,8 +264,27 @@ async def _download_cloud_file(provider: str, file_id: str, refresh_token: str) 
     decrypted = decrypt_token(refresh_token)
     if provider == "google_sheets":
         access_token = await refresh_google_access_token(decrypted)
-        url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
         headers = {"Authorization": f"Bearer {access_token}"}
+        
+        # Check file metadata to determine if it's a native Google Workspace file
+        meta_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?fields=mimeType,name"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            meta_resp = await client.get(meta_url, headers=headers)
+            if meta_resp.status_code == 200:
+                meta_data = meta_resp.json()
+                mime_type = meta_data.get("mimeType", "")
+                
+                if mime_type == "application/vnd.google-apps.spreadsheet":
+                    url = f"https://www.googleapis.com/drive/v3/files/{file_id}/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                elif mime_type == "application/vnd.google-apps.document":
+                    url = f"https://www.googleapis.com/drive/v3/files/{file_id}/export?mimeType=application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                elif mime_type == "application/vnd.google-apps.presentation":
+                    url = f"https://www.googleapis.com/drive/v3/files/{file_id}/export?mimeType=application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                else:
+                    url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+            else:
+                url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+
     elif provider == "onedrive":
         access_token = await refresh_onedrive_access_token(decrypted)
         url = f"https://graph.microsoft.com/v1.0/me/drive/items/{file_id}/content"
@@ -279,7 +298,15 @@ async def _download_cloud_file(provider: str, file_id: str, refresh_token: str) 
         if resp.status_code != 200:
             os.close(fd)
             os.remove(temp_path)
-            raise HTTPException(status_code=resp.status_code, detail=f"Cloud download failed: {resp.text}")
+            error_detail = resp.text
+            try:
+                import json
+                error_data = json.loads(resp.text)
+                if "error" in error_data and "message" in error_data["error"]:
+                    error_detail = error_data["error"]["message"]
+            except Exception:
+                pass
+            raise HTTPException(status_code=resp.status_code, detail=f"Cloud download failed: {error_detail}")
         with os.fdopen(fd, 'wb') as f:
             f.write(resp.content)
             
@@ -299,6 +326,8 @@ async def _extract_content_and_process(
     from ..services.integrations.activity_schedule_ai_engine import process_activity_schedule_with_ai
 
     ext = os.path.splitext(filename.lower())[1]
+    if not ext:
+        ext = ".xlsx"
     
     try:
         if ext == ".pdf":

@@ -4,7 +4,7 @@ import { Integration } from './types';
 
 interface CloudConnectionCardsProps {
   success: string | null;
-  moduleContext: 'ipc' | 'budget' | 'department';
+  moduleContext: 'ipc' | 'budget' | 'department' | 'boq' | 'activity_schedule' | 'milestone_payments';
   departmentName: string;
   googleIntegration?: Integration;
   onedriveIntegration?: Integration;
@@ -23,6 +23,8 @@ export default function CloudConnectionCards({
   handleOAuthInitiate,
   formatGuidelines,
 }: CloudConnectionCardsProps) {
+  const isGeneralDrive = ['department', 'activity_schedule', 'milestone_payments'].includes(moduleContext);
+
   return (
     <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100 transition-all duration-300">
       <div className="mb-6">
@@ -58,22 +60,12 @@ export default function CloudConnectionCards({
                   <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10H7v-2h10v2m0-4H7V7h10v2m0 8H7v-2h10v2z" />
                 </svg>
               </div>
-              {googleIntegration ? (
-                <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full flex items-center">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full mr-1.5 animate-ping" />
-                  Connected
-                </span>
-              ) : (
-                <span className="text-xs bg-gray-150 text-gray-700 font-bold px-3 py-1 rounded-full">
-                  Not Linked
-                </span>
-              )}
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">
-              {moduleContext === 'department' ? 'Google Drive' : 'Google Sheets'}
+              {isGeneralDrive ? 'Google Drive' : 'Google Sheets'}
             </h3>
             <p className="text-sm text-gray-600 leading-relaxed mb-6">
-              {moduleContext === 'department'
+              {isGeneralDrive
                 ? 'Link any document format directly from Google Drive. Support inline previews for sheets, docs, and PDFs.'
                 : 'Link sheets directly from Google Drive. Access updates in real-time or trigger imports on demand.'}
             </p>
@@ -83,7 +75,7 @@ export default function CloudConnectionCards({
             onClick={() => handleOAuthInitiate('google')}
             className="w-full flex justify-center py-2.5 px-4 border border-emerald-600 rounded-xl shadow-sm text-sm font-bold text-emerald-700 bg-white hover:bg-emerald-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {moduleContext === 'department' ? 'Connect Google Drive' : 'Connect Google Sheets'}
+            {isGeneralDrive ? 'Connect Google Drive' : 'Connect Google Sheets'}
           </button>
         </div>
 
@@ -96,20 +88,10 @@ export default function CloudConnectionCards({
                   <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
                 </svg>
               </div>
-              {onedriveIntegration ? (
-                <span className="text-xs bg-indigo-100 text-indigo-800 font-bold px-3 py-1 rounded-full flex items-center">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full mr-1.5 animate-ping" />
-                  Connected
-                </span>
-              ) : (
-                <span className="text-xs bg-gray-150 text-gray-700 font-bold px-3 py-1 rounded-full">
-                  Not Linked
-                </span>
-              )}
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">Microsoft OneDrive</h3>
             <p className="text-sm text-gray-600 leading-relaxed mb-6">
-              {moduleContext === 'department'
+              {isGeneralDrive
                 ? 'Link any document format securely from Microsoft 365 OneDrive. Support inline previews for sheets, docs, and PDFs.'
                 : 'Import Microsoft Excel spreadsheets securely from Microsoft 365 OneDrive.'}
             </p>
