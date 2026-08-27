@@ -41,12 +41,14 @@ export default function WorkbookInlinePreviewDrawer({
     setCategories(workbookData.categories ? JSON.parse(JSON.stringify(workbookData.categories)) : []);
   }, [workbookData]);
 
-  const metrics = workbookData.summary_metrics || {};
-  const orig = metrics.original_contract_sum || 0;
-  const appr = metrics.appraised_budget;
-  const ev = metrics.earned_value || 0;
-  const eff = (appr !== null && appr !== undefined && appr > 0) ? appr : orig;
-  const rem = metrics.remaining_balance ?? Math.max(0, eff - ev);
+  const orig = categories.reduce((sum, c) => sum + (parseFloat(c.original_amount) || 0), 0);
+  const appr = categories.reduce((sum, c) => {
+    const a = parseFloat(c.appraised_amount);
+    return sum + (isNaN(a) ? (parseFloat(c.original_amount) || 0) : a);
+  }, 0);
+  const ev = categories.reduce((sum, c) => sum + (parseFloat(c.earned_value_to_date) || 0), 0);
+  const eff = appr;
+  const rem = Math.max(0, eff - ev);
 
   const formatCurrency = (val: number | null | undefined) => {
     if (val === null || val === undefined || isNaN(val)) return '$0.00';
@@ -200,7 +202,13 @@ export default function WorkbookInlinePreviewDrawer({
 
             {!isEditing ? (
               <button
-                onClick={() => setIsEditing(true)}
+                onClick={() => {
+                  setCategories(categories.map(c => ({
+                    ...c,
+                    appraised_amount: c.appraised_amount ?? c.original_amount
+                  })));
+                  setIsEditing(true);
+                }}
                 className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs border border-indigo-200 transition flex items-center space-x-1.5"
               >
                 <Edit3 className="w-3.5 h-3.5" />
@@ -238,7 +246,7 @@ export default function WorkbookInlinePreviewDrawer({
             </div>
             <div className="bg-white p-3 rounded-xl border border-gray-150 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-gray-400">Appraised Budget</span>
-              <p className="font-bold text-indigo-900">{appr ? formatCurrency(appr) : 'None'}</p>
+              <p className="font-bold text-indigo-900">{formatCurrency(appr)}</p>
             </div>
             <div className="bg-white p-3 rounded-xl border border-gray-150 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-gray-400">Earned Value to Date</span>
@@ -329,10 +337,8 @@ export default function WorkbookInlinePreviewDrawer({
                                 onChange={(e) => handleCategoryChange(idx, 'appraised_amount', e.target.value)}
                                 className="w-36 text-right p-2 bg-white border border-gray-300 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs ml-auto"
                               />
-                            ) : cAppr ? (
-                              formatCurrency(cAppr)
                             ) : (
-                              '-'
+                              formatCurrency(cAppr ?? cOrig)
                             )}
                           </td>
                           <td className="px-4 py-2.5 text-right font-semibold text-emerald-800 min-w-[160px]">

@@ -16,6 +16,7 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
   const [valuationDate, setValuationDate] = useState(claim?.valuation_date || '');
   const [showExtractionModal, setShowExtractionModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<'lifecycle' | 'extracted'>('lifecycle');
   
   // State for the financial amounts (Stored in values_map.valuation to keep DB ingested data clean)
   const [grossClaimed, setGrossClaimed] = useState(claim?.values_map?.valuation?.gross_claimed || 0);
@@ -128,8 +129,28 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
           </div>
         </div>
         
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 bg-white px-8">
+            <button
+                onClick={() => setActiveTab('lifecycle')}
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+                    activeTab === 'lifecycle' ? 'border-dark-teal-600 text-dark-teal-800' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+                Valuation Lifecycle
+            </button>
+            <button
+                onClick={() => setActiveTab('extracted')}
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+                    activeTab === 'extracted' ? 'border-dark-teal-600 text-dark-teal-800' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+                Ingested Claim Data
+            </button>
+        </div>
+        
         {/* Body */}
-        <div className="p-8 flex-1 overflow-y-auto space-y-8 bg-gray-50/30">
+        <div className="p-8 flex-1 overflow-y-auto bg-gray-50/30">
             
             <SourceExtractionViewerModal 
               show={showExtractionModal} 
@@ -138,8 +159,10 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
               certificateNumber={claim?.claim_number || 'New'}
             />
             
-            {/* Section 1: Approval Lifecycle */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+            {activeTab === 'lifecycle' && (
+              <div className="space-y-8 animate-fade-in">
+                {/* Section 1: Approval Lifecycle */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center"><FileText className="w-4 h-4 mr-2 text-dark-teal-600"/> 1. Certification & Approval</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
@@ -228,6 +251,23 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
                             <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-black text-emerald-800">${netAmountDue.toLocaleString()}</div>
                         )}
                         <p className="text-[10px] text-gray-500 mt-1">Amount after taxes & retention</p>
+                    </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-gray-100 bg-gray-50/50 p-4 rounded-xl">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Database Ingested Values</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <p className="text-[10px] uppercase font-bold text-gray-400">DB Gross Claimed</p>
+                            <p className="text-sm font-bold text-gray-600">${(claim?.gross_amount_claimed || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                            {/* Typically not ingested at creation, leaving blank for alignment */}
+                        </div>
+                        <div>
+                            <p className="text-[10px] uppercase font-bold text-gray-400">DB Net Amount Due</p>
+                            <p className="text-sm font-bold text-gray-600">${(claim?.net_amount_due || 0).toLocaleString()}</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -319,6 +359,88 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
                     )}
                 </div>
             </div>
+          </div>
+          )}
+          
+          {activeTab === 'extracted' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Unified Raw Data Table (All JSONB) */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold font-lexend text-gray-800">All Raw Extracted Data (Document & Row Level)</h4>
+                <div className="overflow-x-auto border border-gray-150 rounded-2xl shadow-sm">
+                  <table className="w-full text-left text-xs min-w-[800px]">
+                    <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[9px] border-b border-gray-100">
+                      <tr>
+                        <th className="px-4 py-3 w-[200px]">Source / Ref</th>
+                        <th className="px-4 py-3 w-[300px]">Raw JSON Key</th>
+                        <th className="px-4 py-3">Raw Value</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-150 text-gray-700 font-medium bg-white">
+                      
+                      {/* Document Level JSONB */}
+                      {(() => {
+                        // Merge the standard document metrics with any dynamic header metrics
+                        const combinedHeaderMetrics: Record<string, any> = {
+                          gross_amount_claimed: claim?.gross_amount_claimed,
+                          retention_deducted: claim?.retention_deducted,
+                          net_amount_due: claim?.net_amount_due,
+                          ...(claim?.values_map?.extraction?.metrics?.values_map || {})
+                        };
+                        const headerKeys = Object.keys(combinedHeaderMetrics).filter(k => combinedHeaderMetrics[k] !== undefined && combinedHeaderMetrics[k] !== null);
+
+                        if (headerKeys.length === 0) return null;
+
+                        return (
+                          <>
+                            <tr className="bg-gray-50/80">
+                              <td colSpan={3} className="px-4 py-2 text-[9px] font-extrabold uppercase tracking-widest text-gray-600">Document Totals / Header</td>
+                            </tr>
+                            {headerKeys.map(key => (
+                              <tr key={`doc-${key}`} className="hover:bg-gray-50/50 transition">
+                                <td className="px-4 py-3 text-xs font-bold text-gray-400">Cover Page</td>
+                                <td className="px-4 py-3 font-bold text-gray-800">{key}</td>
+                                <td className="px-4 py-3 text-gray-700">
+                                  {String(combinedHeaderMetrics[key])}
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        );
+                      })()}
+
+                      {/* Row Level JSONB */}
+                      {claim?.values_map?.extraction?.items && claim.values_map.extraction.items.length > 0 && (
+                        <tr className="bg-gray-50/80">
+                          <td colSpan={3} className="px-4 py-2 text-[9px] font-extrabold uppercase tracking-widest text-gray-600">Activity Rows Matrix</td>
+                        </tr>
+                      )}
+                      {(claim?.values_map?.extraction?.items || []).flatMap((item: any, idx: number) => {
+                        const rawData = item.values_map || {};
+                        const allKeys = Object.keys(rawData);
+                        
+                        return allKeys.map(key => (
+                          <tr key={`row-${idx}-${key}`} className="hover:bg-gray-50/50 transition">
+                            <td className="px-4 py-3 text-xs font-bold text-gray-500">Activity ID: {item.activity_id || idx + 1}</td>
+                            <td className="px-4 py-3 font-bold text-gray-800">{key}</td>
+                            <td className="px-4 py-3 text-gray-700">{String(rawData[key])}</td>
+                          </tr>
+                        ));
+                      })}
+
+                      {(!claim?.values_map?.extraction?.items || claim?.values_map?.extraction?.items.length === 0) && Object.keys(claim?.values_map?.extraction?.metrics?.values_map || {}).length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-8 text-center text-gray-400 font-semibold italic">
+                            No raw data extracted for this claim.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
 

@@ -43,8 +43,31 @@ def get_milestone_claims_documents(
         query = query.filter(MilestoneClaimDocument.contract_id == contract_id)
 
     docs = query.order_by(MilestoneClaimDocument.created_at.desc()).all()
+    
+    # Pre-fetch items for all docs
+    doc_ids = [d.id for d in docs]
+    items_by_doc = {}
+    if doc_ids:
+        all_items = db.query(MilestoneClaimItem).filter(MilestoneClaimItem.document_id.in_(doc_ids)).all()
+        for item in all_items:
+            items_by_doc.setdefault(item.document_id, []).append({
+                "activity_id": getattr(item, 'activity_id', None),
+                "description": getattr(item, 'description', None),
+                "percentage_complete_this_period": getattr(item, 'percentage_complete_this_period', 0.0),
+                "amount_claimed_this_period": getattr(item, 'amount_claimed_this_period', 0.0),
+                "values_map": getattr(item, 'values_map', {})
+            })
+
     result = []
     for d in docs:
+        raw_map = getattr(d, 'values_map', {}) or {}
+        
+        # Extract the pure AI metrics, ignoring nested state like 'valuation' or a recursive 'extraction'
+        if "extraction" in raw_map and "metrics" in raw_map["extraction"]:
+            clean_metrics = raw_map["extraction"]["metrics"].get("values_map", {})
+        else:
+            clean_metrics = {k: v for k, v in raw_map.items() if k not in ["valuation", "extraction"]}
+
         result.append({
             "id": d.id,
             "project_id": getattr(d, 'project_id', project_id),
@@ -68,7 +91,15 @@ def get_milestone_claims_documents(
             "gross_amount_claimed": getattr(d, 'gross_amount_claimed', 0.0),
             "retention_deducted": getattr(d, 'retention_deducted', 0.0),
             "net_amount_due": getattr(d, 'net_amount_due', 0.0),
-            "values_map": getattr(d, 'values_map', {})
+            "values_map": {
+                **raw_map,
+                "extraction": {
+                    "metrics": {
+                        "values_map": clean_metrics
+                    },
+                    "items": items_by_doc.get(d.id, [])
+                }
+            }
         })
     return result
 

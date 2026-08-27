@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MessageSquare, Send, AlertTriangle } from 'lucide-react';
-import DocumentIntegrations from '@/components/DocumentIntegrations';
+import TechIntegrations from '@/components/TechIntegrations';
 import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
 import { unlinkProjectDocument, unlinkDecoupledDocument, deleteProjectDocument, deleteDecoupledDocument } from '@/services/api';
 
@@ -43,7 +43,7 @@ interface DepartmentTabProps {
   activeTab?: string;
 }
 
-export default function DepartmentTab({
+export default function TechTab({
   projectId,
   departmentName,
   departmentKey,
@@ -145,15 +145,17 @@ export default function DepartmentTab({
 
       {/* Cloud File Integration (Google Drive & OneDrive) */}
       {integrations && onRefresh && setGlobalLoading && (
-        <DocumentIntegrations
+        <TechIntegrations
           projectId={String(projectId)}
           integrations={integrations}
           onRefresh={onRefresh}
           globalLoading={!!globalLoading}
           setGlobalLoading={setGlobalLoading}
           moduleContext="department"
-          departmentName={departmentKey}
+          departmentName={departmentName}
+          departmentKey={departmentKey}
           activeTab={activeTab}
+          apiEndpoint={apiEndpoint}
         />
       )}
 

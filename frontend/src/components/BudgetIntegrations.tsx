@@ -40,6 +40,7 @@ interface BudgetIntegrationsProps {
   globalLoading?: boolean;
   setGlobalLoading?: (val: boolean) => void;
   moduleContext?: string;
+  tabsRibbon?: React.ReactNode;
 }
 
 export default function BudgetIntegrations({
@@ -51,7 +52,8 @@ export default function BudgetIntegrations({
   onRefresh,
   globalLoading,
   setGlobalLoading,
-  moduleContext = 'budget'
+  moduleContext = 'budget',
+  tabsRibbon
 }: BudgetIntegrationsProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [pendingProvider, setPendingProvider] = useState<'google' | 'onedrive' | null>(null);
@@ -629,21 +631,29 @@ export default function BudgetIntegrations({
   const hasPersistedConfig = !!(persistedBundleConfig && pLinked > 0);
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-6">
-
+    <div className="space-y-6">
       {/* Top Title & Connect Actions */}
-      <CloudConnectionCards
-        success={actionError ? null : (success ? success : null)}
-        moduleContext="budget"
-        departmentName="Budget"
-        googleIntegration={integrations.find((i) => i.provider === 'google_sheets')}
-        onedriveIntegration={integrations.find((i) => i.provider === 'onedrive')}
-        isLoading={!!loadingProvider || !!globalLoading}
-        handleOAuthInitiate={handleOpenSetup}
-        formatGuidelines="To sync successfully, your budget spreadsheets must have recognizable headings like Description, Amount, Quantity, etc."
-      />
+      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+        <CloudConnectionCards
+          success={actionError ? null : (success ? success : null)}
+          moduleContext="budget"
+          departmentName="Budget"
+          googleIntegration={integrations.find((i) => i.provider === 'google_sheets')}
+          onedriveIntegration={integrations.find((i) => i.provider === 'onedrive')}
+          isLoading={!!loadingProvider || !!globalLoading}
+          handleOAuthInitiate={handleOpenSetup}
+          formatGuidelines="To sync successfully, your budget spreadsheets must have recognizable headings like Description, Amount, Quantity, etc."
+        />
+      </div>
+
+      {tabsRibbon && (
+        <div className="pt-2 pb-2">
+          {tabsRibbon}
+        </div>
+      )}
 
       {/* Active Integrations List */}
+      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-6">
       {integrations.length === 0 ? (
         <div className="bg-gray-50/70 rounded-2xl p-8 text-center border border-dashed border-gray-200">
           <FileSpreadsheet className="w-10 h-10 text-slate-200 drop-shadow-sm mx-auto mb-2" />
@@ -718,14 +728,6 @@ export default function BudgetIntegrations({
                         <Eye className="w-4 h-4" />
                       </button>
 
-                      <button
-                        disabled={globalLoading || deletingId !== null}
-                        onClick={() => handleDisconnect(integration.id, false)}
-                        className="p-2 hover:bg-white text-amber-600 hover:text-amber-800 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
-                        title="Unlink / Disconnect workbook link (keeps database records)"
-                      >
-                        <Unlink className="w-4 h-4" />
-                      </button>
 
                       <button
                         disabled={globalLoading || deletingId !== null}
@@ -889,6 +891,8 @@ export default function BudgetIntegrations({
       )}
 
       {/* Action Error Banner */}
+      </div>
+
       {actionError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-semibold flex items-center justify-between">
           <div className="flex items-center space-x-2">

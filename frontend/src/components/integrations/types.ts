@@ -27,4 +27,5 @@ export interface DocumentIntegrationsProps {
   activeTab?: string;
   pmoSubTab?: string;
   titlePrefix?: string;
+  departmentKey?: string;
 }

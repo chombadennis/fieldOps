@@ -4,6 +4,8 @@ from typing import List
 
 from .. import schemas
 from ..db import database, crud
+from ..utils.cache import get_cache, set_cache, invalidate_cache
+from fastapi.encoders import jsonable_encoder
 
 router = APIRouter()
 
@@ -35,9 +37,17 @@ def read_project(project_id: int, db: Session = Depends(get_db)):
     """
     Retrieve a single project by its ID.
     """
+    cache_key = f"project_{project_id}"
+    cached = get_cache(cache_key)
+    if cached:
+        return cached
+
     db_project = crud.get_project(db, project_id=project_id)
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+        
+    encoded = jsonable_encoder(db_project)
+    set_cache(cache_key, encoded)
     return db_project
 
 @router.put("/projects/{project_id}", response_model=schemas.project.Project)
@@ -48,6 +58,8 @@ def update_project(project_id: int, project: schemas.project.ProjectUpdate, db: 
     db_project = crud.update_project(db, project_id=project_id, project=project)
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+        
+    invalidate_cache(f"project_{project_id}")
     return db_project
 
 @router.delete("/projects/{project_id}", response_model=schemas.project.Project)

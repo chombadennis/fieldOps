@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info, Edit3, Check, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import BudgetIntegrations from '@/components/BudgetIntegrations';
-import { getProjectBudgets, updateBudgetWorkbookMatrix } from '@/services/api';
+import { getProjectBudgets, updateBudgetWorkbookMatrix, updateProjectBudget } from '@/services/api';
 
 interface Note {
   id: number;
@@ -57,6 +57,14 @@ export default function BudgetsTab({
   const [headerInput, setHeaderInput] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [isMasterCategoriesOpen, setIsMasterCategoriesOpen] = useState(false);
+  const [isEditingMasterMetrics, setIsEditingMasterMetrics] = useState(false);
+  const [savingMasterMetrics, setSavingMasterMetrics] = useState(false);
+  const [masterMetricsInput, setMasterMetricsInput] = useState({
+    original: 0,
+    appraised: 0,
+    ev: 0,
+    remaining: 0
+  });
 
   const fetchBudgetRecord = async () => {
     try {
@@ -138,13 +146,61 @@ export default function BudgetsTab({
 
   const originalSum = masterCleaned.original_contract_sum || valuesMap.original_contract_sum || budgetRecord?.amount || 0;
   const appraisedBudget = masterCleaned.appraised_budget || valuesMap.appraised_budget || budgetRecord?.revised_amount || null;
+  const earnedValue = masterCleaned.earned_value || valuesMap.earned_value || budgetRecord?.earned_value || 0;
+  const remainingBalance = masterCleaned.remaining_balance ?? Math.max(0, (appraisedBudget ?? originalSum) - earnedValue);
+
+  const handleEditMasterMetrics = () => {
+    setMasterMetricsInput({
+      original: originalSum,
+      appraised: appraisedBudget ?? originalSum,
+      ev: earnedValue,
+      remaining: remainingBalance
+    });
+    setIsEditingMasterMetrics(true);
+  };
+
+  const handleSaveMasterMetrics = async () => {
+    if (!budgetRecord?.id) return;
+    setSavingMasterMetrics(true);
+    const calculatedRemaining = Math.max(0, masterMetricsInput.appraised - masterMetricsInput.ev);
+    const effInputBudget = masterMetricsInput.appraised > 0 ? masterMetricsInput.appraised : masterMetricsInput.original;
+    const calculatedPercent = effInputBudget > 0 ? Math.min(100, (masterMetricsInput.ev / effInputBudget) * 100) : 0;
+
+    try {
+      await updateProjectBudget(projectId, budgetRecord.id, {
+        amount: masterMetricsInput.original,
+        revised_amount: masterMetricsInput.appraised,
+        values_map: {
+          master_cleaned_table: {
+            original_contract_sum: masterMetricsInput.original,
+            appraised_budget: masterMetricsInput.appraised,
+            earned_value: masterMetricsInput.ev,
+            remaining_balance: calculatedRemaining,
+            percent_used: calculatedPercent
+          }
+        }
+      });
+      await fetchBudgetRecord();
+      setIsEditingMasterMetrics(false);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Failed to save master metrics:', err);
+    } finally {
+      setSavingMasterMetrics(false);
+    }
+  };
+
   const isAppraised = !!valuesMap.is_appraised || (appraisedBudget !== null && appraisedBudget !== undefined && appraisedBudget !== originalSum);
   const effectiveBudget = (appraisedBudget !== null && appraisedBudget !== undefined && Number(appraisedBudget) > 0)
     ? Number(appraisedBudget)
     : originalSum;
-  const earnedValue = masterCleaned.earned_value || valuesMap.earned_value || budgetRecord?.earned_value || 0;
-  const remainingBalance = masterCleaned.remaining_balance || valuesMap.remaining_balance || Math.max(0, effectiveBudget - earnedValue);
-  const percentUsed = masterCleaned.percent_used || valuesMap.percent_used || (effectiveBudget > 0 ? Math.min(100, (earnedValue / effectiveBudget) * 100) : 0);
+  
+  const displayPercentUsed = isEditingMasterMetrics 
+    ? ((masterMetricsInput.appraised > 0 ? masterMetricsInput.appraised : masterMetricsInput.original) > 0 
+        ? Math.min(100, (masterMetricsInput.ev / (masterMetricsInput.appraised > 0 ? masterMetricsInput.appraised : masterMetricsInput.original)) * 100) 
+        : 0)
+    : (effectiveBudget > 0 ? Math.min(100, (earnedValue / effectiveBudget) * 100) : 0);
+    
   const categories: any[] = (masterCleaned.categories && masterCleaned.categories.length > 0) ? masterCleaned.categories : (masterCleaned.reconciled_categories || valuesMap.summary_breakdown || []);
   const detectedOverlaps: string[] = masterCleaned.detected_overlaps || [];
 
@@ -165,7 +221,7 @@ export default function BudgetsTab({
           </div>
           <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/15 text-right">
             <p className="text-[10px] font-bold text-emerald-200 uppercase">Master EV / % Used</p>
-            <p className="text-sm font-bold font-lexend text-white mt-0.5">{formatCurrency(earnedValue)} ({percentUsed.toFixed(1)}%)</p>
+            <p className="text-sm font-bold font-lexend text-white mt-0.5">{formatCurrency(earnedValue)} ({displayPercentUsed.toFixed(1)}%)</p>
           </div>
         </div>
       </div>
@@ -189,31 +245,33 @@ export default function BudgetsTab({
           }}
           globalLoading={globalLoading}
           setGlobalLoading={setGlobalLoading}
+          tabsRibbon={
+            <div className="flex items-center justify-start mb-2">
+              <div className="flex items-center space-x-1.5 bg-gray-100/80 p-1.5 rounded-2xl w-fit shadow-inner border border-gray-200/60">
+                {[
+                  { key: 'budget', label: 'Project Budget' },
+                  { key: 'progress', label: 'Work Progress Calculations' },
+                  { key: 'cost', label: 'Cost Tracking' }
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setInternalTab(tab.key as any)}
+                    className={`px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all duration-300 flex-1 min-w-[140px] text-center ${
+                      internalTab === tab.key 
+                        ? 'bg-white text-dark-teal-900 shadow-md shadow-gray-200/50 transform scale-[1.02] border border-gray-100 ring-1 ring-black/5' 
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          }
         />
       )}
 
-      {/* Internal Navigation Ribbon */}
-      <div className="flex items-center justify-start mb-2">
-        <div className="flex items-center space-x-1.5 bg-gray-100/80 p-1.5 rounded-2xl w-fit shadow-inner border border-gray-200/60">
-          {[
-            { key: 'budget', label: 'Project Budget' },
-            { key: 'progress', label: 'Work Progress Calculations' },
-            { key: 'cost', label: 'Cost Tracking' }
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setInternalTab(tab.key as any)}
-              className={`px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all duration-300 flex-1 min-w-[140px] text-center ${
-                internalTab === tab.key 
-                  ? 'bg-white text-dark-teal-900 shadow-md shadow-gray-200/50 transform scale-[1.02] border border-gray-100 ring-1 ring-black/5' 
-                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+
 
       {/* Master Cleaned-Up Executive Budget Table & Cards */}
       <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-5">
@@ -231,11 +289,39 @@ export default function BudgetsTab({
             </div>
             <h3 className="text-sm font-bold font-lexend text-gray-900 mt-0.5">System-Reconciled Master Project Budget</h3>
           </div>
-          {isAppraised && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold">
-              <Tag className="w-3.5 h-3.5 mr-1" /> Master Budget Appraised
-            </span>
-          )}
+          <div className="flex items-center space-x-3">
+            {isAppraised && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold">
+                <Tag className="w-3.5 h-3.5 mr-1" /> Master Budget Appraised
+              </span>
+            )}
+            {!isEditingMasterMetrics ? (
+              <button
+                onClick={handleEditMasterMetrics}
+                className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors border border-gray-200"
+                title="Edit Master Totals"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setIsEditingMasterMetrics(false)}
+                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveMasterMetrics}
+                  disabled={savingMasterMetrics}
+                  className="px-4 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center space-x-1"
+                >
+                  {savingMasterMetrics ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>Save</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Cross-Workbook Overlap Detection Explanation Bar */}
@@ -256,27 +342,61 @@ export default function BudgetsTab({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-150 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Original Master Contract Sum</span>
-            <p className="text-sm font-bold font-lexend text-gray-900">{formatCurrency(originalSum)}</p>
+            {isEditingMasterMetrics ? (
+              <input
+                type="number"
+                step="any"
+                value={masterMetricsInput.original}
+                onChange={(e) => setMasterMetricsInput({...masterMetricsInput, original: parseFloat(e.target.value) || 0})}
+                className="w-full p-1.5 bg-white border border-gray-300 rounded font-bold text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"
+              />
+            ) : (
+              <p className="text-sm font-bold font-lexend text-gray-900">{formatCurrency(originalSum)}</p>
+            )}
           </div>
 
           <div className="bg-indigo-50/40 p-4 rounded-2xl border border-indigo-150 space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Appraised Master Budget</span>
-              {isAppraised && <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />}
+              {isAppraised && !isEditingMasterMetrics && <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />}
             </div>
-            <p className="text-sm font-bold font-lexend text-indigo-950">
-              {isAppraised ? formatCurrency(appraisedBudget) : 'No Revisions'}
-            </p>
+            {isEditingMasterMetrics ? (
+              <input
+                type="number"
+                step="any"
+                value={masterMetricsInput.appraised}
+                onChange={(e) => setMasterMetricsInput({...masterMetricsInput, appraised: parseFloat(e.target.value) || 0})}
+                className="w-full p-1.5 bg-white border border-indigo-300 rounded font-bold text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              />
+            ) : (
+              <p className="text-sm font-bold font-lexend text-indigo-950">
+                {isAppraised ? formatCurrency(appraisedBudget) : 'No Revisions'}
+              </p>
+            )}
           </div>
 
           <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-150 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Earned Value to Date</span>
-            <p className="text-sm font-bold font-lexend text-emerald-950">{formatCurrency(earnedValue)}</p>
+            {isEditingMasterMetrics ? (
+              <input
+                type="number"
+                step="any"
+                value={masterMetricsInput.ev}
+                onChange={(e) => setMasterMetricsInput({...masterMetricsInput, ev: parseFloat(e.target.value) || 0})}
+                className="w-full p-1.5 bg-white border border-emerald-300 rounded font-bold text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              />
+            ) : (
+              <p className="text-sm font-bold font-lexend text-emerald-950">{formatCurrency(earnedValue)}</p>
+            )}
           </div>
 
           <div className="bg-dark-teal-50/40 p-4 rounded-2xl border border-dark-teal-150 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-dark-teal-700">Remaining Master Balance</span>
-            <p className="text-sm font-bold font-lexend text-dark-teal-950">{formatCurrency(remainingBalance)}</p>
+            <p className="text-sm font-bold font-lexend text-dark-teal-950">
+              {isEditingMasterMetrics
+                ? formatCurrency(Math.max(0, masterMetricsInput.appraised - masterMetricsInput.ev))
+                : formatCurrency(remainingBalance)}
+            </p>
           </div>
         </div>
 
@@ -286,12 +406,12 @@ export default function BudgetsTab({
             <span className="text-gray-600 flex items-center">
               <TrendingUp className="w-3.5 h-3.5 mr-1 text-dark-teal-600" /> Total Project Budget Consumption
             </span>
-            <span className="text-dark-teal-900 font-extrabold">{percentUsed.toFixed(1)}% Consumed</span>
+            <span className="text-dark-teal-900 font-extrabold">{displayPercentUsed.toFixed(1)}% Consumed</span>
           </div>
           <div className="w-full bg-gray-150 h-3 rounded-full overflow-hidden p-0.5 border border-gray-200">
             <div
               className="bg-gradient-to-r from-dark-teal-700 via-dark-teal-600 to-emerald-500 h-full rounded-full transition-all duration-500"
-              style={{ width: `${percentUsed}%` }}
+              style={{ width: `${displayPercentUsed}%` }}
             />
           </div>
         </div>
@@ -328,15 +448,21 @@ export default function BudgetsTab({
           return (
             <div className="pt-4 border-t border-gray-100 space-y-3">
               <div 
-                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 -mx-2 rounded-lg transition"
+                className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded-xl border border-gray-150 transition-colors"
                 onClick={() => setIsMasterCategoriesOpen(!isMasterCategoriesOpen)}
               >
-                <div className="flex items-center space-x-2">
-                  <h4 className="text-xs font-bold font-lexend text-gray-900">Reconciled Master Category Breakdowns</h4>
-                  <span className="text-[10px] text-gray-500 font-semibold">(Grouped by Source Workbook/Trade)</span>
-                  {isMasterCategoriesOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                <div className="flex items-center space-x-3">
+                  <button className="flex items-center justify-center p-1.5 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 hover:text-dark-teal-600 hover:border-dark-teal-300 transition-colors">
+                    {isMasterCategoriesOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                  <div>
+                    <h4 className="text-xs font-bold font-lexend text-gray-900">Reconciled Master Category Breakdowns</h4>
+                    <span className="text-[10px] text-gray-500 font-semibold">Grouped by Source Workbook / Trade</span>
+                  </div>
                 </div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{categories.length} Categories ({groupEntries.length} Trade Groups)</span>
+                <span className="text-[10px] font-bold text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm uppercase tracking-wider">
+                  {categories.length} Categories ({groupEntries.length} Trades)
+                </span>
               </div>
 
               {isMasterCategoriesOpen && (
@@ -441,17 +567,13 @@ export default function BudgetsTab({
                                 </td>
                                 <td className="px-4 py-3 text-right text-gray-700 font-semibold">{formatCurrency(orig)}</td>
                                 <td className="px-4 py-3 text-right font-bold text-indigo-950">
-                                  {isCatAppraised ? formatCurrency(appr) : <span className="text-gray-400 font-normal">-</span>}
+                                  {formatCurrency(appr)}
                                 </td>
                                 <td className="px-4 py-3 text-right font-bold text-emerald-950">{formatCurrency(cat.earned_value_to_date || 0)}</td>
                                 <td className="px-4 py-3 text-right font-bold">
-                                  {isCatAppraised ? (
-                                    <span className={delta >= 0 ? 'text-indigo-600' : 'text-red-600'}>
-                                      {delta >= 0 ? '+' : ''}{formatCurrency(delta)}
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-400 font-normal">-</span>
-                                  )}
+                                  <span className={delta > 0 ? 'text-indigo-600' : delta < 0 ? 'text-red-600' : 'text-gray-400'}>
+                                    {delta > 0 ? '+' : ''}{formatCurrency(delta)}
+                                  </span>
                                 </td>
                               </tr>
                             );
@@ -465,17 +587,13 @@ export default function BudgetsTab({
                             </td>
                             <td className="px-4 py-2.5 text-right text-gray-900 font-extrabold">{formatCurrency(sumOrig)}</td>
                             <td className="px-4 py-2.5 text-right text-indigo-950 font-extrabold">
-                              {isGroupAppraised ? formatCurrency(sumAppr) : <span className="text-gray-400 font-normal">-</span>}
+                              {formatCurrency(sumAppr)}
                             </td>
                             <td className="px-4 py-2.5 text-right text-emerald-950 font-extrabold">{formatCurrency(sumEv)}</td>
                             <td className="px-4 py-2.5 text-right font-extrabold">
-                              {isGroupAppraised ? (
-                                <span className={sumDelta >= 0 ? 'text-indigo-600' : 'text-red-600'}>
-                                  {sumDelta >= 0 ? '+' : ''}{formatCurrency(sumDelta)}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 font-normal">-</span>
-                              )}
+                              <span className={sumDelta > 0 ? 'text-indigo-600' : sumDelta < 0 ? 'text-red-600' : 'text-gray-400'}>
+                                {sumDelta > 0 ? '+' : ''}{formatCurrency(sumDelta)}
+                              </span>
                             </td>
                           </tr>
                         </React.Fragment>

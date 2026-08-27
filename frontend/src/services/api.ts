@@ -306,6 +306,11 @@ export const createProjectBudget = async (projectId: string | number, budget: { 
   return response.data;
 };
 
+export const updateProjectBudget = async (projectId: string | number, budgetId: string | number, data: any) => {
+  const response = await apiClient.put(`/projects/${projectId}/budgets/${budgetId}`, data);
+  return response.data;
+};
+
 export const getProjectIPCs = async (projectId: string | number) => {
   const response = await apiClient.get(`/projects/${projectId}/ipcs`);
   return response.data;

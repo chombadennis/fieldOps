@@ -160,6 +160,19 @@ def create_field_ops_document(
 
     new_doc = FieldOpsDocument(**kwargs)
     db.add(new_doc)
+    db.flush()
+
+    if doc_in.origin == "manual_entry" and doc_in.extracted_data:
+        from ..models.field_ops import FieldOpsItem
+        items_data = doc_in.extracted_data.get("items", [])
+        for item_data in items_data:
+            new_item = FieldOpsItem(
+                document_id=new_doc.id,
+                description=item_data.get("description", "Manual Entry Item"),
+                values_map=item_data.get("values_map", {})
+            )
+            db.add(new_item)
+
     db.commit()
     db.refresh(new_doc)
     d = new_doc

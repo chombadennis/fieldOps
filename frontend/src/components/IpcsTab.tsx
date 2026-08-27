@@ -82,8 +82,12 @@ export default function IpcsTab({
   const [customAlert, setCustomAlert] = useState<{ title: string, message: string } | null>(null);
   const [customConfirm, setCustomConfirm] = useState<{ title: string, message: string, onConfirm: () => void } | null>(null);
 
-  const totalClaimed = ipcs.reduce((sum, i) => sum + (i.gross_amount_claimed || 0), 0);
   const totalCertified = ipcs.reduce((sum, i) => sum + (i.net_amount_due || 0), 0);
+  const totalPaid = ipcs.reduce((sum, ipc) => {
+    const netDue = ipc.net_amount_due || 0;
+    const unpaid = ipc.unpaid_amount ?? netDue;
+    return sum + (netDue - unpaid);
+  }, 0);
 
   const statusBadge = (st: string) => {
     switch (st) {
@@ -166,8 +170,8 @@ export default function IpcsTab({
 
         <div className="flex items-center space-x-4 relative z-10">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 text-right">
-            <p className="text-xs font-semibold text-emerald-200 uppercase">Total Certified / Claimed</p>
-            <p className="text-sm font-bold font-lexend text-white mt-0.5">${totalCertified.toLocaleString()} / ${totalClaimed.toLocaleString()}</p>
+            <p className="text-xs font-semibold text-emerald-200 uppercase">Total Net Certified / Paid</p>
+            <p className="text-sm font-bold font-lexend text-white mt-0.5">${totalCertified.toLocaleString()} / ${totalPaid.toLocaleString()}</p>
           </div>
         </div>
       </div>
@@ -225,17 +229,8 @@ export default function IpcsTab({
                 {ipcs.map((ipc) => (
                   <tr
                     key={ipc.id}
-                    onClick={() => {
-                      if (ipc.status === 'Certified' || ipc.status === 'Paid') {
-                        setSelectedIpc(ipc);
-                      } else {
-                        setCustomAlert({
-                          title: "Action Blocked",
-                          message: "You can only open the Valuation Sheet if the IPC is Certified or Paid."
-                        });
-                      }
-                    }}
-                    className={`transition ${ipc.status === 'Certified' || ipc.status === 'Paid' ? 'hover:bg-gray-50/50 cursor-pointer' : 'opacity-80'}`}
+                    onClick={() => setSelectedIpc(ipc)}
+                    className="transition hover:bg-gray-50/50 cursor-pointer"
                   >
                     <td className="px-6 py-4 font-extrabold font-lexend text-gray-900">{ipc.certificate_number}</td>
                     <td className="px-6 py-4 font-bold text-gray-800" onClick={(e) => e.stopPropagation()}>
@@ -290,44 +285,14 @@ export default function IpcsTab({
                     <td className="px-6 py-4 font-bold text-red-500">
                       ${(ipc.unpaid_amount || 0).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                      <select
-                        className={`px-3 py-1 rounded-full text-[11px] font-bold border outline-none cursor-pointer ${statusBadge(ipc.status)}`}
-                        value={ipc.status}
-                        onChange={async (e) => {
-                          // TODO: Role-Based Authorization Check
-                          // Only authorized internal users (e.g. Project Managers, Admins) should be able to change 
-                          // the status to 'Certified'. Check user role here before allowing the update.
-                          const newStatus = e.target.value;
-
-                          if (newStatus === 'Paid') {
-                            const netDue = ipc.net_amount_due || 0;
-                            const unpaid = ipc.unpaid_amount ?? netDue;
-                            const isFullyPaid = (netDue > 0 && unpaid <= 0) || (netDue === 0 && ipc.payment_status === 'PAID');
-
-                            if (!isFullyPaid) {
-                              setCustomAlert({
-                                title: "Invalid Status Update",
-                                message: "Approval status can only be 'Paid' if the Payment Status is 'FULLY PAID'."
-                              });
-                              return;
-                            }
-                          }
-
-                          try {
-                            await updateProjectIPC(projectId, ipc.id, { status: newStatus });
-                            if (onRefresh) onRefresh();
-                          } catch (err) {
-                            console.error("Failed to update status", err);
-                          }
-                        }}
-                      >
-                        <option value="Draft">Draft</option>
-                        <option value="Submitted">Submitted</option>
-                        <option value="Certified">Certified</option>
-                        <option value="Paid">Paid</option>
-                        <option value="Rejected">Rejected</option>
-                      </select>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${
+                        ipc.status === 'Certified' ? 'bg-emerald-100 text-emerald-800' :
+                        ipc.status === 'Submitted' ? 'bg-amber-100 text-amber-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {ipc.status || 'Draft'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-right text-xs text-gray-400 font-medium">
                       {(() => {

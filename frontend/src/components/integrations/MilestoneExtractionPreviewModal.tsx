@@ -123,11 +123,19 @@ export default function MilestoneExtractionPreviewModal({
       setValidationStatus(extractedData.validation_status || 'VALID');
       
       if (extractedData.metrics) {
+        const strictKeys = ['gross_amount_claimed', 'retention_deducted', 'net_amount_due', 'values_map'];
+        const extraKeys = Object.keys(extractedData.metrics).filter(k => !strictKeys.includes(k));
+        const mergedValuesMap = { ...(extractedData.metrics.values_map || {}) };
+        
+        extraKeys.forEach(k => {
+          mergedValuesMap[k] = extractedData.metrics[k];
+        });
+
         setMetrics({
           gross_amount_claimed: extractedData.metrics.gross_amount_claimed || 0,
           retention_deducted: extractedData.metrics.retention_deducted || 0,
           net_amount_due: extractedData.metrics.net_amount_due || 0,
-          values_map: extractedData.metrics.values_map || {}
+          values_map: mergedValuesMap
         });
       }
       
@@ -558,11 +566,23 @@ export default function MilestoneExtractionPreviewModal({
                     <tbody className="divide-y divide-amber-100 text-gray-700 font-medium bg-white">
                       
                       {/* Document Level JSONB */}
-                      {metricDynamicKeys.length > 0 && (
-                        <tr className="bg-amber-50/50">
-                          <td colSpan={3} className="px-4 py-2 text-[9px] font-extrabold uppercase tracking-widest text-amber-800">Document Totals / Header</td>
+                      <tr className="bg-amber-50/50">
+                        <td colSpan={3} className="px-4 py-2 text-[9px] font-extrabold uppercase tracking-widest text-amber-800">Document Totals / Header</td>
+                      </tr>
+                      {['gross_amount_claimed', 'retention_deducted', 'net_amount_due'].map(key => (
+                        <tr key={`doc-strict-${key}`} className="hover:bg-amber-50/30 transition">
+                          <td className="px-4 py-2 text-xs font-bold text-gray-400">Cover Page</td>
+                          <td className="px-4 py-2 font-bold text-gray-800">{key}</td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              value={(metrics as any)[key] || ''}
+                              onChange={(e) => handleMetricChange(key as keyof MilestoneClaimMetrics, e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-amber-500"
+                            />
+                          </td>
                         </tr>
-                      )}
+                      ))}
                       {metricDynamicKeys.map(key => (
                         <tr key={`doc-${key}`} className="hover:bg-amber-50/30 transition">
                           <td className="px-4 py-2 text-xs font-bold text-gray-400">Cover Page</td>

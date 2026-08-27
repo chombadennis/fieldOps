@@ -15,6 +15,7 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
   const [valuationDate, setValuationDate] = useState(ipc?.valuation_date || '');
   const [showExtractionModal, setShowExtractionModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<'lifecycle' | 'extracted'>('lifecycle');
   
   // State for the financial amounts (Stored in values_map.valuation to keep DB ingested data clean)
   const [grossClaimed, setGrossClaimed] = useState(ipc?.values_map?.valuation?.gross_claimed || 0);
@@ -126,8 +127,28 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
           </div>
         </div>
         
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 bg-white px-8">
+            <button
+                onClick={() => setActiveTab('lifecycle')}
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+                    activeTab === 'lifecycle' ? 'border-dark-teal-600 text-dark-teal-800' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+                Valuation Lifecycle
+            </button>
+            <button
+                onClick={() => setActiveTab('extracted')}
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+                    activeTab === 'extracted' ? 'border-dark-teal-600 text-dark-teal-800' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+                Ingested IPC Data
+            </button>
+        </div>
+        
         {/* Body */}
-        <div className="p-8 flex-1 overflow-y-auto space-y-8 bg-gray-50/30">
+        <div className="p-8 flex-1 overflow-y-auto bg-gray-50/30">
             
             <SourceExtractionViewerModal 
               show={showExtractionModal} 
@@ -136,8 +157,10 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
               certificateNumber={ipc?.certificate_number || 'New'}
             />
             
-            {/* Section 1: Approval Lifecycle */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+            {activeTab === 'lifecycle' && (
+              <div className="space-y-8 animate-fade-in">
+                {/* Section 1: Approval Lifecycle */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center"><FileText className="w-4 h-4 mr-2 text-dark-teal-600"/> 1. Certification & Approval</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -216,6 +239,23 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
                             <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-black text-emerald-800">${netAmountDue.toLocaleString()}</div>
                         )}
                         <p className="text-[10px] text-gray-500 mt-1">Amount after taxes & retention</p>
+                    </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-gray-100 bg-gray-50/50 p-4 rounded-xl">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Database Ingested Values</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <p className="text-[10px] uppercase font-bold text-gray-400">DB Gross Claimed</p>
+                            <p className="text-sm font-bold text-gray-600">${(ipc?.gross_amount_claimed || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                            {/* Typically not ingested at creation, leaving blank for alignment */}
+                        </div>
+                        <div>
+                            <p className="text-[10px] uppercase font-bold text-gray-400">DB Net Amount Due</p>
+                            <p className="text-sm font-bold text-gray-600">${(ipc?.net_amount_due || 0).toLocaleString()}</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -307,6 +347,82 @@ export default function IpcValuationSheet({ ipc, contractParams, onSave, onClose
                     )}
                 </div>
             </div>
+          </div>
+          )}
+          
+          {activeTab === 'extracted' && (
+            <div className="space-y-8 animate-fade-in">
+              {/* Advance Recovery Table */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold font-lexend text-gray-800">Advance Recovery Matrix</h4>
+                <div className="overflow-x-auto border border-gray-150 rounded-2xl shadow-sm">
+                  <table className="w-full text-left text-xs min-w-[600px]">
+                    <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[9px] border-b border-gray-100">
+                      <tr>
+                        <th className="px-4 py-3">Description</th>
+                        <th className="px-4 py-3 w-[200px] text-right">Amount ($)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-150 text-gray-700 font-medium bg-white">
+                      {(ipc?.values_map?.extraction?.advance_recovery?.raw_breakdown || []).map((row: any, i: number) => (
+                        <tr key={i} className="hover:bg-gray-50/50 transition">
+                          <td className="px-4 py-3">{row.description || '—'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-indigo-900">
+                            {row.amount !== undefined ? `$${Number(row.amount).toLocaleString()}` : '$0'}
+                          </td>
+                        </tr>
+                      ))}
+                      {(!ipc?.values_map?.extraction?.advance_recovery?.raw_breakdown || ipc?.values_map?.extraction?.advance_recovery?.raw_breakdown.length === 0) && (
+                        <tr>
+                          <td colSpan={2} className="px-4 py-8 text-center text-gray-400 font-semibold italic">
+                            No advance recovery rows extracted.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* BoQ Grand Summary Table */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold font-lexend text-gray-800">BoQ Grand Summary Matrix</h4>
+                <div className="overflow-x-auto border border-gray-150 rounded-2xl shadow-sm">
+                  <table className="w-full text-left text-xs min-w-[800px]">
+                    <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[9px] border-b border-gray-100">
+                      <tr>
+                        <th className="px-4 py-3 w-[120px]">Bill No</th>
+                        <th className="px-4 py-3">Description</th>
+                        <th className="px-4 py-3 w-[160px] text-right">Tender Amount ($)</th>
+                        <th className="px-4 py-3 w-[160px] text-right">Total To Date ($)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-150 text-gray-700 font-medium bg-white">
+                      {(ipc?.values_map?.extraction?.boq_grand_summary?.data || []).map((row: any, i: number) => (
+                        <tr key={i} className="hover:bg-gray-50/50 transition">
+                          <td className="px-4 py-3 font-mono text-gray-500">{row.bill_no || '—'}</td>
+                          <td className="px-4 py-3">{row.description || '—'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-gray-600">
+                            {row.tender_amount !== undefined ? `$${Number(row.tender_amount).toLocaleString()}` : '$0'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-emerald-900">
+                            {row.total_to_date !== undefined ? `$${Number(row.total_to_date).toLocaleString()}` : '$0'}
+                          </td>
+                        </tr>
+                      ))}
+                      {(!ipc?.values_map?.extraction?.boq_grand_summary?.data || ipc?.values_map?.extraction?.boq_grand_summary?.data.length === 0) && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-gray-400 font-semibold italic">
+                            No BoQ grand summary rows extracted.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
 

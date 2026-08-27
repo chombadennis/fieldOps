@@ -735,7 +735,29 @@ async def delete_integration(
         from ..models.budget_document import BudgetDocument
         db.query(BudgetDocument).filter(BudgetDocument.integration_id == integration_id).delete(synchronize_session=False)
 
-        # 4. Delete associated General documents
+        # 4. Delete all other department documents
+        from ..models.milestone_claim import MilestoneClaimDocument
+        db.query(MilestoneClaimDocument).filter(MilestoneClaimDocument.integration_id == integration_id).delete(synchronize_session=False)
+        
+        from ..models.activity_schedule import ActivityScheduleDocument
+        db.query(ActivityScheduleDocument).filter(ActivityScheduleDocument.integration_id == integration_id).delete(synchronize_session=False)
+        
+        from ..models.program_of_works import ProgramOfWorksDocument
+        db.query(ProgramOfWorksDocument).filter(ProgramOfWorksDocument.integration_id == integration_id).delete(synchronize_session=False)
+        
+        from ..models.rate_schedule import RateScheduleDocument
+        db.query(RateScheduleDocument).filter(RateScheduleDocument.integration_id == integration_id).delete(synchronize_session=False)
+        
+        from ..models.reimbursable_claim import ReimbursableClaimDocument
+        db.query(ReimbursableClaimDocument).filter(ReimbursableClaimDocument.integration_id == integration_id).delete(synchronize_session=False)
+        
+        from ..models.tech import TechDocument
+        db.query(TechDocument).filter(TechDocument.integration_id == integration_id).delete(synchronize_session=False)
+        
+        from ..models.field_ops import FieldOpsDocument
+        db.query(FieldOpsDocument).filter(FieldOpsDocument.integration_id == integration_id).delete(synchronize_session=False)
+
+        # 5. Delete associated General documents
         from ..models.document import Document
         db.query(Document).filter(Document.integration_id == integration_id).delete(synchronize_session=False)
 

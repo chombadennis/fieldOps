@@ -1270,14 +1270,7 @@ export default function BoqIntegrations({
                       >
                         <RefreshCw className={`w-4 h-4 ${syncingId === integration.id ? 'animate-spin text-indigo-900' : ''}`} />
                       </button>
-                      <button
-                        disabled={isLoading || syncingId !== null || deletingId !== null}
-                        onClick={() => handleDisconnectClick(integration.id)}
-                        className="p-2 hover:bg-white text-amber-600 hover:text-amber-800 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
-                        title="Unlink / Disconnect workbook link (keeps database records)"
-                      >
-                        <Unlink className="w-4 h-4" />
-                      </button>
+
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => setIntegrationToDelete(integration)}

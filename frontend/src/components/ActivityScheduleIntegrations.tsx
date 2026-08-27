@@ -671,14 +671,7 @@ export default function ActivityScheduleIntegrations({
                         <Eye className="w-4 h-4" />
                       </button>
 
-                      <button
-                        disabled={globalLoading || deletingId !== null}
-                        onClick={() => handleDisconnect(integration.id, false)}
-                        className="p-2 hover:bg-white text-amber-600 hover:text-amber-800 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
-                        title="Unlink / Disconnect document link (keeps database records)"
-                      >
-                        <Unlink className="w-4 h-4" />
-                      </button>
+
 
                       <button
                         disabled={globalLoading || deletingId !== null}

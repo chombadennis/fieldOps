@@ -12,6 +12,7 @@ import {
   createProjectBudget,
   getProjectIPCs,
   createProjectIPC,
+  deleteDecoupledDocument,
 } from '@/services/api';
 import ProjectDetails from '@/components/ProjectDetails';
 import UploadBOQ from '@/app/components/UploadBOQ';
@@ -23,12 +24,19 @@ import BoqDocumentList from '@/components/BoqDocumentList';
 import BoqItemsModal from '@/components/BoqItemsModal';
 import RoleSwitcher, { UserRole, ROLES_CONFIG } from '@/components/RoleSwitcher';
 import BudgetsTab from '@/components/BudgetsTab';
+import CustomAlert, { AlertType } from '@/components/ui/CustomAlert';
 import IpcsTab from '@/components/IpcsTab';
-import DepartmentTab from '@/components/DepartmentTab';
+import FieldOpsTab from '@/components/FieldOpsTab';
+import HrTab from '@/components/HrTab';
+import LegalTab from '@/components/LegalTab';
+import TechTab from '@/components/TechTab';
+import RateScheduleTab from '@/components/RateScheduleTab';
+import ReimbursableCostsTab from '@/components/ReimbursableCostsTab';
+import ProgramOfWorksTab from '@/components/ProgramOfWorksTab';
 import ActivityScheduleTab from '@/components/ActivityScheduleTab';
 import MilestonesTab from '@/components/MilestonesTab';
 import DiscussionBoard from '@/components/DiscussionBoard';
-import { AlertTriangle, X, FileSpreadsheet, DollarSign, FileCheck, HardHat, Wrench, Users, Scale, Building2, Calendar } from 'lucide-react';
+import { AlertTriangle, X, FileSpreadsheet, DollarSign, FileCheck, HardHat, Wrench, Users, Scale, Building2, Calendar, ClipboardList, Ruler, Truck, Clock, Plus, Settings, Trash2 } from 'lucide-react';
 
 export default function ProjectDashboardPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
@@ -50,6 +58,12 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
     }
     return 'boq';
   });
+  const [fieldOpsSubTab, setFieldOpsSubTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get('field_ops_sub_tab') || 'dpr';
+    }
+    return 'dpr';
+  });
 
   // Platform Data states
   const [budgets, setBudgets] = useState<any[]>([]);
@@ -64,6 +78,121 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
   const [globalProcessing, setGlobalProcessing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const [customFieldOpsTabs, setCustomFieldOpsTabs] = useState<any[]>([]);
+  const [showAddModulePrompt, setShowAddModulePrompt] = useState(false);
+  const [newModuleName, setNewModuleName] = useState('');
+  const [hiddenModules, setHiddenModules] = useState<string[]>([]);
+  const [isManageModulesOpen, setIsManageModulesOpen] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState<{key: string, name: string} | null>(null);
+  const [isDeletingModule, setIsDeletingModule] = useState(false);
+  const [globalAlert, setGlobalAlert] = useState<{type: AlertType, message: string} | null>(null);
+
+  const contractType = project?.contracts?.[0]?.contract_type || 'GENERAL';
+  const contractName = project?.contracts?.[0]?.name || 'General Contract';
+  const contractContext = `(Active Contract: ${contractName} - ${contractType.replace('_', ' ')})`;
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('fieldops_custom_templates');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          const customs = parsed
+            .filter((t: any) => t.name && t.name.startsWith('field_ops_custom_'))
+            .map((t: any) => {
+              const label = t.name.replace('field_ops_custom_', '').replace(/_/g, ' ');
+              return {
+                key: t.name,
+                label: label,
+                description: `Custom Module. ${contractContext}`,
+                icon: ClipboardList,
+                badgeCount: documents.filter((d: any) => d.department?.toLowerCase() === t.name.toLowerCase()).length,
+                departmentKey: t.name
+              };
+            });
+          setCustomFieldOpsTabs(customs);
+        } catch (e) {}
+      }
+      
+      const storedHidden = localStorage.getItem('fieldops_hidden_modules');
+      if (storedHidden) {
+        try {
+          setHiddenModules(JSON.parse(storedHidden));
+        } catch (e) {}
+      }
+    }
+  }, [documents, contractContext]);
+
+  const handleAddCustomModule = () => {
+    if (!newModuleName.trim()) return;
+    const cleanName = newModuleName.trim().replace(/\s+/g, '_');
+    const keyName = `field_ops_custom_${cleanName}`;
+    const storedTpls = localStorage.getItem('fieldops_custom_templates');
+    let tpls: any[] = [];
+    if (storedTpls) {
+      try { tpls = JSON.parse(storedTpls); } catch (e) {}
+    }
+    if (!tpls.find((t: any) => t.name === keyName)) {
+      tpls.push({
+        name: keyName,
+        sections: [{ title: 'Section 1', columns: ['Item', 'Quantity', 'Unit'] }]
+      });
+      localStorage.setItem('fieldops_custom_templates', JSON.stringify(tpls));
+      
+      setCustomFieldOpsTabs([...customFieldOpsTabs, {
+        key: keyName,
+        label: newModuleName.trim(),
+        description: `Custom Module. ${contractContext}`,
+        icon: ClipboardList,
+        badgeCount: 0,
+        departmentKey: keyName
+      }]);
+      setFieldOpsSubTab(keyName);
+    }
+    setShowAddModulePrompt(false);
+    setNewModuleName('');
+  };
+
+  const confirmDeleteModule = async () => {
+    if (!moduleToDelete) return;
+    const moduleKey = moduleToDelete.key;
+    
+    setIsDeletingModule(true);
+    try {
+      // 1. Delete from localStorage
+      const storedTpls = localStorage.getItem('fieldops_custom_templates');
+      if (storedTpls) {
+        let tpls: any[] = JSON.parse(storedTpls);
+        tpls = tpls.filter(t => t.name !== moduleKey);
+        localStorage.setItem('fieldops_custom_templates', JSON.stringify(tpls));
+      }
+
+      // 2. Remove from state
+      setCustomFieldOpsTabs(prev => prev.filter(t => t.key !== moduleKey));
+      
+      // 3. Fallback active tab if needed
+      if (fieldOpsSubTab === moduleKey) {
+        setFieldOpsSubTab('dpr'); // Safe fallback
+      }
+
+      // 4. Delete all associated documents from the DB
+      const docsToDelete = documents.filter(d => d.department?.toLowerCase() === moduleKey.toLowerCase());
+      for (const doc of docsToDelete) {
+        await deleteDecoupledDocument(projectId, 'field_ops', doc.id).catch(console.error);
+      }
+      
+      // 5. Refresh project data to sync state
+      await fetchProjectData();
+      setModuleToDelete(null);
+      setGlobalAlert({ type: 'success', message: 'Module deleted successfully.' });
+    } catch (err: any) {
+      console.error("Failed to delete custom module", err);
+      setGlobalAlert({ type: 'error', message: 'Failed to delete module. Please check your connection.' });
+    } finally {
+      setIsDeletingModule(false);
+    }
+  };
+
   const visibleTabs = ROLES_CONFIG[currentRole]?.visibleTabs || ['pmo'];
 
   // Switch tab automatically if current activeTab is hidden for newly selected role
@@ -72,6 +201,32 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
       setActiveTab(visibleTabs[0] || 'pmo');
     }
   }, [currentRole]);
+
+  // Sync active tabs to URL so they persist on refresh
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('active_tab', activeTab);
+      url.searchParams.set('pmo_sub_tab', pmoSubTab);
+      url.searchParams.set('field_ops_sub_tab', fieldOpsSubTab);
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [activeTab, pmoSubTab, fieldOpsSubTab]);
+
+  useEffect(() => {
+    if (hiddenModules.includes(fieldOpsSubTab)) {
+      // Find the first visible tab that is NOT hidden
+      // The tabs are predefined in FIELD_OPS_SUBTABS, but since it's defined lower down,
+      // we can just check against customFieldOpsTabs and the base list.
+      // We will handle the fallback right here safely.
+      if (!hiddenModules.includes('dpr')) setFieldOpsSubTab('dpr');
+      else if (!hiddenModules.includes('jms')) setFieldOpsSubTab('jms');
+      else if (!hiddenModules.includes('grn')) setFieldOpsSubTab('grn');
+      else if (!hiddenModules.includes('timesheets')) setFieldOpsSubTab('timesheets');
+      else if (!hiddenModules.includes('general')) setFieldOpsSubTab('general');
+      else if (customFieldOpsTabs.length > 0) setFieldOpsSubTab(customFieldOpsTabs[0].key);
+    }
+  }, [hiddenModules, fieldOpsSubTab, customFieldOpsTabs]);
 
   const fetchProjectData = async () => {
     try {
@@ -107,6 +262,17 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
       setNotes(nData);
       setDocuments(allDocs);
       setError(null);
+
+      // Cache for SWR
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`project_cache_${projectId}`, JSON.stringify({
+          project: projData,
+          budgets: bData,
+          ipcs: iData,
+          notes: nData,
+          documents: allDocs
+        }));
+      }
     } catch (err) {
       setError('Failed to fetch project details.');
       console.error(err);
@@ -157,9 +323,36 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
 
   useEffect(() => {
     const init = async () => {
-      setLoading(true);
+      // SWR Pattern: Load from local cache instantly if available
+      let hasCache = false;
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem(`project_cache_${projectId}`);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.project) {
+              setProject(parsed.project);
+              setBudgets(parsed.budgets || []);
+              setIpcs(parsed.ipcs || []);
+              setNotes(parsed.notes || []);
+              setDocuments(parsed.documents || []);
+              setLoading(false); // Eliminate loading skeleton immediately
+              hasCache = true;
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (!hasCache) {
+        setLoading(true);
+      }
+      
+      // Silently fetch fresh data in the background
       await fetchProjectData();
-      setLoading(false);
+      
+      if (!hasCache) {
+        setLoading(false);
+      }
     };
     init();
   }, [projectId]);
@@ -187,10 +380,6 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
     { key: 'hr', label: 'HR', icon: Users },
     { key: 'legal', label: 'Legal', icon: Scale },
   ].filter((t) => visibleTabs.includes(t.key));
-
-  const contractType = project?.contracts?.[0]?.contract_type || 'GENERAL';
-  const contractName = project?.contracts?.[0]?.name || 'General Contract';
-  const contractContext = `(Active Contract: ${contractName} - ${contractType.replace('_', ' ')})`;
 
   let PMO_SUBTABS = [];
   if (contractType === 'LUMP_SUM') {
@@ -221,13 +410,38 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
     ];
   }
 
-  return (
-    <main className="container mx-auto p-4 space-y-6">
-      {/* Role Switcher Banner */}
-      <RoleSwitcher currentRole={currentRole} onRoleChange={setCurrentRole} />
+  const FIELD_OPS_SUBTABS = [
+    { key: 'dpr', label: 'Daily Progress Reports', description: `DPRs & Weekly Logs. ${contractContext}`, icon: ClipboardList, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'field_ops_dpr').length, departmentKey: 'field_ops_dpr' },
+    { key: 'jms', label: 'Joint Measurement Sheets', description: `Agreed Quantities. ${contractContext}`, icon: Ruler, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'field_ops_jms').length, departmentKey: 'field_ops_jms' },
+    { key: 'grn', label: 'Material Delivery Logs', description: `GRNs & Delivery Tickets. ${contractContext}`, icon: Truck, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'field_ops_grn').length, departmentKey: 'field_ops_grn' },
+    { key: 'timesheets', label: 'Timesheets & Equipment', description: `Labor and Machinery Logs. ${contractContext}`, icon: Clock, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'field_ops_timesheets').length, departmentKey: 'field_ops_timesheets' },
+    { key: 'general', label: 'General Field Ops', description: `Legacy or uncategorized docs. ${contractContext}`, icon: Wrench, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'field_ops').length, departmentKey: 'field_ops' },
+    ...customFieldOpsTabs
+  ];
 
-      {/* Project Header */}
-      <ProjectDetails project={project} />
+  if (loading) {
+    return (
+      <main className="container mx-auto p-4">
+        <DashboardSkeleton />
+      </main>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white pb-20 relative">
+      {globalAlert && (
+        <CustomAlert 
+          type={globalAlert.type} 
+          message={globalAlert.message} 
+          onClose={() => setGlobalAlert(null)} 
+        />
+      )}
+      <main className="container mx-auto p-4 space-y-6">
+        {/* Role Switcher Banner */}
+        <RoleSwitcher currentRole={currentRole} onRoleChange={setCurrentRole} />
+
+        {/* Project Header */}
+        <ProjectDetails project={project} />
 
       {/* Dashboard Top Section Navigation Bar */}
       <div className="bg-white rounded-3xl p-2.5 shadow-sm border border-gray-100 flex items-center gap-2 overflow-x-auto">
@@ -277,7 +491,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Vertical Navigation Grid on the Left */}
             <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
-              <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 space-y-3 sticky top-6">
+              <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 space-y-3 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="px-3 py-2 bg-dark-teal-50/70 rounded-2xl border border-dark-teal-100 flex items-center justify-between">
                   <div>
                     <span className="text-[10px] uppercase font-extrabold tracking-wider text-dark-teal-800 font-inter">
@@ -297,7 +511,14 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                     return (
                       <button
                         key={sub.key}
-                        onClick={() => setPmoSubTab(sub.key)}
+                        onClick={() => {
+                          setPmoSubTab(sub.key);
+                          const el = document.getElementById('pmo-content-area');
+                          if (el) {
+                            const y = el.getBoundingClientRect().top + window.scrollY - 120;
+                            window.scrollTo({ top: y, behavior: 'smooth' });
+                          }
+                        }}
                         className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 flex items-center justify-between group ${isSubActive
                             ? 'bg-gradient-to-r from-dark-teal-900 to-dark-teal-950 text-white shadow-md scale-[1.01]'
                             : 'bg-gray-50/80 hover:bg-dark-teal-50/50 text-gray-700 hover:text-dark-teal-900 border border-gray-100 hover:border-dark-teal-100'
@@ -355,10 +576,30 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
             </div>
 
             {/* PMO Main Content Area (Right Side) */}
-            <div className="flex-1 space-y-8 min-w-0">
+            <div className="flex-1 min-w-0" id="pmo-content-area">
+              <div key={pmoSubTab} className="space-y-8 animate-fade-in-up">
               {/* PMO Subtab 1: BoQ & Cloud Files */}
               {pmoSubTab === 'boq' && (
                 <div className="space-y-8 animate-fade-in">
+                  {/* BoQ Header Banner */}
+                  <div className="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950 text-white rounded-3xl p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+                    <div className="relative z-10">
+                      <span className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Base Quantities</span>
+                      <h2 className="text-xl font-bold font-lexend mt-1">Bill of Quantities (BoQ) & Files</h2>
+                      <p className="text-xs text-indigo-100/80 mt-1 max-w-lg">
+                        Manage your foundational BoQ, integrate spreadsheets, and parse structural project data.
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-4 relative z-10">
+                      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 text-right">
+                        <p className="text-xs font-semibold text-indigo-200 uppercase">Total BoQs</p>
+                        <p className="text-sm font-bold font-lexend text-white mt-0.5">
+                          {(project.boq_documents || []).length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Cloud Integrations Card */}
                   <BoqIntegrations
                     projectId={project.id}
@@ -455,7 +696,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
 
               {/* PMO Subtab: Schedule of Rates */}
               {pmoSubTab === 'rate_schedule' && (
-                <DepartmentTab
+                <RateScheduleTab
                   projectId={project.id}
                   departmentName="Schedule of Rates"
                   departmentKey="rate_schedule"
@@ -475,7 +716,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
 
               {/* PMO Subtab: Reimbursable Costs */}
               {pmoSubTab === 'reimbursable_costs' && (
-                <DepartmentTab
+                <ReimbursableCostsTab
                   projectId={project.id}
                   departmentName="Reimbursable Costs"
                   departmentKey="reimbursable_claims"
@@ -495,7 +736,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
 
               {/* PMO Subtab: Scheduling & Timeline */}
               {pmoSubTab === 'scheduling' && (
-                <DepartmentTab
+                <ProgramOfWorksTab
                   projectId={project.id}
                   departmentName="Program of Works"
                   departmentKey="program_of_works"
@@ -512,6 +753,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                   activeTab="pmo"
                 />
               )}
+              </div>
             </div>
           </div>
         </div>
@@ -519,7 +761,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
 
       {/* Top Level Tab 2: Tech / Engineering */}
       {activeTab === 'tech' && (
-        <DepartmentTab
+        <TechTab
           projectId={project.id}
           departmentName="Engineering & Tech"
           departmentKey="tech"
@@ -540,28 +782,129 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
 
       {/* Top Level Tab 3: Field Operations */}
       {activeTab === 'field_ops' && (
-        <DepartmentTab
-          projectId={project.id}
-          departmentName="Field Operations"
-          departmentKey="field_ops"
-          apiEndpoint="field_ops"
-          description={`Site equipment status, weather delays, safety updates, and contractor coordination. Expected format: PDF, Word, or Images. ${contractContext}`}
-          colorTheme="bg-gradient-to-r from-princeton-orange-950 via-princeton-orange-900 to-autumn-leaf-950"
-          notes={notes.filter((n: any) => n.department?.toLowerCase() === 'field_ops')}
-          documents={documents.filter((d: any) => d.department?.toLowerCase() === 'field_ops')}
-          onAddNote={handleAddNote}
-          integrations={(project.integrations || []).filter((i: any) => i.module === 'field_ops')}
-          boqDocuments={project.boq_documents || []}
-          onRefresh={fetchProjectData}
-          globalLoading={globalProcessing}
-          setGlobalLoading={setGlobalProcessing}
-          activeTab="field_ops"
-        />
+        <div className="space-y-6 animate-fade-in">
+          {/* Field Ops Header Banner */}
+          <div className="bg-gradient-to-r from-princeton-orange-950 via-princeton-orange-900 to-autumn-leaf-950 text-white rounded-3xl p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+            <div className="relative z-10">
+              <span className="text-xs font-semibold text-princeton-orange-300 uppercase tracking-widest">Site Execution</span>
+              <h2 className="text-xl font-bold font-lexend mt-1">Field Operations</h2>
+              <p className="text-xs text-princeton-orange-100/80 mt-1 max-w-xl leading-relaxed">
+                Log daily progress, material deliveries, measurements, and timesheets to substantiate billing.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Vertical Navigation Grid on the Left */}
+            <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
+              <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 space-y-3 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="px-3 py-2 bg-princeton-orange-50/70 rounded-2xl border border-princeton-orange-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold tracking-wider text-princeton-orange-800 font-inter">
+                      Field Logs
+                    </span>
+                    <h3 className="text-xs font-bold font-lexend text-gray-900">Categories</h3>
+                  </div>
+                  <button 
+                    onClick={() => setIsManageModulesOpen(true)}
+                    className="p-1.5 rounded-lg text-princeton-orange-600 hover:bg-princeton-orange-100 transition-colors focus:outline-none"
+                    title="Manage Modules"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {FIELD_OPS_SUBTABS.filter(sub => !hiddenModules.includes(sub.key)).map((sub) => {
+                    const SubIcon = sub.icon || ClipboardList;
+                    const isSubActive = fieldOpsSubTab === sub.key;
+                    return (
+                      <button
+                        key={sub.key}
+                        onClick={() => {
+                          setFieldOpsSubTab(sub.key);
+                          const el = document.getElementById('field-ops-content-area');
+                          if (el) {
+                            const y = el.getBoundingClientRect().top + window.scrollY - 120;
+                            window.scrollTo({ top: y, behavior: 'smooth' });
+                          }
+                        }}
+                        className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 flex items-center justify-between group ${isSubActive
+                            ? 'bg-gradient-to-r from-princeton-orange-900 to-autumn-leaf-900 text-white shadow-md scale-[1.01]'
+                            : 'bg-gray-50/80 hover:bg-princeton-orange-50/50 text-gray-700 hover:text-princeton-orange-900 border border-gray-100 hover:border-princeton-orange-100'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`p-2.5 rounded-xl transition ${isSubActive
+                                ? 'bg-white/10 text-white'
+                                : 'bg-white text-princeton-orange-700 shadow-sm border border-gray-100 group-hover:scale-110'
+                              }`}
+                          >
+                            <SubIcon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold font-lexend leading-tight">{sub.label}</p>
+                            <p className={`text-[10px] mt-0.5 leading-snug ${isSubActive ? 'text-princeton-orange-200' : 'text-gray-400'}`}>
+                              {sub.description}
+                            </p>
+                          </div>
+                        </div>
+                        {sub.badgeCount !== undefined && (
+                          <span
+                            className={`ml-2 px-2 py-0.5 text-[10px] font-black rounded-full whitespace-nowrap ${isSubActive
+                                ? 'bg-white/20 text-white'
+                                : 'bg-gray-200/80 text-gray-600'
+                              }`}
+                          >
+                            {sub.badgeCount}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  
+                  {/* Add Module Button */}
+                  <button onClick={() => setShowAddModulePrompt(true)} className="w-full text-left p-3.5 rounded-2xl transition-all duration-200 flex items-center justify-center group border border-dashed border-gray-300 hover:border-princeton-orange-300 hover:bg-princeton-orange-50 text-gray-500 hover:text-princeton-orange-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    <span className="text-xs font-bold">Add Module</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Field Ops Main Content Area (Right Side) */}
+            <div className="flex-1 min-w-0" id="field-ops-content-area">
+              <div className="space-y-8 animate-fade-in-up">
+                {FIELD_OPS_SUBTABS.filter(sub => sub.key === fieldOpsSubTab).map(sub => (
+                  <FieldOpsTab
+                    key={sub.key}
+                    projectId={project.id}
+                    departmentName={sub.label}
+                    departmentKey={sub.departmentKey}
+                    apiEndpoint="field_ops"
+                    description={sub.description}
+                    colorTheme="bg-gradient-to-r from-princeton-orange-950 via-princeton-orange-900 to-autumn-leaf-950"
+                    notes={notes.filter((n: any) => n.department?.toLowerCase() === sub.departmentKey.toLowerCase())}
+                    documents={documents.filter((d: any) => d.department?.toLowerCase() === sub.departmentKey.toLowerCase())}
+                    onAddNote={handleAddNote}
+                    integrations={(project.integrations || []).filter((i: any) => i.module === 'field_ops')}
+                    boqDocuments={project.boq_documents || []}
+                    onRefresh={fetchProjectData}
+                    globalLoading={globalProcessing}
+                    setGlobalLoading={setGlobalProcessing}
+                    activeTab="field_ops"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Top Level Tab 4: HR */}
       {activeTab === 'hr' && (
-        <DepartmentTab
+        <HrTab
           projectId={project.id}
           departmentName="Human Resources"
           departmentKey="HR"
@@ -581,7 +924,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
 
       {/* Top Level Tab 5: Legal */}
       {activeTab === 'legal' && (
-        <DepartmentTab
+        <LegalTab
           projectId={project.id}
           departmentName="Legal & Compliance"
           departmentKey="Legal"
@@ -612,6 +955,157 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           )
         }
       />
+
+      {isManageModulesOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl flex flex-col overflow-hidden animate-scale-up">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <div>
+                <h3 className="text-xl font-bold font-lexend text-gray-900 flex items-center">
+                  <Settings className="w-5 h-5 mr-2 text-indigo-600" />
+                  Manage Field Modules
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">Toggle which modules are visible in the sidebar.</p>
+              </div>
+              <button onClick={() => setIsManageModulesOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-3">
+              {FIELD_OPS_SUBTABS.map((sub) => {
+                const isHidden = hiddenModules.includes(sub.key);
+                return (
+                  <div key={sub.key} className={`flex items-center justify-between p-4 rounded-2xl border transition-colors ${isHidden ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200 shadow-sm'}`}>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-900">{sub.label}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{sub.description}</p>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      {sub.key.startsWith('field_ops_custom_') && (
+                        <button
+                          onClick={() => setModuleToDelete({ key: sub.key, name: sub.label })}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none"
+                          title="Permanently Delete Module"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          let updated: string[];
+                          if (isHidden) updated = hiddenModules.filter(k => k !== sub.key);
+                          else updated = [...hiddenModules, sub.key];
+                          setHiddenModules(updated);
+                          localStorage.setItem('fieldops_hidden_modules', JSON.stringify(updated));
+                        }}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${!isHidden ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${!isHidden ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-end">
+              <button 
+                onClick={() => setIsManageModulesOpen(false)}
+                className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition shadow-sm"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModulePrompt && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-up border border-gray-100">
+            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold font-lexend text-gray-900 flex items-center">
+                  <Plus className="w-5 h-5 mr-2 text-princeton-orange-600" />
+                  Add New Module
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">Create a custom tracking module for field operations.</p>
+              </div>
+              <button onClick={() => setShowAddModulePrompt(false)} className="text-gray-400 hover:text-gray-600 transition p-1 rounded-full hover:bg-gray-100">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <label className="block text-xs font-bold text-gray-700 mb-2">Module Name</label>
+              <input 
+                type="text" 
+                autoFocus 
+                value={newModuleName} 
+                onChange={e => setNewModuleName(e.target.value)} 
+                onKeyDown={e => e.key === 'Enter' && handleAddCustomModule()}
+                placeholder="e.g. Concrete Pour Log" 
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-princeton-orange-500 text-sm outline-none transition font-medium" 
+              />
+            </div>
+            <div className="p-6 pt-0 flex space-x-3">
+              <button 
+                onClick={() => setShowAddModulePrompt(false)}
+                className="flex-1 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition shadow-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleAddCustomModule}
+                className="flex-1 py-2.5 text-sm font-bold text-white bg-princeton-orange-600 rounded-xl hover:bg-princeton-orange-700 shadow-sm shadow-princeton-orange-200 transition"
+              >
+                Create Module
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {moduleToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden animate-scale-up border border-red-100 text-center">
+            <div className="pt-8 pb-6 px-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Delete Module?</h3>
+              <p className="text-sm text-gray-500 mb-2">
+                You are about to permanently delete <strong className="text-gray-900">{moduleToDelete.name}</strong>.
+              </p>
+              <p className="text-xs text-red-600 font-medium bg-red-50 p-3 rounded-lg border border-red-100">
+                This action will permanently erase all configuration and <strong>permanently purge all documents and records</strong> associated with this module from the database. This cannot be undone.
+              </p>
+            </div>
+            <div className="p-6 pt-0 flex space-x-3 bg-gray-50/50">
+              <button 
+                onClick={() => setModuleToDelete(null)}
+                className="flex-1 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition shadow-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteModule}
+                disabled={isDeletingModule}
+                className={`flex-1 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition flex items-center justify-center ${isDeletingModule ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 shadow-red-200'}`}
+              >
+                {isDeletingModule ? (
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {actionError && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -644,6 +1138,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           </div>
         </div>
       )}
-    </main>
+      </main>
+    </div>
   );
 }

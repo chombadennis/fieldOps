@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Send, AlertTriangle, FileSpreadsheet, Layers, Info } from 'lucide-react';
+import { MessageSquare, Send, AlertTriangle, FileSpreadsheet, Layers, Info, Trash2 } from 'lucide-react';
 import MilestoneClaimsIntegrations from '@/components/MilestoneClaimsIntegrations';
 import MilestoneClaimSheet from '@/components/MilestoneClaimSheet';
-import { getDecoupledDocuments, updateProjectMilestoneClaim } from '@/services/api';
+import { getDecoupledDocuments, updateProjectMilestoneClaim, deleteDecoupledDocument } from '@/services/api';
 
 interface Note {
   id: number;
@@ -59,6 +59,23 @@ export default function MilestonesTab({
   const [activeDocuments, setActiveDocuments] = useState<Document[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [claimToDelete, setClaimToDelete] = useState<any | null>(null);
+
+  const handleDelete = async () => {
+    if (!claimToDelete) return;
+    setDeletingId(claimToDelete.id);
+    try {
+      await deleteDecoupledDocument(projectId, 'milestone_claims', claimToDelete.id);
+      setClaimToDelete(null);
+      fetchActiveDocuments();
+    } catch (err) {
+      console.error('Failed to delete claim:', err);
+      alert('Failed to delete claim');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const fetchActiveDocuments = async () => {
     setLoadingDocs(true);
@@ -132,7 +149,7 @@ export default function MilestonesTab({
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 font-inter">Active Milestone Claims</h3>
           <span className="text-[10px] font-bold text-dark-teal-700 bg-dark-teal-50 px-2 py-0.5 rounded border border-dark-teal-100">
-            {activeDocuments.length} Claim{activeDocuments.length !== 1 ? 's' : ''} Linked
+            {activeDocuments.length} Claim{activeDocuments.length !== 1 ? 's' : ''} Active
           </span>
         </div>
 
@@ -165,7 +182,7 @@ export default function MilestonesTab({
                         {doc.title || 'Milestone Claim Document'}
                       </h4>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {doc.file_type || 'Cloud Document'} • Linked {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recently'}
+                        {doc.file_type || 'Cloud Document'} • {doc.integration_id ? 'Linked' : 'Uploaded'} {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recently'}
                       </p>
                     </div>
                   </div>
@@ -184,6 +201,16 @@ export default function MilestonesTab({
                     >
                       View Source
                     </a>
+                    {!doc.integration_id && (
+                      <button
+                        onClick={() => setClaimToDelete(doc)}
+                        disabled={deletingId === doc.id}
+                        className="p-2 bg-white hover:bg-red-50 text-red-500 hover:text-red-700 border border-gray-200 hover:border-red-200 rounded-xl transition-all duration-300 flex items-center justify-center disabled:opacity-50"
+                        title="Delete Orphaned Claim Permanently"
+                      >
+                        {deletingId === doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      </button>
+                    )}
                   </div>
                 </div>
                 
@@ -243,7 +270,41 @@ export default function MilestonesTab({
           />
         )}
 
-
+        {/* Delete Confirmation Modal */}
+        {claimToDelete && (
+          <div className="fixed inset-0 z-[100] bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-fade-in-up">
+              <div className="p-6 sm:p-8">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-6">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Delete Orphaned Claim</h3>
+                <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                  This will permanently delete the orphaned milestone claim and all associated extracted data from the database. This action cannot be undone.
+                </p>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-8">
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Document</p>
+                  <p className="text-sm font-bold text-gray-900">{claimToDelete.title}</p>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setClaimToDelete(null)}
+                    className="flex-1 px-4 py-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-sm font-bold transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deletingId === claimToDelete.id}
+                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-md transition flex items-center justify-center disabled:opacity-70"
+                  >
+                    {deletingId === claimToDelete.id ? <Loader2 className="w-5 h-5 animate-spin" /> : "Delete Permanently"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Discussions & Notes */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
