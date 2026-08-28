@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageSquare, Send, AlertTriangle, FileSpreadsheet, Layers, Info, Trash2 } from 'lucide-react';
+import { MessageSquare, AlertTriangle, FileSpreadsheet, Layers, Info, Trash2 } from 'lucide-react';
 import MilestoneClaimsIntegrations from '@/components/MilestoneClaimsIntegrations';
 import MilestoneClaimSheet from '@/components/MilestoneClaimSheet';
+import DiscussionNoteInput from '@/components/DiscussionNoteInput';
+import { renderSafeHtml } from '@/lib/sanitize';
 import { getDecoupledDocuments, updateProjectMilestoneClaim, deleteDecoupledDocument } from '@/services/api';
 
 interface Note {
@@ -82,26 +84,7 @@ export default function MilestonesTab({
     queryFn: () => getDecoupledDocuments(projectId, 'milestone_claims')
   });
 
-  const handlePostNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim()) return;
-    setPosting(true);
-    try {
-      await onAddNote({
-        content,
-        department: 'milestone_claims',
-        is_issue: isIssue,
-        priority: isIssue ? priority : 'Normal',
-      });
-      setContent('');
-      setIsIssue(false);
-      setPriority('Normal');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setPosting(false);
-    }
-  };
+
 
   // Filter notes for this workspace
   const filteredNotes = notes.filter((note) => note.department?.toLowerCase() === 'milestone_claims');
@@ -143,15 +126,15 @@ export default function MilestonesTab({
         </div>
 
         {loadingDocs ? (
-          <div className="bg-white rounded-3xl p-12 border border-gray-100 text-center flex flex-col items-center justify-center space-y-2 text-gray-400 shadow-sm">
-            <div className="w-8 h-8 border-4 border-dark-teal-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-12 border border-white/10 text-center flex flex-col items-center justify-center space-y-2 text-gray-400 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-xs font-semibold">Loading milestone claims from database...</p>
           </div>
         ) : activeDocuments.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 border border-gray-100 text-center shadow-sm space-y-3">
-            <FileSpreadsheet className="w-12 h-12 text-slate-200 drop-shadow-sm mx-auto" />
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-12 border border-white/10 text-center shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-3">
+            <FileSpreadsheet className="w-12 h-12 text-gray-600 drop-shadow-sm mx-auto" />
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-gray-700">No Active Milestone Claims Found</h4>
+              <h4 className="text-xs font-bold text-white">No Active Milestone Claims Found</h4>
               <p className="text-[11px] text-gray-400 max-w-md mx-auto">
                 No database records exist for milestone claims. Connect a workbook or upload a PDF document in the panel below to initiate AI parsing.
               </p>
@@ -160,17 +143,17 @@ export default function MilestonesTab({
         ) : (
           <div className="space-y-4">
             {activeDocuments.map((doc: any) => (
-              <div key={doc.id} className="bg-white/90 backdrop-blur-md rounded-3xl p-5 border border-gray-200/60 shadow-lg shadow-gray-200/30 hover:shadow-xl hover:-translate-y-1 hover:border-gray-300/60 transition-all duration-300 flex flex-col space-y-4">
+              <div key={doc.id} className="bg-white/5 backdrop-blur-xl rounded-3xl p-5 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-xl hover:-translate-y-1 hover:border-white/20 transition-all duration-300 flex flex-col space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="p-3 bg-dark-teal-50 rounded-xl text-dark-teal-800 border border-dark-teal-100">
+                    <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/20">
                       <FileSpreadsheet className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold font-lexend text-gray-900 leading-tight">
+                      <h4 className="text-sm font-bold font-lexend text-white leading-tight">
                         {doc.title || 'Milestone Claim Document'}
                       </h4>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-gray-400 mt-0.5">
                         {doc.file_type || 'Cloud Document'} • {doc.integration_id ? 'Linked' : 'Uploaded'} {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recently'}
                       </p>
                     </div>
@@ -178,7 +161,7 @@ export default function MilestonesTab({
                   <div className="flex space-x-2">
                     <button
                       onClick={() => setSelectedClaim(doc)}
-                      className="px-4 py-2 bg-gradient-to-b from-indigo-50 to-indigo-100/50 hover:from-indigo-100 hover:to-indigo-200/50 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-extrabold shadow-sm hover:shadow hover:-translate-y-0.5 transition-all duration-300 flex items-center shadow-sm"
+                      className="px-4 py-2 bg-gradient-to-b from-white/10 to-white/5 hover:from-white/15 hover:to-white/10 text-white border border-white/10 rounded-xl text-xs font-extrabold shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex items-center"
                     >
                       View / Edit Claim
                     </button>
@@ -186,7 +169,7 @@ export default function MilestonesTab({
                       href={doc.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2 bg-gradient-to-b from-white to-gray-50 hover:from-gray-50 hover:to-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-extrabold shadow-sm hover:shadow hover:-translate-y-0.5 transition-all duration-300 flex items-center"
+                      className="px-4 py-2 bg-gradient-to-b from-white/10 to-white/5 hover:from-white/15 hover:to-white/10 text-gray-300 border border-white/10 rounded-xl text-xs font-extrabold shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex items-center"
                     >
                       View Source
                     </a>
@@ -194,7 +177,7 @@ export default function MilestonesTab({
                       <button
                         onClick={() => setClaimToDelete(doc)}
                         disabled={deletingId === doc.id}
-                        className="p-2 bg-white hover:bg-red-50 text-red-500 hover:text-red-700 border border-gray-200 hover:border-red-200 rounded-xl transition-all duration-300 flex items-center justify-center disabled:opacity-50"
+                        className="p-2 bg-white/5 hover:bg-red-500/20 text-red-400 border border-white/10 hover:border-red-500/30 rounded-xl transition-all duration-300 flex items-center justify-center disabled:opacity-50"
                         title="Delete Orphaned Claim Permanently"
                       >
                         {deletingId === doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -204,34 +187,34 @@ export default function MilestonesTab({
                 </div>
                 
                 {/* Info grid */}
-                <div className="grid grid-cols-5 gap-4 pt-4 border-t border-gray-50">
+                <div className="grid grid-cols-5 gap-4 pt-4 border-t border-white/10">
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Claim No</p>
-                    <p className="text-sm font-bold text-gray-800">{doc.claim_number || 'Pending'}</p>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Claim No</p>
+                    <p className="text-sm font-bold text-gray-200">{doc.claim_number || 'Pending'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Valuation Date</p>
-                    <p className="text-sm font-bold text-gray-800">{doc.valuation_date ? new Date(doc.valuation_date).toLocaleDateString() : 'N/A'}</p>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Valuation Date</p>
+                    <p className="text-sm font-bold text-gray-200">{doc.valuation_date ? new Date(doc.valuation_date).toLocaleDateString() : 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Status</p>
-                    <p className="text-sm font-bold text-gray-800">
-                      <span className={`px-2 py-1 rounded text-xs ${doc.status === 'Certified' ? 'bg-emerald-100 text-emerald-800' : doc.status === 'Submitted' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Status</p>
+                    <p className="text-sm font-bold text-gray-200">
+                      <span className={`px-2 py-1 rounded text-xs border ${doc.status === 'Certified' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : doc.status === 'Submitted' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-white/10 text-gray-300 border-white/10'}`}>
                         {doc.status || 'Draft'}
                       </span>
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Payment</p>
-                    <p className="text-sm font-bold text-gray-800">
-                      <span className={`px-2 py-1 rounded text-xs ${doc.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : doc.payment_status === 'PARTIAL' ? 'bg-blue-100 text-blue-800' : 'bg-rose-100 text-rose-800'}`}>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Payment</p>
+                    <p className="text-sm font-bold text-gray-200">
+                      <span className={`px-2 py-1 rounded text-xs border ${doc.payment_status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : doc.payment_status === 'PARTIAL' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
                         {doc.payment_status || 'UNPAID'}
                       </span>
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Net Due</p>
-                    <p className="text-sm font-bold text-dark-teal-600">${(doc.net_amount_due || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Net Due</p>
+                    <p className="text-sm font-bold text-emerald-400">${(doc.net_amount_due || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                   </div>
                 </div>
               </div>
@@ -295,98 +278,55 @@ export default function MilestonesTab({
           </div>
         )}
 
-      {/* Discussions & Notes */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Discussion & Note Form */}
+      <DiscussionNoteInput 
+        onAddNote={onAddNote}
+        departmentKey="milestone_claims"
+        placeholder="Log progress comments or flag claim revisions..."
+        variant="dark"
+      />
+
+      {/* Discussion Feed */}
+      <div className="space-y-4">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Discussion Feed</h4>
         
-        {/* Post note form */}
-        <div className="lg:col-span-1 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4 self-start">
-          <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 font-inter">Add Workspace Note</h3>
-          <form onSubmit={handlePostNote} className="space-y-4">
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Log progress comments or flag claim revisions..."
-              rows={3}
-              className="w-full p-4 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-dark-teal-500/20 focus:border-dark-teal-500 focus:outline-none transition shadow-inner resize-none"
-            />
-            
-            <div className="flex items-center justify-between">
-              <label className="flex items-center space-x-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isIssue}
-                  onChange={(e) => setIsIssue(e.target.checked)}
-                  className="rounded text-dark-teal-600 focus:ring-dark-teal-500/20 w-4 h-4 border-gray-300"
-                />
-                <span className="text-xs font-semibold text-gray-600">Flag as Issue</span>
-              </label>
-
-              {isIssue && (
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="p-1 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-dark-teal-500"
-                >
-                  <option>Low</option>
-                  <option>Normal</option>
-                  <option>High</option>
-                  <option>Urgent</option>
-                </select>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={posting || !content.trim()}
-              className="w-full py-3 bg-dark-teal-900 hover:bg-black disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-1 active:scale-95"
-            >
-              {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Post Notes / Log Issue
-            </button>
-          </form>
-        </div>
-
-        {/* Discussion logs */}
-        <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 font-inter">Department Logs</h3>
-          
-          {filteredNotes.length === 0 ? (
-            <div className="bg-gray-50/70 rounded-3xl p-8 text-center border border-dashed border-gray-200">
-              <MessageSquare className="w-8 h-8 text-slate-200 drop-shadow-sm mx-auto mb-2" />
-              <p className="text-xs text-gray-400 font-medium">No notes recorded for this milestone claim yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredNotes.map((note) => (
-                <div
-                  key={note.id}
-                  className={`bg-white rounded-3xl p-5 border shadow-sm transition ${
-                    note.is_issue ? 'border-red-200 bg-red-50/10' : 'border-gray-100'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs font-bold text-gray-900">{note.author_name || 'Team Member'}</span>
-                      <span className="text-[10px] text-gray-400">
-                        • {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
-                      </span>
-                    </div>
-
-                    {note.is_issue && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">
-                        <AlertTriangle className="w-3 h-3 mr-1" /> {note.priority || 'High'} Issue
-                      </span>
-                    )}
+        {filteredNotes.length === 0 ? (
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+            <MessageSquare className="w-8 h-8 text-gray-600 drop-shadow-sm mx-auto mb-2" />
+            <p className="text-xs text-gray-400 font-medium">No notes recorded for this milestone claim yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredNotes.map((note) => (
+              <div
+                key={note.id}
+                className={`bg-white/5 backdrop-blur-xl rounded-3xl p-6 border shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition ${
+                  note.is_issue ? 'border-red-500/30 bg-red-900/10' : 'border-white/10'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold text-white font-lexend">{note.author_name || 'Team Member'}</span>
+                    <span className="text-xs text-gray-500">
+                      • {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                    </span>
                   </div>
 
-                  <p className="text-xs text-gray-700 leading-relaxed font-medium whitespace-pre-line">
-                    {note.content}
-                  </p>
+                  {note.is_issue && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-900/30 text-red-400 border border-red-500/30">
+                      <AlertTriangle className="w-3 h-3 mr-1" /> {note.priority || 'High'} Issue
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+
+                <div 
+                  className="text-xs text-gray-300 leading-relaxed font-medium note-content-html"
+                  dangerouslySetInnerHTML={{ __html: renderSafeHtml(note.content) }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

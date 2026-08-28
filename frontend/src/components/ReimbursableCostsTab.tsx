@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { MessageSquare, Send, AlertTriangle } from 'lucide-react';
+import { MessageSquare, AlertTriangle } from 'lucide-react';
 import ReimbursableCostsIntegrations from '@/components/ReimbursableCostsIntegrations';
 import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
+import DiscussionNoteInput from '@/components/DiscussionNoteInput';
 import { unlinkProjectDocument, unlinkDecoupledDocument, deleteProjectDocument, deleteDecoupledDocument } from '@/services/api';
+import { renderSafeHtml } from '@/lib/sanitize';
 
 interface Note {
   id: number;
@@ -60,10 +62,6 @@ export default function ReimbursableCostsTab({
   setGlobalLoading,
   activeTab,
 }: DepartmentTabProps) {
-  const [content, setContent] = useState('');
-  const [isIssue, setIsIssue] = useState(false);
-  const [priority, setPriority] = useState('Normal');
-  const [posting, setPosting] = useState(false);
   const [unlinkingId, setUnlinkingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
@@ -111,26 +109,7 @@ export default function ReimbursableCostsTab({
   const filteredNotes = notes.filter((n) => n.department?.toLowerCase() === departmentKey.toLowerCase() || departmentKey === 'all');
   const filteredDocs = documents.filter((d) => d.department?.toLowerCase() === departmentKey.toLowerCase() || departmentKey === 'all');
 
-  const handlePostNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim()) return;
-    setPosting(true);
-    try {
-      await onAddNote({
-        content,
-        department: departmentKey,
-        is_issue: isIssue,
-        priority: isIssue ? priority : 'Normal',
-      });
-      setContent('');
-      setIsIssue(false);
-      setPriority('Normal');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setPosting(false);
-    }
-  };
+
 
   return (
     <div className="space-y-6">
@@ -172,58 +151,11 @@ export default function ReimbursableCostsTab({
         emptyMessage="No documents linked to this department section."
       />
 
-      {/* Discussion & Entry Feed */}
-      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-4">
-        <h3 className="text-sm font-bold font-lexend text-white drop-shadow-md">Add Discussion Note / Log Issue</h3>
-        <form onSubmit={handlePostNote} className="space-y-4">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder={`Share an update or report an issue regarding ${departmentName}...`}
-            rows={3}
-            className="w-full p-4 bg-black/40 border border-white/10 rounded-2xl text-xs text-white focus:ring-2 focus:ring-neon-cyan/50 focus:border-neon-cyan focus:outline-none transition font-medium placeholder-gray-500 shadow-inner"
-          />
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center space-x-2.5 cursor-pointer select-none group">
-                <input
-                  type="checkbox"
-                  checked={isIssue}
-                  onChange={(e) => setIsIssue(e.target.checked)}
-                  className="w-4 h-4 rounded text-neon-cyan bg-black/40 border-white/20 focus:ring-neon-cyan focus:ring-offset-black transition-colors"
-                />
-                <span className="text-xs font-bold text-gray-400 group-hover:text-neon-cyan transition-colors">Flag as Site Issue</span>
-              </label>
-
-              {isIssue && (
-                <div className="flex items-center space-x-2 animate-fade-in">
-                  <span className="text-xs text-gray-500 font-semibold">Priority:</span>
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                    className="p-1.5 bg-black/60 border border-white/10 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-neon-cyan"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Normal">Normal</option>
-                    <option value="High">High</option>
-                    <option value="Critical">Critical</option>
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={posting || !content.trim()}
-              className="px-5 py-3 bg-neon-cyan/20 hover:bg-neon-cyan text-neon-cyan hover:text-black border border-neon-cyan/50 font-extrabold rounded-xl text-xs shadow-[0_0_15px_rgba(0,243,255,0.2)] hover:shadow-[0_0_25px_rgba(0,243,255,0.6)] disabled:opacity-50 disabled:shadow-none hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center space-x-1.5"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>{posting ? 'Posting...' : 'Post Entry'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
+      <DiscussionNoteInput 
+        onAddNote={onAddNote}
+        departmentKey={departmentKey}
+        placeholder={`Share an update or report an issue regarding ${departmentName}...`}
+      />
 
       <div className="space-y-4">
         <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 font-inter">Discussion Feed</h4>
@@ -254,7 +186,10 @@ export default function ReimbursableCostsTab({
                   )}
                 </div>
 
-                <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-line font-medium">{note.content}</p>
+                <div 
+                  className="text-xs text-gray-300 leading-relaxed font-medium note-content-html"
+                  dangerouslySetInnerHTML={{ __html: renderSafeHtml(note.content) }}
+                />
               </div>
             ))}
           </div>

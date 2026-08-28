@@ -1,3 +1,5 @@
+import html
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -54,6 +56,16 @@ def create_project_note(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    if not note_in.content or not note_in.content.strip():
+        raise HTTPException(status_code=400, detail="Note content cannot be empty")
+
+    word_count = len(re.findall(r'\b\w+\b', note_in.content))
+    if word_count > 500:
+        raise HTTPException(status_code=400, detail=f"Note exceeds 500 words limit. Current word count: {word_count}")
+
+    # Basic XSS defense: escape any raw HTML sent from client
+    sanitized_content = html.escape(note_in.content.strip())
+
     from ..models.contract import Contract
     contract_id = note_in.contract_id
     if contract_id is not None:
@@ -72,7 +84,7 @@ def create_project_note(
     new_note = Note(
         project_id=project_id,
         contract_id=contract_id,
-        content=note_in.content,
+        content=sanitized_content,
         department=note_in.department,
         is_issue=note_in.is_issue,
         priority=note_in.priority,

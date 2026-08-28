@@ -41,11 +41,36 @@ apiClient.interceptors.response.use(
   }
 );
 
-export const uploadFile = (file: File, projectId: string | number) => {
+export const uploadFile = async (file: File, projectId: string | number, contractId?: number) => {
   const formData = new FormData();
+  formData.append('title', file.name);
+  formData.append('file_type', file.type || 'unknown');
+  formData.append('department', 'boq');
+  if (contractId) formData.append('contract_id', String(contractId));
+
+  // The 'file' field will be used if the backend expects a file upload
   formData.append('file', file);
-  formData.append('project_id', String(projectId));
-  return apiClient.post('/ai/parse-boq', formData);
+
+  const response = await apiClient.post(`/projects/${projectId}/documents`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+export const validateUploadBoq = async (projectId: string | number, contractId: string | number | undefined, data: FormData) => {
+  const response = await apiClient.post(`/ai/validate-upload-boq`, data, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+export const commitUploadBoq = async (projectId: string | number, contractId: string | number | undefined, data: any) => {
+  const response = await apiClient.post(`/ai/commit-upload-boq`, data);
+  return response.data;
 };
 
 export const createProject = async (project: { name: string; description: string }) => {

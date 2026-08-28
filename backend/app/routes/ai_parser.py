@@ -222,3 +222,164 @@ async def parse_boq_with_ai(
 
         # Generic fallback
         raise HTTPException(status_code=500, detail=f"Internal BOQ Parser Error: {error_msg}")
+
+
+from pydantic import BaseModel
+class CommitBoqRequest(BaseModel):
+    project_id: int
+    contract_id: Optional[int] = None
+    temp_file_id: Optional[str] = None
+    title: str
+    items: list
+    project_metadata: Optional[dict] = None
+    file_hash: str
+
+@router.post("/ai/validate-upload-boq")
+@limiter.limit("5/minute")
+async def validate_upload_boq(
+    request: Request,
+    project_id: int = Form(...),
+    contract_id: Optional[int] = Form(None),
+    force_retry: Optional[str] = Form(None),
+    file: UploadFile = File(...)
+):
+    """Dry-run validation for BOQ Uploads (PDF only). Returns JSON for Preview Modal."""
+    from ..db.database import SessionLocal
+    from ..models.boq_document import BoqDocument
+    from ..models.contract import Contract
+
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported for AI BoQ Upload.")
+
+    contents = await file.read()
+    file_hash = hashlib.sha256(contents).hexdigest()
+
+    with SessionLocal() as db:
+        # Check for duplicates or rejections
+        existing = db.query(BoqDocument).filter(
+            BoqDocument.project_id == project_id,
+            BoqDocument.file_hash == file_hash
+        ).first()
+
+        if existing:
+            if existing.validation_status == "rejected" and force_retry != 'true':
+                return {
+                    "valid": False, 
+                    "is_rejected_retry": True, 
+                    "message": f"This document was previously scanned and rejected (Identified as: {existing.validation_summary or 'Unknown'}). Do you want to try scanning it again?"
+                }
+            elif existing.validation_status != "rejected":
+                raise HTTPException(status_code=400, detail="This document has already been successfully parsed and is in the database.")
+
+    # 3. AI Extraction
+    redis_client = request.app.state.redis
+    fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf")
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            f.write(contents)
+        instruction_text = "See the attached visual PDF document."
+        ai_result = await ai_extractor.get_ai_extraction(text=instruction_text, file_path=temp_pdf_path, mime_type="application/pdf", redis_client=redis_client)
+    finally:
+        if os.path.exists(temp_pdf_path):
+            os.remove(temp_pdf_path)
+
+    if "error" in ai_result:
+        if ai_result["error"] == "not_a_boq":
+            # Save rejection hash
+            with SessionLocal() as db:
+                reject_doc = BoqDocument(
+                    project_id=project_id,
+                    contract_id=contract_id,
+                    name=file.filename,
+                    file_hash=file_hash,
+                    origin="file_upload",
+                    validation_status="rejected",
+                    validation_summary=ai_result.get("identified_document_type", "Unknown Document")
+                )
+                db.add(reject_doc)
+                db.commit()
+            return {
+                "valid": False,
+                "message": f"AI identified this as a {ai_result.get('identified_document_type', 'Unknown Document')}, not a Bill of Quantities."
+            }
+        raise HTTPException(status_code=502, detail=f"AI Service Error: {ai_result.get('error')}")
+
+    # Return valid JSON to frontend
+    return {
+        "valid": True,
+        "extracted_data": ai_result["extracted_data"],
+        "temp_file_id": file_hash, # We just use the hash as temp_file_id since we aren't saving the actual file on server
+        "file_hash": file_hash
+    }
+
+@router.post("/ai/commit-upload-boq")
+async def commit_upload_boq(req: CommitBoqRequest):
+    """Commits the verified JSON payload to the database."""
+    from ..db.database import SessionLocal
+    from ..models.boq_document import BoqDocument
+    from ..models.contract import Contract
+
+    with SessionLocal() as db:
+        try:
+            # Delete any old rejected record for this hash
+            db.query(BoqDocument).filter(
+                BoqDocument.project_id == req.project_id,
+                BoqDocument.file_hash == req.file_hash,
+                BoqDocument.validation_status == "rejected"
+            ).delete()
+
+            # Ensure contract exists if provided
+            if not req.contract_id:
+                contract = db.query(Contract).filter(Contract.project_id == req.project_id, Contract.contract_type == "GENERAL").first()
+                if not contract:
+                    contract = Contract(project_id=req.project_id, name="General Contract", contract_type="GENERAL")
+                    db.add(contract)
+                    db.commit()
+                    db.refresh(contract)
+                req.contract_id = contract.id
+
+            # Create the BoqDocument container
+            boq_doc = BoqDocument(
+                project_id=req.project_id,
+                contract_id=req.contract_id,
+                name=req.title,
+                file_hash=req.file_hash,
+                origin="file_upload",
+                validation_status="approved"
+            )
+            db.add(boq_doc)
+            db.flush()
+            
+            id_map = {}
+            for item in req.items:
+                db_item = BoqItem(
+                    boq_id=boq_doc.id,
+                    bill_item_number=item.get("bill_item_number"),
+                    description=item.get("description", ""),
+                    row_category=item.get("row_category", "LINE_ITEM"),
+                    hierarchy_level=item.get("hierarchy_level", -1),
+                    unit=item.get("unit"),
+                    quantity=item.get("quantity", 0.0),
+                    rate=item.get("rate", 0.0),
+                    amount=item.get("amount", 0.0)
+                )
+                
+                parent_idx = item.get("parent_index")
+                if parent_idx is not None and parent_idx in id_map:
+                    db_item.parent_id = id_map[parent_idx]
+                
+                db.add(db_item)
+                db.flush()
+                id_map[item.get("temp_id")] = db_item.id
+            
+            db.commit()
+            
+            # Invalidate project cache so the UI updates immediately
+            from ..utils.cache import invalidate_cache
+            invalidate_cache(f"project_{req.project_id}")
+            
+            return {"success": True, "boq_id": boq_doc.id}
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Commit Failed: {e}")
+            raise HTTPException(status_code=500, detail=str(e))

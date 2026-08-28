@@ -23,6 +23,8 @@ class ExtractedBoqItem(BaseModel):
     amount: float = Field(default=0.0)
 
 class BoqExtractionList(BaseModel):
+    is_boq_document: bool = Field(default=True, description="Set to false ONLY IF you are absolutely certain this page is not a BoQ (e.g. an Invoice or HR Timesheet).")
+    identified_document_type: Optional[str] = Field(None, description="If is_boq_document is false, explain what the document actually is.")
     project_metadata: Optional[dict] = Field(None, description="Metadata like project_title, client, location, date.")
     boq_items: List[ExtractedBoqItem]
     confidence_score: float = Field(default=1.0, description="Confidence score from 0.0 to 1.0 based on extraction clarity.")
@@ -39,20 +41,23 @@ async def _extract_single_chunk(text: str, file_path: str = None, mime_type: str
     {state_injection}
     
     CRITICAL EXTRACTION RULES:
-    1. **Description Merging**: BOQ data often spans multiple lines. 
+    1. **BOUNCER CHECK (CRITICAL)**: Analyze the page structure. Does this look like a Bill of Quantities (or part of one, like a title page or BOQ summary)?
+       - If you are ABSOLUTELY CERTAIN this is an entirely unrelated document (e.g., an Invoice, HR Timesheet, or random article), set `is_boq_document` = false and describe what it is in `identified_document_type`. Then return empty `boq_items` and stop.
+       - Otherwise, assume `is_boq_document` = true and proceed.
+    2. **Description Merging**: BOQ data often spans multiple lines. 
        - If a row continues a description from the previous line (even if on a new page), COMBINE them into one single `description` string.
        - If a description starts with an introductory text block ending in a preposition (e.g., 'laid on top of', 'suitable for', 'consisting of') and is completed by a line item below it, merge the introductory text block directly into the line item's description instead of creating a separate empty HEADER.
-    2. **Structural Headers**: 
+    3. **Structural Headers**: 
        - Identify major sections (e.g., 'ELEMENT NO. 1', 'SUBSTRUCTURES', 'CONCRETE WORKS').
        - Set `row_category` = 'HEADER'.
        - Set `hierarchy_level`: 0 for major Bills, 1 for Elements, 2 for Sub-headings.
        - Set quantity, rate, and amount to 0.0 for headers.
-    3. **Line Items**: 
+    4. **Line Items**: 
        - Rows with units (m2, m3, kg, nr, lm) are 'LINE_ITEM'.
        - Ensure `bill_item_number` (e.g., 'A', '3.1') is captured.
-    4. **Hierarchy Logic**: Every Line Item MUST belong to the nearest preceding Header.
-    5. **Numerical Integrity**: Extract quantities, rates, and amounts as floats. Remove any 'Ksh', 'Shs', or commas.
-    6. **Project Metadata**: If this is a Title/Cover page, extract: project_title, client, location, and date.
+    5. **Hierarchy Logic**: Every Line Item MUST belong to the nearest preceding Header.
+    6. **Numerical Integrity**: Extract quantities, rates, and amounts as floats. Remove any 'Ksh', 'Shs', or commas.
+    7. **Project Metadata**: If this is a Title/Cover page, extract: project_title, client, location, and date.
     
     **ATTENTION HINTS** (Fix #3):
     - Focus strictly on **Structural Headers** (e.g., 'BILL NO. 1', 'ELEMENTS', 'SUBSECTIONS') and **Line Item rows** (rows containing units like m3, m2, kg, nr, lm or numeric quantities).
@@ -178,6 +183,20 @@ async def get_ai_extraction(text: str, file_path: str = None, mime_type: str = N
                         continue
                         
                     ext_data = chunk_result.get("extracted_data", {})
+                    
+                    # --- BOUNCER CHECK LOGIC ---
+                    is_boq = ext_data.get("is_boq_document", True)
+                    if not is_boq:
+                        logger.warning(f"Page {i+1} rejected by AI as not a BOQ (Identified as: {ext_data.get('identified_document_type')})")
+                        
+                        # If we haven't found any valid BoQ items yet, and we've checked up to 5 pages, abort the entire document.
+                        if not all_boq_items and (i + 1) >= min(5, total_pages):
+                            return {
+                                "error": "not_a_boq",
+                                "identified_document_type": ext_data.get("identified_document_type") or "Unknown Document"
+                            }
+                        continue # Skip adding items for this rejected page
+                    
                     if ext_data.get("project_metadata"): project_metadata.update(ext_data.get("project_metadata"))
                     
                     items_found = ext_data.get("boq_items", [])

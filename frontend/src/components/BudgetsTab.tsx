@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageSquare, Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info, Edit3, Check, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import BudgetIntegrations from '@/components/BudgetIntegrations';
+import DiscussionNoteInput from '@/components/DiscussionNoteInput';
 import { getProjectBudgets, updateBudgetWorkbookMatrix, updateProjectBudget } from '@/services/api';
+import { renderSafeHtml } from '@/lib/sanitize';
 
 interface Note {
   id: number;
@@ -595,57 +597,11 @@ export default function BudgetsTab({
       </div>
 
       {/* Discussion & Note Form */}
-      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-4">
-        <h3 className="text-sm font-bold font-lexend text-white">Add Discussion Note / Log Issue</h3>
-        <form onSubmit={handlePostNote} className="space-y-4">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Share a budget update or log an allocation issue..."
-            rows={3}
-            className="w-full p-4 bg-black/40 border border-white/10 rounded-2xl text-xs text-white focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 focus:outline-none transition font-medium placeholder-gray-500"
-          />
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center space-x-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isIssue}
-                  onChange={(e) => setIsIssue(e.target.checked)}
-                  className="w-4 h-4 rounded text-emerald-600 bg-black/50 border-white/20 focus:ring-emerald-500"
-                />
-                <span className="text-xs font-bold text-gray-300">Flag as Site Issue</span>
-              </label>
-
-              {isIssue && (
-                <div className="flex items-center space-x-2 animate-fade-in">
-                  <span className="text-xs text-gray-400 font-semibold">Priority:</span>
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                    className="p-1.5 bg-black/40 border border-white/10 rounded-xl text-xs font-bold text-white focus:outline-none"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Normal">Normal</option>
-                    <option value="High">High</option>
-                    <option value="Critical">Critical</option>
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={posting || !content.trim()}
-              className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold rounded-xl text-xs shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center space-x-1.5"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>{posting ? 'Posting...' : 'Post Entry'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
+      <DiscussionNoteInput 
+        onAddNote={onAddNote}
+        departmentKey="BUDGET"
+        placeholder="Share a budget update or log an allocation issue..."
+      />
 
       {/* Discussion Feed */}
       <div className="space-y-4">
@@ -677,7 +633,10 @@ export default function BudgetsTab({
                   )}
                 </div>
 
-                <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-line font-medium">{note.content}</p>
+                <div 
+                  className="text-xs text-gray-300 leading-relaxed font-medium note-content-html"
+                  dangerouslySetInnerHTML={{ __html: renderSafeHtml(note.content) }}
+                />
               </div>
             ))}
           </div>

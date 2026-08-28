@@ -83,8 +83,8 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
     );
   };
 
-  const importedDocs = documents.filter(d => !d.preview_only);
-  const previewOnlyDocs = documents.filter(d => d.preview_only);
+  const importedDocs = documents.filter(d => !d.preview_only && d.validation_status !== 'rejected');
+  const previewOnlyDocs = documents.filter(d => d.preview_only && d.validation_status !== 'rejected');
 
   return (
     <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">

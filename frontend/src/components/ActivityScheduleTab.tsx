@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageSquare, Send, AlertTriangle, FileSpreadsheet, Layers, Info } from 'lucide-react';
+import { MessageSquare, AlertTriangle, FileSpreadsheet, Layers, Info } from 'lucide-react';
 import ActivityScheduleIntegrations from '@/components/ActivityScheduleIntegrations';
 import ActivityScheduleInlineEditor from '@/components/integrations/ActivityScheduleInlineEditor';
+import DiscussionNoteInput from '@/components/DiscussionNoteInput';
+import { renderSafeHtml } from '@/lib/sanitize';
 import { getDecoupledDocuments } from '@/services/api';
 
 interface Note {
@@ -57,26 +59,7 @@ export default function ActivityScheduleTab({
     queryFn: () => getDecoupledDocuments(projectId, 'activity_schedule')
   });
 
-  const handlePostNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim()) return;
-    setPosting(true);
-    try {
-      await onAddNote({
-        content,
-        department: 'activity_schedule',
-        is_issue: isIssue,
-        priority: isIssue ? priority : 'Normal',
-      });
-      setContent('');
-      setIsIssue(false);
-      setPriority('Normal');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setPosting(false);
-    }
-  };
+
 
   // Filter notes for this workspace
   const filteredNotes = notes.filter((note) => note.department?.toLowerCase() === 'activity_schedule');
@@ -118,15 +101,15 @@ export default function ActivityScheduleTab({
         </div>
 
         {loadingDocs ? (
-          <div className="bg-white rounded-3xl p-12 border border-gray-100 text-center flex flex-col items-center justify-center space-y-2 text-gray-400 shadow-sm">
-            <div className="w-8 h-8 border-4 border-dark-teal-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-12 border border-white/10 text-center flex flex-col items-center justify-center space-y-2 text-gray-400 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-xs font-semibold">Loading schedules from database...</p>
           </div>
         ) : activeDocuments.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 border border-gray-100 text-center shadow-sm space-y-3">
-            <FileSpreadsheet className="w-12 h-12 text-slate-200 drop-shadow-sm mx-auto" />
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-12 border border-white/10 text-center shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-3">
+            <FileSpreadsheet className="w-12 h-12 text-gray-600 drop-shadow-sm mx-auto" />
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-gray-700">No Active Schedules Found</h4>
+              <h4 className="text-xs font-bold text-white">No Active Schedules Found</h4>
               <p className="text-[11px] text-gray-400 max-w-md mx-auto">
                 No database records exist for activity schedules. Connect a workbook or upload a PDF document in the panel below to initiate AI parsing.
               </p>
@@ -151,98 +134,55 @@ export default function ActivityScheduleTab({
       </div>
 
 
-      {/* Discussions & Notes */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Discussion & Note Form */}
+      <DiscussionNoteInput 
+        onAddNote={onAddNote}
+        departmentKey="activity_schedule"
+        placeholder="Log progress comments or flag schedule revisions..."
+        variant="dark"
+      />
+
+      {/* Discussion Feed */}
+      <div className="space-y-4">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Discussion Feed</h4>
         
-        {/* Post note form */}
-        <div className="lg:col-span-1 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4 self-start">
-          <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 font-inter">Add Workspace Note</h3>
-          <form onSubmit={handlePostNote} className="space-y-4">
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Log progress comments or flag schedule revisions..."
-              rows={3}
-              className="w-full p-4 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-dark-teal-500/20 focus:border-dark-teal-500 focus:outline-none transition shadow-inner resize-none"
-            />
-            
-            <div className="flex items-center justify-between">
-              <label className="flex items-center space-x-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isIssue}
-                  onChange={(e) => setIsIssue(e.target.checked)}
-                  className="rounded text-dark-teal-600 focus:ring-dark-teal-500/20 w-4 h-4 border-gray-300"
-                />
-                <span className="text-xs font-semibold text-gray-600">Flag as Issue</span>
-              </label>
-
-              {isIssue && (
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="p-1 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-dark-teal-500"
-                >
-                  <option>Low</option>
-                  <option>Normal</option>
-                  <option>High</option>
-                  <option>Urgent</option>
-                </select>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={posting || !content.trim()}
-              className="w-full py-3 bg-dark-teal-900 hover:bg-black disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-1 active:scale-95"
-            >
-              {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Post Notes / Log Issue
-            </button>
-          </form>
-        </div>
-
-        {/* Discussion logs */}
-        <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 font-inter">Department Logs</h3>
-          
-          {filteredNotes.length === 0 ? (
-            <div className="bg-gray-50/70 rounded-3xl p-8 text-center border border-dashed border-gray-200">
-              <MessageSquare className="w-8 h-8 text-slate-200 drop-shadow-sm mx-auto mb-2" />
-              <p className="text-xs text-gray-400 font-medium">No notes recorded for this schedule yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredNotes.map((note) => (
-                <div
-                  key={note.id}
-                  className={`bg-white rounded-3xl p-5 border shadow-sm transition ${
-                    note.is_issue ? 'border-red-200 bg-red-50/10' : 'border-gray-100'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs font-bold text-gray-900">{note.author_name || 'Team Member'}</span>
-                      <span className="text-[10px] text-gray-400">
-                        • {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
-                      </span>
-                    </div>
-
-                    {note.is_issue && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">
-                        <AlertTriangle className="w-3 h-3 mr-1" /> {note.priority || 'High'} Issue
-                      </span>
-                    )}
+        {filteredNotes.length === 0 ? (
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+            <MessageSquare className="w-8 h-8 text-gray-600 drop-shadow-sm mx-auto mb-2" />
+            <p className="text-xs text-gray-400 font-medium">No notes recorded for this schedule yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredNotes.map((note) => (
+              <div
+                key={note.id}
+                className={`bg-white/5 backdrop-blur-xl rounded-3xl p-6 border shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition ${
+                  note.is_issue ? 'border-red-500/30 bg-red-900/10' : 'border-white/10'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold text-white font-lexend">{note.author_name || 'Team Member'}</span>
+                    <span className="text-xs text-gray-500">
+                      • {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                    </span>
                   </div>
 
-                  <p className="text-xs text-gray-700 leading-relaxed font-medium whitespace-pre-line">
-                    {note.content}
-                  </p>
+                  {note.is_issue && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-900/30 text-red-400 border border-red-500/30">
+                      <AlertTriangle className="w-3 h-3 mr-1" /> {note.priority || 'High'} Issue
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+
+                <div 
+                  className="text-xs text-gray-300 leading-relaxed font-medium note-content-html"
+                  dangerouslySetInnerHTML={{ __html: renderSafeHtml(note.content) }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
