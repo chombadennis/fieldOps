@@ -71,13 +71,13 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
   const getDocBadge = (origin?: string) => {
     if (origin === 'google_sheets' || origin === 'onedrive') {
       return (
-        <span className="text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+        <span className="text-[10px] font-semibold bg-neon-purple/20 text-neon-purple border border-neon-purple/30 px-2 py-0.5 rounded-full whitespace-nowrap drop-shadow-[0_0_5px_rgba(188,19,254,0.3)]">
           Cloud Sync
         </span>
       );
     }
     return (
-      <span className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+      <span className="text-[10px] font-semibold bg-white/10 text-white border border-white/20 px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm">
         Auto-Parsed
       </span>
     );
@@ -87,44 +87,44 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
   const previewOnlyDocs = documents.filter(d => d.preview_only);
 
   return (
-    <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100">
+    <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
       <div className="flex items-center space-x-3 mb-6">
-        <div className="w-10 h-10 bg-crimson-violet-50 rounded-xl flex items-center justify-center text-crimson-violet-600">
+        <div className="w-10 h-10 bg-neon-cyan/20 border border-neon-cyan/30 rounded-xl flex items-center justify-center text-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.2)]">
           <FileText className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Attached Bills of Quantities</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Up to 5 documents per project</p>
+          <h2 className="text-2xl font-bold font-lexend text-white drop-shadow-md">Attached Bills of Quantities</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Up to 5 documents per project</p>
         </div>
       </div>
 
       {importedDocs.length === 0 ? (
-        <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-2xl">
-          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-600 text-base font-semibold">No BOQs linked yet.</p>
-          <p className="text-sm text-gray-400 mt-1">Upload a PDF/Excel file or link a Google Sheet/OneDrive file to get started.</p>
+        <div className="text-center py-8 border-2 border-dashed border-white/10 rounded-2xl">
+          <FileText className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+          <p className="text-gray-400 text-base font-semibold">No BOQs linked yet.</p>
+          <p className="text-sm text-gray-500 mt-1">Upload a PDF/Excel file or link a Google Sheet/OneDrive file to get started.</p>
         </div>
       ) : (
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-white/5">
           {importedDocs.map((doc) => (
             <div key={doc.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 first:pt-0 last:pb-0 group">
               <div className="flex items-start space-x-3.5">
-                <div className="p-3 bg-gray-50 rounded-xl text-gray-500 group-hover:bg-crimson-violet-50 group-hover:text-crimson-violet-600 transition-colors">
+                <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-gray-400 group-hover:bg-neon-cyan/20 group-hover:text-neon-cyan group-hover:border-neon-cyan/30 transition-all shadow-sm">
                   <FileText className="w-5.5 h-5.5" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center space-x-2.5">
-                    <h4 className="font-bold text-gray-850 text-base truncate max-w-[200px] sm:max-w-[340px]" title={doc.name}>
+                    <h4 className="font-bold text-white text-base truncate max-w-[200px] sm:max-w-[340px]" title={doc.name}>
                       {doc.name}
                     </h4>
                     {getDocBadge(doc.origin)}
                   </div>
                   <div className="flex items-center text-xs sm:text-sm text-gray-400 mt-1 space-x-3.5">
                     <span className="flex items-center font-medium">
-                      <Calendar className="w-4 h-4 mr-1 text-gray-400" />
+                      <Calendar className="w-4 h-4 mr-1 text-gray-500" />
                       {formatDate(doc.created_at)}
                     </span>
-                    <span className="truncate max-w-[140px] font-mono text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500">
+                    <span className="truncate max-w-[140px] font-mono text-xs bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-400">
                       SHA: {doc.file_hash.substring(0, 8)}
                     </span>
                   </div>
@@ -134,7 +134,7 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
               <div className="self-end sm:self-center flex items-center space-x-2 flex-shrink-0">
                 <button
                   onClick={() => onViewItems(doc.id, doc.name)}
-                  className="flex items-center justify-center space-x-2 bg-[#fcfcfc] border border-gray-200 hover:border-crimson-violet-300 text-gray-700 hover:text-crimson-violet-600 font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100 text-sm"
+                  className="flex items-center justify-center space-x-2 bg-white/5 border border-white/10 hover:border-neon-cyan/50 text-gray-300 hover:text-neon-cyan hover:bg-neon-cyan/10 font-bold py-2.5 px-4 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.2)] hover:shadow-[0_0_15px_rgba(0,243,255,0.15)] active:scale-[0.98] transition-all duration-100 text-sm"
                 >
                   <Eye className="w-4 h-4" />
                   <span>View Items</span>
@@ -142,7 +142,7 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
                 {onDeleteDocument && (
                   <button
                     onClick={() => handleDeleteClick(doc)}
-                    className="p-2.5 border border-red-200 rounded-xl text-red-600 hover:bg-red-50 hover:border-red-300 active:scale-90 transition-all duration-100 shadow-sm"
+                    className="p-2.5 border border-red-500/30 rounded-xl text-red-400 hover:bg-red-500/20 hover:border-red-500/50 active:scale-90 transition-all duration-100 shadow-[0_0_10px_rgba(0,0,0,0.2)]"
                     title="Delete BOQ document"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -157,38 +157,38 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
 
       {/* Custom Confirmation Modal */}
       {docToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 flex flex-col relative animate-scale-up">
+        <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#030305] rounded-2xl max-w-md w-full p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10 flex flex-col relative animate-scale-up">
             <button
               onClick={() => setDocToDelete(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+              className="absolute top-4 right-4 text-gray-500 hover:text-white active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center space-x-3 mb-4">
-              <div className="p-3 bg-red-50 rounded-xl text-red-600">
+              <div className="p-3 bg-red-500/20 rounded-xl text-red-400 border border-red-500/30">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Delete BOQ Document</h3>
-                <p className="text-xs text-gray-400">This action is irreversible</p>
+                <h3 className="text-lg font-bold text-white">Delete BOQ Document</h3>
+                <p className="text-xs text-red-400 font-semibold">This action is irreversible</p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 leading-relaxed mb-4">
-              You are about to perform an <span className="font-bold text-red-600">irreversible deletion</span> of the BOQ document <span className="font-bold text-gray-800">"{docToDelete.name}"</span> from the database and all of its records will be deleted permanently. Do you wish to continue?
+            <p className="text-sm text-gray-400 leading-relaxed mb-4">
+              You are about to perform an <span className="font-bold text-red-400">irreversible deletion</span> of the BOQ document <span className="font-bold text-white">"{docToDelete.name}"</span> from the database and all of its records will be deleted permanently. Do you wish to continue?
             </p>
 
-            <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-xl mb-4">
-              <span className="font-bold block mb-0.5 text-blue-900 uppercase tracking-wider text-[10px]">Cloud Storage Safeguard</span>
-              Note: This action will <span className="font-bold text-blue-900">NOT</span> delete the actual file in your cloud drive.
+            <div className="bg-blue-500/10 border border-blue-500/30 text-blue-200 text-xs p-3 rounded-xl mb-4">
+              <span className="font-bold block mb-0.5 text-blue-400 uppercase tracking-wider text-[10px]">Cloud Storage Safeguard</span>
+              Note: This action will <span className="font-bold text-blue-400">NOT</span> delete the actual file in your cloud drive.
             </div>
 
             {deleting && (
-              <div className="flex items-center space-x-2 text-red-650 bg-red-50/70 border border-red-100 p-3 rounded-xl mb-6 animate-pulse">
-                <Loader2 className="w-4 h-4 animate-spin text-red-600 flex-shrink-0" />
-                <span className="text-[11px] font-semibold text-red-700">Deleting records from the database. Please hold on...</span>
+              <div className="flex items-center space-x-2 text-red-400 bg-red-900/20 border border-red-500/30 p-3 rounded-xl mb-6 animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-red-400 flex-shrink-0" />
+                <span className="text-[11px] font-semibold text-red-300">Deleting records from the database. Please hold on...</span>
               </div>
             )}
 
@@ -196,14 +196,14 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
               <button
                 disabled={deleting}
                 onClick={() => setDocToDelete(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2.5 px-4 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-semibold text-gray-300 active:scale-[0.98] transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 disabled={deleting}
                 onClick={handleConfirmDelete}
-                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5"
+                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-semibold shadow-[0_0_15px_rgba(220,38,38,0.5)] active:scale-[0.98] transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5"
               >
                 {deleting ? (
                   <>
@@ -220,37 +220,37 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
       )}
       {/* Blocked Deletion Info Modal */}
       {docBlockedToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 flex flex-col relative animate-scale-up">
+        <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#030305] rounded-2xl max-w-md w-full p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10 flex flex-col relative animate-scale-up">
             <button
               onClick={() => setDocBlockedToDelete(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+              className="absolute top-4 right-4 text-gray-500 hover:text-white active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center space-x-3 mb-4">
-              <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
+              <div className="p-3 bg-amber-500/20 rounded-xl text-amber-400 border border-amber-500/30">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Cannot Delete Document</h3>
-                <p className="text-xs text-gray-400">Active cloud integration detected</p>
+                <h3 className="text-lg font-bold text-white">Cannot Delete Document</h3>
+                <p className="text-xs text-amber-400 font-semibold">Active cloud integration detected</p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 leading-relaxed mb-6">
-              The document <span className="font-bold text-gray-800">"{docBlockedToDelete.name}"</span> is currently linked to an active cloud integration. To delete it, you must first disconnect (unlink) the cloud workbook.
+            <p className="text-sm text-gray-400 leading-relaxed mb-6">
+              The document <span className="font-bold text-white">"{docBlockedToDelete.name}"</span> is currently linked to an active cloud integration. To delete it, you must first disconnect (unlink) the cloud workbook.
             </p>
 
-            <div className="bg-amber-50 border border-amber-100 text-amber-800 text-xs p-3 rounded-xl mb-6">
-              <span className="font-bold block mb-0.5 text-amber-900 uppercase tracking-wider text-[10px]">Action Required:</span>
-              Please go to the <span className="font-bold text-amber-900">Linked Workbooks</span> section at the top of the page, click the disconnect button (trash bin icon), and then try deleting this document again.
+            <div className="bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs p-3 rounded-xl mb-6">
+              <span className="font-bold block mb-0.5 text-amber-400 uppercase tracking-wider text-[10px]">Action Required:</span>
+              Please go to the <span className="font-bold text-amber-400">Linked Workbooks</span> section at the top of the page, click the disconnect button (trash bin icon), and then try deleting this document again.
             </div>
 
             <button
               onClick={() => setDocBlockedToDelete(null)}
-              className="w-full py-2.5 px-4 bg-gray-850 hover:bg-gray-900 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100"
+              className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-xl text-xs font-bold shadow-[0_0_15px_rgba(255,255,255,0.1)] active:scale-[0.98] transition-all duration-100"
             >
               Understood
             </button>

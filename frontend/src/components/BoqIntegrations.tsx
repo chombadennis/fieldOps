@@ -773,8 +773,8 @@ export default function BoqIntegrations({
 
       {/* Config Modal after successful OAuth Callback */}
       {showConfigModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col relative overflow-hidden">
+        <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#030305] rounded-2xl max-w-xl w-full p-6 shadow-[0_0_50px_rgba(0,243,255,0.1)] border border-white/10 max-h-[90vh] flex flex-col relative overflow-hidden">
             {/* In-modal overlay: progress / success / error / warning */}
             {modalMessage && (
               <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center p-8 rounded-2xl transition-all duration-300 ${modalMessage.type === 'info'
@@ -1072,10 +1072,10 @@ export default function BoqIntegrations({
 
       {/* Active Integrations list */}
       {showList && visibleIntegrations.length > 0 && (
-        <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100 transition-all duration-300">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
+        <div className="bg-white/5 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl p-6 border border-white/10 transition-all duration-300">
+          <h2 className="text-xl font-bold font-lexend text-white drop-shadow-md mb-4 flex items-center space-x-2">
             <span>Linked Workbooks</span>
-            <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)] font-semibold px-2 py-0.5 rounded-full">
               {visibleIntegrations.length} Active
             </span>
           </h2>
@@ -1089,18 +1089,18 @@ export default function BoqIntegrations({
 
               // Compute premium styles dynamically
               const cardClass = isSyncing
-                ? "bg-gradient-to-r from-indigo-50/30 via-white to-indigo-50/10 border-indigo-200 shadow-sm animate-pulse"
+                ? "bg-white/10 backdrop-blur-md border-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.3)] animate-pulse"
                 : isPreviewOnly
-                  ? "bg-gradient-to-br from-amber-50/10 to-white border-amber-100 hover:shadow-md"
-                  : "bg-gradient-to-br from-emerald-50/5 to-white border-emerald-100/70 hover:shadow-md";
+                  ? "bg-white/5 backdrop-blur-md border-neon-purple/50 shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_20px_rgba(188,19,254,0.2)] hover:border-neon-purple"
+                  : "bg-white/5 backdrop-blur-md border-neon-cyan/30 shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_20px_rgba(0,243,255,0.2)] hover:border-neon-cyan/60";
 
               const iconClass = isSyncing
-                ? "bg-indigo-100 text-indigo-600 animate-spin"
+                ? "bg-neon-cyan/20 text-neon-cyan animate-spin shadow-[0_0_10px_rgba(0,243,255,0.2)] border border-neon-cyan/50"
                 : isPreviewOnly
-                  ? "bg-amber-50 text-amber-600 border border-amber-100"
+                  ? "bg-neon-purple/20 text-neon-purple border border-neon-purple/50 shadow-[0_0_10px_rgba(188,19,254,0.2)]"
                   : isGoogle
-                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                    : "bg-indigo-50 text-indigo-600 border border-indigo-100";
+                    ? "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]"
+                    : "bg-neon-purple/20 text-neon-purple border border-neon-purple/50 shadow-[0_0_10px_rgba(188,19,254,0.2)]";
 
               return (
                 <div key={integration.id} className="space-y-2">
@@ -1120,46 +1120,46 @@ export default function BoqIntegrations({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-gray-800 text-sm truncate flex items-center space-x-2 flex-wrap gap-y-1">
+                        <h4 className="font-bold text-white drop-shadow-md text-sm truncate flex items-center space-x-2 flex-wrap gap-y-1">
                           <a
                             href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/integrations/${integration.id}/open`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:underline text-indigo-650 hover:text-indigo-850 transition-colors inline-flex items-center space-x-1"
+                            className="hover:underline text-white hover:text-neon-cyan transition-colors inline-flex items-center space-x-1"
                             title={`Open in ${isGoogle ? 'Google Sheets' : 'Excel Online'}. Note: Ensure your browser is logged in to the account containing this file.`}
                           >
                             <span>{integration.boq_name || 'Spreadsheet BOQ'}</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+                            <ExternalLink className="w-3.5 h-3.5 text-neon-cyan" />
                           </a>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${isGoogle ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'}`}>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize border ${isGoogle ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]' : 'bg-neon-purple/20 text-neon-purple border-neon-purple/50 shadow-[0_0_10px_rgba(188,19,254,0.2)]'}`}>
                             {isGoogle ? 'Google Sheets' : 'OneDrive'}
                           </span>
                           {isPreviewOnly ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-neon-purple/20 text-neon-purple border border-neon-purple/50 shadow-[0_0_10px_rgba(188,19,254,0.2)]">
                               Preview Only
                             </span>
                           ) : null}
                           {outOfSyncMap[integration.id] && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-neon-pink/20 text-neon-pink border border-neon-pink/50 shadow-[0_0_10px_rgba(255,0,127,0.3)] animate-pulse">
                               <AlertTriangle className="w-2.5 h-2.5 mr-1" />
                               Out of Sync (Edits in cloud)
                             </span>
                           )}
                         </h4>
-                        <p className="text-xs text-gray-500 mt-1 truncate"><span className="font-semibold text-gray-600">File ID:</span> {integration.spreadsheet_id}</p>
-                        <p className="text-xs text-gray-500 mt-0.5 truncate"><span className="font-semibold text-gray-600">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
+                        <p className="text-xs text-gray-400 mt-1 truncate"><span className="font-bold text-gray-500">File ID:</span> {integration.spreadsheet_id}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate"><span className="font-bold text-gray-500">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
                         <p className="text-[10px] text-gray-400 mt-1">
                           {isSyncing ? (
-                            <span className="text-indigo-650 font-bold animate-pulse flex items-center space-x-1 text-xs">
-                              <Loader2 className="w-3 h-3 animate-spin mr-1 text-indigo-500" />
+                            <span className="text-neon-cyan font-bold animate-pulse flex items-center space-x-1 text-xs drop-shadow-[0_0_5px_rgba(0,243,255,0.5)]">
+                              <Loader2 className="w-3 h-3 animate-spin mr-1 text-neon-cyan" />
                               Sync in progress… updating database structure
                             </span>
                           ) : (
                             <>
                               Last Synced: {integration.last_synced_at ? new Date(integration.last_synced_at).toLocaleString() : 'Never'}
-                              <span className="text-gray-300 mx-1.5">•</span>
+                              <span className="text-gray-600 mx-1.5">•</span>
                               <span
-                                className="text-gray-500 font-medium cursor-help hover:text-indigo-600 transition-colors"
+                                className="text-gray-500 font-medium cursor-help hover:text-neon-cyan transition-colors"
                                 title={`Important: Ensure your web browser is signed in to the ${isGoogle ? 'Google' : 'Microsoft'} account containing this file, otherwise access will be denied.`}
                               >
                                 Click name to edit in cloud (Login required)
@@ -1242,11 +1242,11 @@ export default function BoqIntegrations({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
+                    <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => setActiveAuditIntegration(integration)}
-                        className="p-2 hover:bg-white text-indigo-600 hover:text-indigo-800 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                        className="p-2 hover:bg-neon-cyan text-neon-cyan hover:text-black rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_10px_rgba(0,243,255,0.4)]"
                         title="Structure Report (Format Assessment)"
                       >
                         <FileSpreadsheet className="w-4 h-4" />
@@ -1254,9 +1254,9 @@ export default function BoqIntegrations({
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
-                        className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'hover:bg-white text-gray-600 hover:text-gray-900'
+                        className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 ${activeEditorId === integration.id
+                          ? 'bg-neon-purple text-white shadow-[0_0_10px_rgba(188,19,254,0.4)]'
+                          : 'hover:bg-neon-purple hover:text-white text-gray-400 hover:shadow-[0_0_10px_rgba(188,19,254,0.4)]'
                           }`}
                         title={activeEditorId === integration.id ? 'Hide inline preview' : 'Open inline preview'}
                       >
@@ -1266,15 +1266,15 @@ export default function BoqIntegrations({
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => handleManualSync(integration.id)}
                         title={syncingId === integration.id ? `Syncing worksheets: ${syncingName}` : "Sync workbook data"}
-                        className="p-2 hover:bg-white text-indigo-750 hover:text-indigo-900 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                        className="p-2 hover:bg-neon-cyan text-neon-cyan hover:text-black rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_10px_rgba(0,243,255,0.4)]"
                       >
-                        <RefreshCw className={`w-4 h-4 ${syncingId === integration.id ? 'animate-spin text-indigo-900' : ''}`} />
+                        <RefreshCw className={`w-4 h-4 ${syncingId === integration.id ? 'animate-spin text-black' : ''}`} />
                       </button>
 
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => setIntegrationToDelete(integration)}
-                        className="p-2 hover:bg-white text-red-650 hover:text-red-700 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                        className="p-2 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_10px_rgba(239,68,68,0.4)]"
                         title="Delete workbook data permanently from database"
                       >
                         <Trash2 className="w-4 h-4" />

@@ -604,7 +604,7 @@ export default function MilestoneClaimsIntegrations({
 
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-6">
+    <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-6">
 
       {/* Top Title & Connect Actions */}
       <CloudConnectionCards
@@ -620,9 +620,9 @@ export default function MilestoneClaimsIntegrations({
 
       {/* Active Integrations List */}
       {integrations.length === 0 ? (
-        <div className="bg-gray-50/70 rounded-2xl p-8 text-center border border-dashed border-gray-200">
+        <div className="bg-black/20 rounded-2xl p-8 text-center border border-dashed border-white/10">
           <FileSpreadsheet className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-xs font-semibold text-gray-600">No linked cloud schedules yet.</p>
+          <p className="text-xs font-bold text-gray-300">No linked cloud schedules yet.</p>
           <p className="text-[11px] text-gray-400 mt-1 max-w-sm mx-auto">
             Click one of the buttons above to link baseline workbooks or PDF milestone sheets from Google Drive or OneDrive.
           </p>
@@ -640,13 +640,13 @@ export default function MilestoneClaimsIntegrations({
             {integrations.map((integration) => {
               return (
                 <div key={integration.id} className="space-y-2">
-                  <div className="bg-white rounded-2xl p-5 border border-gray-150 shadow-sm flex flex-col sm:flex-row items-start justify-between gap-4">
+                  <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_20px_rgba(0,243,255,0.2)] hover:border-neon-cyan/60 transition-all duration-300 flex flex-col sm:flex-row items-start justify-between gap-4">
                     <div className="flex items-center space-x-3">
-                      <div className="p-3 bg-dark-teal-50 rounded-xl text-dark-teal-800 border border-dark-teal-100">
+                      <div className="p-3 bg-neon-cyan/20 rounded-xl text-neon-cyan border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]">
                         <FileSpreadsheet className="w-5 h-5" />
                       </div>
                       <div className="space-y-1">
-                        <h4 className="text-xs font-bold font-lexend text-gray-900 leading-tight">
+                        <h4 className="text-xs font-bold font-lexend text-white drop-shadow-md leading-tight">
                           {integration.boq_name || 'Milestone Claim Document'}
                         </h4>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -666,13 +666,13 @@ export default function MilestoneClaimsIntegrations({
                     </div>
 
                     {/* Action toolbar — matches Budget tab icon-only pill layout */}
-                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
+                    <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={globalLoading || deletingId !== null}
                         onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
                         className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'hover:bg-white text-gray-600 hover:text-gray-900'
+                          ? 'bg-neon-purple text-white shadow-[0_0_10px_rgba(188,19,254,0.4)]'
+                          : 'hover:bg-neon-purple hover:text-white text-gray-400 hover:shadow-[0_0_10px_rgba(188,19,254,0.4)]'
                           }`}
                         title={activeEditorId === integration.id ? 'Hide inline preview' : 'Open inline preview'}
                       >
@@ -682,7 +682,7 @@ export default function MilestoneClaimsIntegrations({
                       <button
                         disabled={globalLoading || deletingId !== null}
                         onClick={() => setIntegrationToDelete(integration)}
-                        className="p-2 hover:bg-white text-red-655 hover:text-red-700 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm flex items-center justify-center"
+                        className="p-2 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_10px_rgba(239,68,68,0.4)] flex items-center justify-center"
                         title="Delete document data permanently from database"
                       >
                         {deletingId === integration.id ? (
@@ -714,12 +714,12 @@ export default function MilestoneClaimsIntegrations({
       {/* Delete integration warning modal — matches Budget pattern */}
       {integrationToDelete && (
         <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+          <div className="bg-black/90 backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl w-full max-w-md p-8 flex flex-col relative overflow-hidden text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
-            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Delete Document Permanently</h3>
-            <p className="text-sm text-gray-600 mb-6">
+            <h3 className="text-xl font-bold font-lexend text-white drop-shadow-md mb-2">Delete Document Permanently</h3>
+            <p className="text-sm text-gray-300 mb-6">
               This will permanently delete the linked document integration and all associated database records. The original file remains unchanged.
             </p>
             <p className="text-xs text-gray-500 mb-4">
@@ -728,7 +728,7 @@ export default function MilestoneClaimsIntegrations({
             <div className="flex gap-2 justify-center">
               <button
                 onClick={() => setIntegrationToDelete(null)}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl transition"
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition"
               >
                 Cancel
               </button>
@@ -752,12 +752,12 @@ export default function MilestoneClaimsIntegrations({
       {/* Validation Rejection Modal — matches Budget pattern */}
       {rejectedDocumentContext && (
         <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+          <div className="bg-black/90 backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl w-full max-w-md p-8 flex flex-col relative overflow-hidden text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
 
-            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Document Validation Failed</h3>
+            <h3 className="text-xl font-bold font-lexend text-white drop-shadow-md mb-2">Document Validation Failed</h3>
 
             <p className="text-sm text-gray-600 mb-6 leading-relaxed">
               You attempted to link an Milestone Claim, but our system scanned the contents and identified this document as an <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{rejectedDocumentContext}</strong>.
@@ -837,12 +837,12 @@ export default function MilestoneClaimsIntegrations({
       {/* Active Validation Rejection Modal */}
       {rejectedDocumentContext && (
         <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+          <div className="bg-black/90 backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl w-full max-w-md p-8 flex flex-col relative overflow-hidden text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
 
-            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Document Validation Failed</h3>
+            <h3 className="text-xl font-bold font-lexend text-white drop-shadow-md mb-2">Document Validation Failed</h3>
 
             <p className="text-sm text-gray-600 mb-6 leading-relaxed">
               You attempted to link an Milestone Claim, but our system scanned the contents and identified this document as an <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{rejectedDocumentContext}</strong>.
@@ -873,12 +873,12 @@ export default function MilestoneClaimsIntegrations({
       {/* Historical Rejection Modal — Warning but allows proceeding */}
       {warningFileContext && (
         <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+          <div className="bg-black/90 backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl w-full max-w-md p-8 flex flex-col relative overflow-hidden text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
 
-            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Document Flagged</h3>
+            <h3 className="text-xl font-bold font-lexend text-white drop-shadow-md mb-2">Document Flagged</h3>
 
             <p className="text-sm text-gray-600 mb-6 leading-relaxed">
               This document was previously flagged as a <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{warningFileContext.rejected_reason || 'Invalid Document'}</strong> and may not be a valid Milestone Claim.

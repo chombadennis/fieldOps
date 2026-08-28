@@ -55,20 +55,20 @@ export default function UploadBOQ({ projectId, onUploadSuccess, disabled }: Uplo
   };
 
   return (
-    <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Upload Bill of Quantities</h2>
+    <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+      <h2 className="text-2xl font-bold font-lexend text-white mb-4 drop-shadow-md">Upload Bill of Quantities</h2>
 
-      <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 text-xs sm:text-sm text-amber-950 leading-relaxed mb-4">
-        <div className="flex items-center space-x-1.5 text-amber-800 font-bold mb-1">
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-xs sm:text-sm text-amber-200 leading-relaxed mb-4 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+        <div className="flex items-center space-x-1.5 text-amber-400 font-bold mb-1">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <span className="text-sm font-bold">BOQ Formatting Note</span>
         </div>
-        Uploaded files must contain standard BOQ structures (<strong className="font-bold text-amber-950">Description, Qty, Rate, Amount</strong>). Avoid uploading progress templates, charts, or activity checklists.
+        Uploaded files must contain standard BOQ structures (<strong className="font-bold text-amber-400">Description, Qty, Rate, Amount</strong>). Avoid uploading progress templates, charts, or activity checklists.
       </div>
 
       <div className="space-y-4">
         <div>
-          <label htmlFor="boq-file" className="block text-sm font-semibold text-gray-700">
+          <label htmlFor="boq-file" className="block text-sm font-semibold text-gray-300">
             BOQ File (Excel or PDF)
           </label>
           <input
@@ -76,21 +76,21 @@ export default function UploadBOQ({ projectId, onUploadSuccess, disabled }: Uplo
             type="file"
             disabled={disabled || uploading}
             onChange={handleFileChange}
-            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 disabled:opacity-50"
+            className="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 disabled:opacity-50 transition-colors file:cursor-pointer cursor-pointer focus:outline-none"
             accept=".xls,.xlsx,.pdf"
           />
         </div>
-        {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
-        {success && <p className="text-emerald-600 text-sm font-bold">File uploaded successfully!</p>}
+        {error && <p className="text-red-400 text-sm font-medium drop-shadow-sm">{error}</p>}
+        {success && <p className="text-neon-cyan text-sm font-bold drop-shadow-[0_0_8px_rgba(0,243,255,0.5)]">File uploaded successfully!</p>}
         {disabled && (
-          <p className="text-amber-600 text-sm font-semibold">
+          <p className="text-amber-400 text-sm font-semibold">
             Upload is disabled because a spreadsheet sync/link operation is in progress.
           </p>
         )}
         <button
           onClick={handleUpload}
           disabled={disabled || !file || uploading}
-          className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all active:scale-[0.98]"
+          className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-[0_0_20px_rgba(0,243,255,0.2)] text-sm font-bold text-black bg-neon-cyan hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#030305] focus:ring-neon-cyan disabled:opacity-50 transition-all active:scale-[0.98] mt-2"
         >
           {uploading ? 'Uploading & Parsing...' : 'Upload & Parse'}
         </button>

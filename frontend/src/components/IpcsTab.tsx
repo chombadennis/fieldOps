@@ -161,17 +161,19 @@ export default function IpcsTab({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-emerald-950 text-white rounded-3xl p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+      <div className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 -translate-y-12 -translate-x-12 w-64 h-64 bg-neon-cyan/10 rounded-full blur-3xl pointer-events-none mix-blend-screen" />
+
         <div className="relative z-10">
-          <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Progress Claims</span>
-          <h2 className="text-xl font-bold font-lexend mt-1">Interim Payment Certificates (IPCs)</h2>
-          <p className="text-xs text-emerald-100/80 mt-1 max-w-lg">Submit, verify, and monitor progress payment claims for completed site works.</p>
+          <span className="text-xs font-semibold text-neon-cyan uppercase tracking-widest drop-shadow-[0_0_8px_rgba(0,243,255,0.5)]">Progress Claims</span>
+          <h2 className="text-xl font-bold font-lexend mt-1 text-white drop-shadow-md">Interim Payment Certificates (IPCs)</h2>
+          <p className="text-xs text-gray-400 mt-1 max-w-lg leading-relaxed">Submit, verify, and monitor progress payment claims for completed site works.</p>
         </div>
 
         <div className="flex items-center space-x-4 relative z-10">
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 text-right">
-            <p className="text-xs font-semibold text-emerald-200 uppercase">Total Net Certified / Paid</p>
-            <p className="text-sm font-bold font-lexend text-white mt-0.5">${totalCertified.toLocaleString()} / ${totalPaid.toLocaleString()}</p>
+          <div className="bg-black/40 backdrop-blur-md rounded-2xl p-4 border border-white/5 text-right shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Net Certified / Paid</p>
+            <p className="text-sm font-bold font-lexend text-white mt-0.5">${totalCertified.toLocaleString()} / <span className="text-neon-cyan">${totalPaid.toLocaleString()}</span></p>
           </div>
         </div>
       </div>
@@ -205,18 +207,18 @@ export default function IpcsTab({
 
       {/* IPC Table / Cards */}
       {ipcs.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-200 shadow-sm">
-          <FileCheck className="w-12 h-12 text-emerald-300 mx-auto mb-3" />
-          <h3 className="text-lg font-bold font-lexend text-gray-800">No Interim Certificates Issued</h3>
+        <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-12 text-center border border-dashed border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          <FileCheck className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+          <h3 className="text-lg font-bold font-lexend text-white drop-shadow-md">No Interim Certificates Issued</h3>
           <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
             Connect a cloud spreadsheet above to issue your first IPC for work done on site.
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-fade-in">
+        <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden animate-fade-in">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-semibold">
-              <thead className="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase tracking-wider font-bold">
+              <thead className="bg-black/40 border-b border-white/10 text-gray-400 uppercase tracking-wider font-bold">
                 <tr>
                   <th className="px-6 py-4">Certificate #</th>
                   <th className="px-6 py-4">Net Amount Due</th>
@@ -225,25 +227,25 @@ export default function IpcsTab({
                   <th className="px-6 py-4 text-right">Payment Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+              <tbody className="divide-y divide-white/10 text-gray-300 font-medium">
                 {ipcs.map((ipc) => (
                   <tr
                     key={ipc.id}
                     onClick={() => setSelectedIpc(ipc)}
-                    className="transition hover:bg-gray-50/50 cursor-pointer"
+                    className="transition hover:bg-white/5 cursor-pointer"
                   >
-                    <td className="px-6 py-4 font-extrabold font-lexend text-gray-900">{ipc.certificate_number}</td>
-                    <td className="px-6 py-4 font-bold text-gray-800" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-6 py-4 font-extrabold font-lexend text-white drop-shadow-md">{ipc.certificate_number}</td>
+                    <td className="px-6 py-4 font-bold text-gray-300" onClick={(e) => e.stopPropagation()}>
                       {editingNetDueId === ipc.id ? (
                         <div className="flex items-center space-x-2">
                           <input
                             type="number"
-                            className="w-24 p-1 text-xs border border-gray-300 rounded font-bold"
+                            className="w-24 p-1 text-xs bg-black/60 border border-neon-cyan/50 text-white rounded font-bold focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                             value={editingNetDueAmount}
                             onChange={(e) => setEditingNetDueAmount(Number(e.target.value))}
                           />
                           <button
-                            className="text-[10px] bg-dark-teal-600 text-white px-2 py-1 rounded hover:bg-dark-teal-700"
+                            className="text-[10px] bg-neon-cyan/20 border border-neon-cyan/50 text-neon-cyan px-2 py-1 rounded hover:bg-neon-cyan hover:text-black transition"
                             onClick={async () => {
                               try {
                                 await updateProjectIPC(projectId, ipc.id, { net_amount_due: editingNetDueAmount });
@@ -257,7 +259,7 @@ export default function IpcsTab({
                             Save
                           </button>
                           <button
-                            className="text-[10px] bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300"
+                            className="text-[10px] bg-white/10 text-gray-400 border border-white/20 px-2 py-1 rounded hover:bg-white/20 hover:text-white transition"
                             onClick={() => setEditingNetDueId(null)}
                           >
                             Cancel
@@ -277,48 +279,48 @@ export default function IpcsTab({
                             });
                           }}
                         >
-                          <span>${(ipc.net_amount_due || 0).toLocaleString()}</span>
-                          <span className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-500 transition-opacity">Edit</span>
+                          <span className="text-neon-purple drop-shadow-[0_0_5px_rgba(188,19,254,0.3)]">${(ipc.net_amount_due || 0).toLocaleString()}</span>
+                          <span className="opacity-0 group-hover:opacity-100 text-[10px] text-neon-cyan transition-opacity">Edit</span>
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 font-bold text-red-500">
+                    <td className="px-6 py-4 font-bold text-red-400">
                       ${(ipc.unpaid_amount || 0).toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${
-                        ipc.status === 'Certified' ? 'bg-emerald-100 text-emerald-800' :
-                        ipc.status === 'Submitted' ? 'bg-amber-100 text-amber-800' :
-                        'bg-gray-100 text-gray-800'
+                      <span className={`px-2 py-1 rounded-md border text-[11px] font-bold ${
+                        ipc.status === 'Certified' ? 'bg-neon-cyan/20 border-neon-cyan/50 text-neon-cyan shadow-[0_0_10px_rgba(0,243,255,0.2)]' :
+                        ipc.status === 'Submitted' ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.2)]' :
+                        'bg-white/10 border-white/20 text-gray-300'
                       }`}>
                         {ipc.status || 'Draft'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right text-xs text-gray-400 font-medium">
+                    <td className="px-6 py-4 text-right text-xs font-medium">
                       {(() => {
                         const netDue = ipc.net_amount_due || 0;
                         const unpaid = ipc.unpaid_amount ?? netDue;
 
                         let displayStatus = 'UNPAID';
-                        let badgeClass = 'bg-red-50 text-red-700 border-red-200';
+                        let badgeClass = 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]';
 
                         if (netDue > 0) {
                           if (unpaid <= 0) {
                             displayStatus = 'FULLY PAID';
-                            badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                            badgeClass = 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]';
                           } else if (unpaid < netDue) {
                             displayStatus = 'PARTIALLY PAID';
-                            badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                            badgeClass = 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]';
                           }
                         } else {
                           if (ipc.payment_status === 'PAID') {
                             displayStatus = 'FULLY PAID';
-                            badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                            badgeClass = 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]';
                           }
                         }
 
                         return (
-                          <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${badgeClass}`}>
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold border tracking-wider ${badgeClass}`}>
                             {displayStatus}
                           </span>
                         );
@@ -333,36 +335,36 @@ export default function IpcsTab({
       )}
 
       {/* Discussion & Note Form */}
-      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
-        <h3 className="text-sm font-bold font-lexend text-gray-800">Add Discussion Note / Log Issue</h3>
+      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-4">
+        <h3 className="text-sm font-bold font-lexend text-white drop-shadow-md">Add Discussion Note / Log Issue</h3>
         <form onSubmit={handlePostNote} className="space-y-4">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Share an Interim Payment Certificate update or report a claiming issue..."
             rows={3}
-            className="w-full p-4 bg-gray-50 border border-gray-150 rounded-2xl text-xs focus:ring-2 focus:ring-dark-teal-500/20 focus:border-dark-teal-500 focus:outline-none transition font-medium"
+            className="w-full p-4 bg-black/40 border border-white/10 rounded-2xl text-xs text-white focus:ring-2 focus:ring-neon-cyan/50 focus:border-neon-cyan focus:outline-none transition font-medium placeholder-gray-500 shadow-inner"
           />
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
             <div className="flex items-center space-x-6">
-              <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+              <label className="flex items-center space-x-2.5 cursor-pointer select-none group">
                 <input
                   type="checkbox"
                   checked={isIssue}
                   onChange={(e) => setIsIssue(e.target.checked)}
-                  className="w-4 h-4 rounded text-dark-teal-900 border-gray-300 focus:ring-dark-teal-500"
+                  className="w-4 h-4 rounded text-neon-cyan bg-black/40 border-white/20 focus:ring-neon-cyan focus:ring-offset-black transition-colors"
                 />
-                <span className="text-xs font-bold text-gray-700">Flag as Site Issue</span>
+                <span className="text-xs font-bold text-gray-400 group-hover:text-neon-cyan transition-colors">Flag as Site Issue</span>
               </label>
 
               {isIssue && (
                 <div className="flex items-center space-x-2 animate-fade-in">
-                  <span className="text-xs text-gray-400 font-semibold">Priority:</span>
+                  <span className="text-xs text-gray-500 font-semibold">Priority:</span>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="p-1.5 bg-gray-50 border border-gray-150 rounded-xl text-xs font-bold text-gray-700 focus:outline-none"
+                    className="p-1.5 bg-black/60 border border-white/10 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-neon-cyan"
                   >
                     <option value="Low">Low</option>
                     <option value="Normal">Normal</option>
@@ -376,7 +378,7 @@ export default function IpcsTab({
             <button
               type="submit"
               disabled={posting || !content.trim()}
-              className="px-5 py-3 bg-gradient-to-r from-dark-teal-700 to-dark-teal-900 hover:from-dark-teal-600 hover:to-dark-teal-800 text-white font-extrabold rounded-xl text-xs shadow-lg shadow-dark-teal-900/30 disabled:opacity-50 disabled:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center space-x-1.5"
+              className="px-5 py-3 bg-neon-cyan/20 hover:bg-neon-cyan text-neon-cyan hover:text-black border border-neon-cyan/50 font-extrabold rounded-xl text-xs shadow-[0_0_15px_rgba(0,243,255,0.2)] hover:shadow-[0_0_25px_rgba(0,243,255,0.6)] disabled:opacity-50 disabled:shadow-none hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center space-x-1.5"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{posting ? 'Posting...' : 'Post Entry'}</span>
@@ -386,34 +388,35 @@ export default function IpcsTab({
       </div>
 
       <div className="space-y-4">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Discussion Feed</h4>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 font-inter">Discussion Feed</h4>
         {filteredNotes.length === 0 ? (
-          <div className="bg-white rounded-3xl p-10 text-center border border-dashed border-gray-200">
-            <MessageSquare className="w-8 h-8 text-slate-200 drop-shadow-sm mx-auto mb-2" />
-            <p className="text-xs text-gray-400 font-medium">No notes recorded for IPC claims yet.</p>
+          <div className="bg-white/5 backdrop-blur-md rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-sm">
+            <MessageSquare className="w-8 h-8 text-gray-600 drop-shadow-sm mx-auto mb-2" />
+            <p className="text-xs text-gray-500 font-medium">No notes recorded for IPC claims yet.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {filteredNotes.map((note) => (
               <div
                 key={note.id}
-                className={`bg-white rounded-3xl p-6 border shadow-sm transition ${note.is_issue ? 'border-deep-crimson-200 bg-deep-crimson-50/20' : 'border-gray-100'
-                  }`}
+                className={`bg-white/5 backdrop-blur-md rounded-3xl p-6 border shadow-[0_4px_15px_rgba(0,0,0,0.2)] transition ${
+                  note.is_issue ? 'border-neon-pink/50 bg-neon-pink/5' : 'border-white/10'
+                }`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold font-lexend text-gray-900">{note.author_name || 'Team Member'}</span>
-                    <span className="text-xs text-gray-400">• {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}</span>
+                    <span className="text-xs font-bold font-lexend text-white drop-shadow-sm">{note.author_name || 'Team Member'}</span>
+                    <span className="text-xs text-gray-500">• {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}</span>
                   </div>
 
                   {note.is_issue && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-deep-crimson-50 text-deep-crimson-700 border border-deep-crimson-200">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-neon-pink/20 text-neon-pink border border-neon-pink/50 shadow-[0_0_10px_rgba(255,0,127,0.3)]">
                       <AlertTriangle className="w-3 h-3 mr-1" /> {note.priority || 'High'} Issue
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line font-medium">{note.content}</p>
+                <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-line font-medium">{note.content}</p>
               </div>
             ))}
           </div>
@@ -440,14 +443,14 @@ export default function IpcsTab({
       )}
       {/* Custom Alert Modal */}
       {customAlert && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-fade-in text-center border border-gray-100">
-            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-bold font-lexend text-gray-900 mb-2">{customAlert.title}</h3>
-            <p className="text-sm text-gray-600 font-medium mb-6">{customAlert.message}</p>
+        <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md z-[70] flex items-center justify-center p-4">
+          <div className="bg-[#030305] rounded-3xl p-6 max-w-sm w-full shadow-[0_0_50px_rgba(255,0,127,0.1)] animate-fade-in text-center border border-white/10">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+            <h3 className="text-lg font-bold font-lexend text-white mb-2">{customAlert.title}</h3>
+            <p className="text-sm text-gray-400 font-medium mb-6">{customAlert.message}</p>
             <button
               onClick={() => setCustomAlert(null)}
-              className="w-full bg-dark-teal-800 hover:bg-dark-teal-900 text-white font-bold py-3 px-4 rounded-xl transition shadow-md"
+              className="w-full bg-neon-cyan/20 border border-neon-cyan/50 hover:bg-neon-cyan hover:text-black text-neon-cyan font-bold py-3 px-4 rounded-xl transition shadow-[0_0_15px_rgba(0,243,255,0.2)]"
             >
               Acknowledge
             </button>
@@ -457,15 +460,15 @@ export default function IpcsTab({
 
       {/* Custom Confirm Modal */}
       {customConfirm && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-fade-in text-center border border-gray-100">
-            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <h3 className="text-lg font-bold font-lexend text-gray-900 mb-2">{customConfirm.title}</h3>
-            <p className="text-sm text-gray-600 font-medium mb-6">{customConfirm.message}</p>
+        <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md z-[70] flex items-center justify-center p-4">
+          <div className="bg-[#030305] rounded-3xl p-6 max-w-sm w-full shadow-[0_0_50px_rgba(245,158,11,0.1)] animate-fade-in text-center border border-white/10">
+            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+            <h3 className="text-lg font-bold font-lexend text-white mb-2">{customConfirm.title}</h3>
+            <p className="text-sm text-gray-400 font-medium mb-6">{customConfirm.message}</p>
             <div className="flex space-x-3">
               <button
                 onClick={() => setCustomConfirm(null)}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-xl transition"
+                className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-3 px-4 rounded-xl transition"
               >
                 Cancel
               </button>
@@ -474,7 +477,7 @@ export default function IpcsTab({
                   customConfirm.onConfirm();
                   setCustomConfirm(null);
                 }}
-                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl transition shadow-md"
+                className="flex-1 bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-500/50 text-amber-400 font-bold py-3 px-4 rounded-xl transition shadow-[0_0_15px_rgba(245,158,11,0.3)]"
               >
                 Proceed
               </button>

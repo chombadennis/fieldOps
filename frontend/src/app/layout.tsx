@@ -6,6 +6,7 @@ import "@fontsource/merriweather";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
+import Providers from "@/components/Providers";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -34,7 +35,7 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

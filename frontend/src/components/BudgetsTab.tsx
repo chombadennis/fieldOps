@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageSquare, Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info, Edit3, Check, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import BudgetIntegrations from '@/components/BudgetIntegrations';
 import { getProjectBudgets, updateBudgetWorkbookMatrix, updateProjectBudget } from '@/services/api';
@@ -52,8 +53,7 @@ export default function BudgetsTab({
   const [isIssue, setIsIssue] = useState(false);
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
-  const [budgetRecord, setBudgetRecord] = useState<any>(null);
-  const [editingHeaderKey, setEditingHeaderKey] = useState<string | null>(null);
+    const [editingHeaderKey, setEditingHeaderKey] = useState<string | null>(null);
   const [headerInput, setHeaderInput] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [isMasterCategoriesOpen, setIsMasterCategoriesOpen] = useState(false);
@@ -66,23 +66,9 @@ export default function BudgetsTab({
     remaining: 0
   });
 
-  const fetchBudgetRecord = async () => {
-    try {
-      const bList = await getProjectBudgets(projectId);
-      if (bList && Array.isArray(bList) && bList.length > 0) {
-        setBudgetRecord(bList[0]);
-      } else {
-        setBudgetRecord(null);
-      }
-    } catch (err) {
-      console.error('Error fetching budget record:', err);
-      setBudgetRecord(null);
-    }
-  };
-
-  useEffect(() => {
-    fetchBudgetRecord();
-  }, [projectId]);
+  const queryClient = useQueryClient();
+  const { data: budgetRecordArray } = useQuery({ queryKey: ['budgets', projectId], queryFn: () => getProjectBudgets(projectId) });
+  const budgetRecord = budgetRecordArray && budgetRecordArray.length > 0 ? budgetRecordArray[0] : null;
 
   // Filter notes globally for Budgets tab
   const filteredNotes = notes.filter((n) => n.department?.toUpperCase() === 'BUDGET');
@@ -130,7 +116,7 @@ export default function BudgetsTab({
         trade_label: headerInput.trim(),
       });
       setEditingHeaderKey(null);
-      await fetchBudgetRecord();
+      await queryClient.invalidateQueries({ queryKey: ['budgets', projectId] });
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error('Error updating trade header:', err);
@@ -180,7 +166,7 @@ export default function BudgetsTab({
           }
         }
       });
-      await fetchBudgetRecord();
+      await queryClient.invalidateQueries({ queryKey: ['budgets', projectId] });
       setIsEditingMasterMetrics(false);
       if (onRefresh) onRefresh();
     } catch (err) {
@@ -241,13 +227,13 @@ export default function BudgetsTab({
           persistedBundleConfig={bundleConfig}
           onRefresh={() => {
             onRefresh();
-            fetchBudgetRecord();
+            queryClient.invalidateQueries({ queryKey: ['budgets', projectId] });
           }}
           globalLoading={globalLoading}
           setGlobalLoading={setGlobalLoading}
           tabsRibbon={
             <div className="flex items-center justify-start mb-2">
-              <div className="flex items-center space-x-1.5 bg-gray-100/80 p-1.5 rounded-2xl w-fit shadow-inner border border-gray-200/60">
+              <div className="flex items-center space-x-1.5 bg-white/5 p-1.5 rounded-2xl w-fit shadow-inner border border-white/10 backdrop-blur-md">
                 {[
                   { key: 'budget', label: 'Project Budget' },
                   { key: 'progress', label: 'Work Progress Calculations' },
@@ -258,8 +244,8 @@ export default function BudgetsTab({
                     onClick={() => setInternalTab(tab.key as any)}
                     className={`px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all duration-300 flex-1 min-w-[140px] text-center ${
                       internalTab === tab.key 
-                        ? 'bg-white text-dark-teal-900 shadow-md shadow-gray-200/50 transform scale-[1.02] border border-gray-100 ring-1 ring-black/5' 
-                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'
+                        ? 'bg-white/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] transform scale-[1.02] border border-emerald-500/30 font-lexend' 
+                        : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
                     }`}
                   >
                     {tab.label}
@@ -274,31 +260,31 @@ export default function BudgetsTab({
 
 
       {/* Master Cleaned-Up Executive Budget Table & Cards */}
-      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-5">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-5">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-dark-teal-700 font-inter">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 font-inter drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">
                 Master Cleaned-Up Table
               </span>
               {bundleConfig.expected_count > 1 && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
                   <Layers className="w-3 h-3 mr-1" /> Bundle Rollup ({bundleConfig.linked_count} of {bundleConfig.expected_count} Workbooks)
                 </span>
               )}
             </div>
-            <h3 className="text-sm font-bold font-lexend text-gray-900 mt-0.5">System-Reconciled Master Project Budget</h3>
+            <h3 className="text-sm font-bold font-lexend text-white mt-0.5">System-Reconciled Master Project Budget</h3>
           </div>
           <div className="flex items-center space-x-3">
             {isAppraised && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold">
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
                 <Tag className="w-3.5 h-3.5 mr-1" /> Master Budget Appraised
               </span>
             )}
             {!isEditingMasterMetrics ? (
               <button
                 onClick={handleEditMasterMetrics}
-                className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors border border-gray-200"
+                className="p-1.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg transition-colors border border-white/10"
                 title="Edit Master Totals"
               >
                 <Edit3 className="w-4 h-4" />
@@ -307,14 +293,14 @@ export default function BudgetsTab({
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setIsEditingMasterMetrics(false)}
-                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg transition-colors"
+                  className="px-3 py-1 bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold rounded-lg transition-colors border border-white/10"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveMasterMetrics}
                   disabled={savingMasterMetrics}
-                  className="px-4 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center space-x-1"
+                  className="px-4 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors shadow-[0_0_15px_rgba(16,185,129,0.4)] disabled:opacity-50 flex items-center space-x-1"
                 >
                   {savingMasterMetrics ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   <span>Save</span>
@@ -326,12 +312,12 @@ export default function BudgetsTab({
 
         {/* Cross-Workbook Overlap Detection Explanation Bar */}
         {detectedOverlaps.length > 0 && (
-          <div className="bg-indigo-50/70 border border-indigo-200 rounded-2xl p-4 space-y-1 text-xs text-indigo-950 font-medium">
-            <div className="flex items-center space-x-2 font-bold text-indigo-900">
-              <Info className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 space-y-1 text-xs text-amber-200 font-medium">
+            <div className="flex items-center space-x-2 font-bold text-amber-400">
+              <Info className="w-4 h-4 text-amber-500 flex-shrink-0" />
               <span>Cross-Workbook Reconciliation Notices:</span>
             </div>
-            <ul className="list-disc list-inside space-y-1 text-[11px] text-indigo-900/90 pl-1">
+            <ul className="list-disc list-inside space-y-1 text-[11px] text-amber-200/90 pl-1">
               {detectedOverlaps.map((notice, idx) => (
                 <li key={idx}>{notice}</li>
               ))}
@@ -340,7 +326,7 @@ export default function BudgetsTab({
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-150 space-y-1">
+          <div className="bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/5 space-y-1 hover:border-white/10 transition-colors">
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Original Master Contract Sum</span>
             {isEditingMasterMetrics ? (
               <input
@@ -348,17 +334,17 @@ export default function BudgetsTab({
                 step="any"
                 value={masterMetricsInput.original}
                 onChange={(e) => setMasterMetricsInput({...masterMetricsInput, original: parseFloat(e.target.value) || 0})}
-                className="w-full p-1.5 bg-white border border-gray-300 rounded font-bold text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"
+                className="w-full p-1.5 bg-white/5 border border-white/10 rounded font-bold text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
               />
             ) : (
-              <p className="text-sm font-bold font-lexend text-gray-900">{formatCurrency(originalSum)}</p>
+              <p className="text-sm font-bold font-lexend text-white">{formatCurrency(originalSum)}</p>
             )}
           </div>
 
-          <div className="bg-indigo-50/40 p-4 rounded-2xl border border-indigo-150 space-y-1">
+          <div className="bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/5 space-y-1 hover:border-white/10 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Appraised Master Budget</span>
-              {isAppraised && !isEditingMasterMetrics && <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />}
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Appraised Master Budget</span>
+              {isAppraised && !isEditingMasterMetrics && <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
             </div>
             {isEditingMasterMetrics ? (
               <input
@@ -366,33 +352,33 @@ export default function BudgetsTab({
                 step="any"
                 value={masterMetricsInput.appraised}
                 onChange={(e) => setMasterMetricsInput({...masterMetricsInput, appraised: parseFloat(e.target.value) || 0})}
-                className="w-full p-1.5 bg-white border border-indigo-300 rounded font-bold text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                className="w-full p-1.5 bg-white/5 border border-indigo-500/30 rounded font-bold text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
               />
             ) : (
-              <p className="text-sm font-bold font-lexend text-indigo-950">
+              <p className="text-sm font-bold font-lexend text-indigo-100">
                 {isAppraised ? formatCurrency(appraisedBudget) : 'No Revisions'}
               </p>
             )}
           </div>
 
-          <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-150 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Earned Value to Date</span>
+          <div className="bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/5 space-y-1 hover:border-white/10 transition-colors">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Earned Value to Date</span>
             {isEditingMasterMetrics ? (
               <input
                 type="number"
                 step="any"
                 value={masterMetricsInput.ev}
                 onChange={(e) => setMasterMetricsInput({...masterMetricsInput, ev: parseFloat(e.target.value) || 0})}
-                className="w-full p-1.5 bg-white border border-emerald-300 rounded font-bold text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                className="w-full p-1.5 bg-white/5 border border-emerald-500/30 rounded font-bold text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
               />
             ) : (
-              <p className="text-sm font-bold font-lexend text-emerald-950">{formatCurrency(earnedValue)}</p>
+              <p className="text-sm font-bold font-lexend text-emerald-100">{formatCurrency(earnedValue)}</p>
             )}
           </div>
 
-          <div className="bg-dark-teal-50/40 p-4 rounded-2xl border border-dark-teal-150 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-dark-teal-700">Remaining Master Balance</span>
-            <p className="text-sm font-bold font-lexend text-dark-teal-950">
+          <div className="bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/5 space-y-1 hover:border-white/10 transition-colors">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400">Remaining Master Balance</span>
+            <p className="text-sm font-bold font-lexend text-teal-100">
               {isEditingMasterMetrics
                 ? formatCurrency(Math.max(0, masterMetricsInput.appraised - masterMetricsInput.ev))
                 : formatCurrency(remainingBalance)}
@@ -403,14 +389,14 @@ export default function BudgetsTab({
         {/* Visual Progress Bar */}
         <div className="space-y-1.5 pt-2">
           <div className="flex justify-between items-center text-xs font-bold font-lexend">
-            <span className="text-gray-600 flex items-center">
-              <TrendingUp className="w-3.5 h-3.5 mr-1 text-dark-teal-600" /> Total Project Budget Consumption
+            <span className="text-gray-300 flex items-center">
+              <TrendingUp className="w-3.5 h-3.5 mr-1 text-emerald-400" /> Total Project Budget Consumption
             </span>
-            <span className="text-dark-teal-900 font-extrabold">{displayPercentUsed.toFixed(1)}% Consumed</span>
+            <span className="text-emerald-400 font-extrabold">{displayPercentUsed.toFixed(1)}% Consumed</span>
           </div>
-          <div className="w-full bg-gray-150 h-3 rounded-full overflow-hidden p-0.5 border border-gray-200">
+          <div className="w-full bg-black/60 h-3 rounded-full overflow-hidden p-0.5 border border-white/10">
             <div
-              className="bg-gradient-to-r from-dark-teal-700 via-dark-teal-600 to-emerald-500 h-full rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-teal-500 via-emerald-500 to-emerald-400 h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
               style={{ width: `${displayPercentUsed}%` }}
             />
           </div>
@@ -446,29 +432,29 @@ export default function BudgetsTab({
           const groupEntries = Object.entries(groupedData).filter(([_, g]) => g.items.length > 0);
 
           return (
-            <div className="pt-4 border-t border-gray-100 space-y-3">
+            <div className="pt-4 border-t border-white/10 space-y-3">
               <div 
-                className="flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 p-3 rounded-xl border border-gray-150 transition-colors"
+                className="flex items-center justify-between cursor-pointer bg-black/40 hover:bg-black/60 p-3 rounded-xl border border-white/10 transition-colors backdrop-blur-md"
                 onClick={() => setIsMasterCategoriesOpen(!isMasterCategoriesOpen)}
               >
                 <div className="flex items-center space-x-3">
-                  <button className="flex items-center justify-center p-1.5 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 hover:text-dark-teal-600 hover:border-dark-teal-300 transition-colors">
+                  <button className="flex items-center justify-center p-1.5 bg-white/5 border border-white/10 rounded-lg shadow-sm text-gray-300 hover:text-emerald-400 transition-colors">
                     {isMasterCategoriesOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </button>
                   <div>
-                    <h4 className="text-xs font-bold font-lexend text-gray-900">Reconciled Master Category Breakdowns</h4>
-                    <span className="text-[10px] text-gray-500 font-semibold">Grouped by Source Workbook / Trade</span>
+                    <h4 className="text-xs font-bold font-lexend text-white">Reconciled Master Category Breakdowns</h4>
+                    <span className="text-[10px] text-gray-400 font-semibold">Grouped by Source Workbook / Trade</span>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-gray-300 bg-white/5 px-3 py-1 rounded-full border border-white/10 shadow-sm uppercase tracking-wider">
                   {categories.length} Categories ({groupEntries.length} Trades)
                 </span>
               </div>
 
               {isMasterCategoriesOpen && (
-                <div className="overflow-x-auto border border-gray-150 rounded-2xl shadow-xs animate-fade-in">
+                <div className="overflow-x-auto border border-white/10 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] animate-fade-in bg-black/40 backdrop-blur-md">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px] border-b border-gray-100">
+                  <thead className="bg-white/5 text-gray-400 font-bold uppercase tracking-wider text-[10px] border-b border-white/10">
                     <tr>
                       <th className="px-4 py-3">Category Component / Trade Header</th>
                       <th className="px-4 py-3 text-right">Original ($)</th>
@@ -477,7 +463,7 @@ export default function BudgetsTab({
                       <th className="px-4 py-3 text-right">Variance (Delta)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                  <tbody className="divide-y divide-white/5 font-medium text-gray-200">
                     {groupEntries.map(([groupKey, group]) => {
                       const groupItems = group.items;
                       const isEditingThis = editingHeaderKey === groupKey;
@@ -494,11 +480,11 @@ export default function BudgetsTab({
                       return (
                         <React.Fragment key={groupKey}>
                           {/* Group Section Header Row */}
-                          <tr className="bg-slate-100/90 border-t-2 border-b border-slate-200">
+                          <tr className="bg-white/5 border-t border-b border-white/10">
                             <td colSpan={5} className="px-4 py-2.5">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2.5">
-                                  <span className="px-2 py-0.5 rounded-md bg-dark-teal-900 text-emerald-300 font-extrabold text-[10px] uppercase tracking-wider">
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-900/50 text-emerald-300 border border-emerald-500/30 font-extrabold text-[10px] uppercase tracking-wider">
                                     Source Table / Trade
                                   </span>
                                   
@@ -509,20 +495,20 @@ export default function BudgetsTab({
                                         value={headerInput}
                                         onChange={(e) => setHeaderInput(e.target.value)}
                                         onKeyDown={(e) => { if (e.key === 'Enter') handleSaveHeader(groupKey); }}
-                                        className="p-2 px-3 bg-white border border-dark-teal-500 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-dark-teal-500 min-w-[260px] shadow-xs"
+                                        className="p-2 px-3 bg-black/50 border border-emerald-500/50 rounded-xl text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[260px] shadow-inner"
                                         autoFocus
                                       />
                                       <button
                                         onClick={() => handleSaveHeader(groupKey)}
                                         disabled={savingHeader}
-                                        className="p-1 bg-dark-teal-800 text-white rounded-lg hover:bg-dark-teal-900 transition"
+                                        className="p-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition"
                                         title="Save Header Title"
                                       >
                                         {savingHeader ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                                       </button>
                                       <button
                                         onClick={() => setEditingHeaderKey(null)}
-                                        className="p-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                                        className="p-1 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition"
                                         title="Cancel"
                                       >
                                         <X className="w-3.5 h-3.5" />
@@ -537,15 +523,15 @@ export default function BudgetsTab({
                                       className="flex items-center space-x-2 group cursor-pointer"
                                       title="Click to edit group header title"
                                     >
-                                      <h5 className="text-xs font-extrabold font-lexend text-gray-900 group-hover:text-dark-teal-700 transition">
+                                      <h5 className="text-xs font-extrabold font-lexend text-white group-hover:text-emerald-400 transition">
                                         {group.label}
                                       </h5>
-                                      <Edit3 className="w-3.5 h-3.5 text-gray-400 group-hover:text-dark-teal-600 transition opacity-70 group-hover:opacity-100" />
+                                      <Edit3 className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-400 transition opacity-70 group-hover:opacity-100" />
                                     </div>
                                   )}
                                 </div>
 
-                                <span className="text-[10px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200">
+                                <span className="text-[10px] font-bold text-gray-400 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
                                   {groupItems.length} {groupItems.length === 1 ? 'component' : 'components'}
                                 </span>
                               </div>
@@ -560,18 +546,18 @@ export default function BudgetsTab({
                             const isCatAppraised = cat.is_appraised || appr !== orig;
 
                             return (
-                              <tr key={idx} className="hover:bg-gray-50/80 transition">
-                                <td className="px-4 py-3 font-bold text-gray-900 pl-8 flex items-center space-x-2">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-dark-teal-600"></span>
+                              <tr key={idx} className="hover:bg-white/5 transition">
+                                <td className="px-4 py-3 font-bold text-gray-200 pl-8 flex items-center space-x-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
                                   <span>{cat.category_name}</span>
                                 </td>
-                                <td className="px-4 py-3 text-right text-gray-700 font-semibold">{formatCurrency(orig)}</td>
-                                <td className="px-4 py-3 text-right font-bold text-indigo-950">
+                                <td className="px-4 py-3 text-right text-gray-400 font-semibold">{formatCurrency(orig)}</td>
+                                <td className="px-4 py-3 text-right font-bold text-indigo-300">
                                   {formatCurrency(appr)}
                                 </td>
-                                <td className="px-4 py-3 text-right font-bold text-emerald-950">{formatCurrency(cat.earned_value_to_date || 0)}</td>
+                                <td className="px-4 py-3 text-right font-bold text-emerald-300">{formatCurrency(cat.earned_value_to_date || 0)}</td>
                                 <td className="px-4 py-3 text-right font-bold">
-                                  <span className={delta > 0 ? 'text-indigo-600' : delta < 0 ? 'text-red-600' : 'text-gray-400'}>
+                                  <span className={delta > 0 ? 'text-indigo-400' : delta < 0 ? 'text-red-400' : 'text-gray-500'}>
                                     {delta > 0 ? '+' : ''}{formatCurrency(delta)}
                                   </span>
                                 </td>
@@ -580,18 +566,18 @@ export default function BudgetsTab({
                           })}
 
                           {/* Group Subtotal Autosum Row */}
-                          <tr className="bg-emerald-50/60 font-bold border-t border-b border-emerald-200/80 text-emerald-950">
+                          <tr className="bg-emerald-900/20 font-bold border-t border-b border-emerald-500/20 text-emerald-100">
                             <td className="px-4 py-2.5 pl-8 font-lexend text-xs flex items-center space-x-2">
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-700 text-white font-mono text-[10px]">∑ Subtotal</span>
-                              <span className="font-extrabold">{group.label}</span>
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-700/50 text-white font-mono text-[10px] border border-emerald-500/30">∑ Subtotal</span>
+                              <span className="font-extrabold text-white">{group.label}</span>
                             </td>
-                            <td className="px-4 py-2.5 text-right text-gray-900 font-extrabold">{formatCurrency(sumOrig)}</td>
-                            <td className="px-4 py-2.5 text-right text-indigo-950 font-extrabold">
+                            <td className="px-4 py-2.5 text-right text-gray-300 font-extrabold">{formatCurrency(sumOrig)}</td>
+                            <td className="px-4 py-2.5 text-right text-indigo-300 font-extrabold">
                               {formatCurrency(sumAppr)}
                             </td>
-                            <td className="px-4 py-2.5 text-right text-emerald-950 font-extrabold">{formatCurrency(sumEv)}</td>
+                            <td className="px-4 py-2.5 text-right text-emerald-300 font-extrabold">{formatCurrency(sumEv)}</td>
                             <td className="px-4 py-2.5 text-right font-extrabold">
-                              <span className={sumDelta > 0 ? 'text-indigo-600' : sumDelta < 0 ? 'text-red-600' : 'text-gray-400'}>
+                              <span className={sumDelta > 0 ? 'text-indigo-400' : sumDelta < 0 ? 'text-red-400' : 'text-gray-500'}>
                                 {sumDelta > 0 ? '+' : ''}{formatCurrency(sumDelta)}
                               </span>
                             </td>
@@ -608,17 +594,16 @@ export default function BudgetsTab({
         })()}
       </div>
 
-
       {/* Discussion & Note Form */}
-      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
-        <h3 className="text-sm font-bold font-lexend text-gray-800">Add Discussion Note / Log Issue</h3>
+      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-4">
+        <h3 className="text-sm font-bold font-lexend text-white">Add Discussion Note / Log Issue</h3>
         <form onSubmit={handlePostNote} className="space-y-4">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Share a budget update or log an allocation issue..."
             rows={3}
-            className="w-full p-4 bg-gray-50 border border-gray-150 rounded-2xl text-xs focus:ring-2 focus:ring-dark-teal-500/20 focus:border-dark-teal-500 focus:outline-none transition font-medium"
+            className="w-full p-4 bg-black/40 border border-white/10 rounded-2xl text-xs text-white focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 focus:outline-none transition font-medium placeholder-gray-500"
           />
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
@@ -628,9 +613,9 @@ export default function BudgetsTab({
                   type="checkbox"
                   checked={isIssue}
                   onChange={(e) => setIsIssue(e.target.checked)}
-                  className="w-4 h-4 rounded text-dark-teal-900 border-gray-300 focus:ring-dark-teal-500"
+                  className="w-4 h-4 rounded text-emerald-600 bg-black/50 border-white/20 focus:ring-emerald-500"
                 />
-                <span className="text-xs font-bold text-gray-700">Flag as Site Issue</span>
+                <span className="text-xs font-bold text-gray-300">Flag as Site Issue</span>
               </label>
 
               {isIssue && (
@@ -639,7 +624,7 @@ export default function BudgetsTab({
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="p-1.5 bg-gray-50 border border-gray-150 rounded-xl text-xs font-bold text-gray-700 focus:outline-none"
+                    className="p-1.5 bg-black/40 border border-white/10 rounded-xl text-xs font-bold text-white focus:outline-none"
                   >
                     <option value="Low">Low</option>
                     <option value="Normal">Normal</option>
@@ -653,7 +638,7 @@ export default function BudgetsTab({
             <button
               type="submit"
               disabled={posting || !content.trim()}
-              className="px-5 py-3 bg-gradient-to-r from-dark-teal-700 to-dark-teal-900 hover:from-dark-teal-600 hover:to-dark-teal-800 text-white font-extrabold rounded-xl text-xs shadow-lg shadow-dark-teal-900/30 disabled:opacity-50 disabled:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center space-x-1.5"
+              className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold rounded-xl text-xs shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:shadow-none hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center space-x-1.5"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{posting ? 'Posting...' : 'Post Entry'}</span>
@@ -666,8 +651,8 @@ export default function BudgetsTab({
       <div className="space-y-4">
         <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Discussion Feed</h4>
         {filteredNotes.length === 0 ? (
-          <div className="bg-white rounded-3xl p-10 text-center border border-dashed border-gray-200">
-            <MessageSquare className="w-8 h-8 text-slate-200 drop-shadow-sm mx-auto mb-2" />
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+            <MessageSquare className="w-8 h-8 text-gray-600 drop-shadow-sm mx-auto mb-2" />
             <p className="text-xs text-gray-400 font-medium">No notes recorded for budgets yet.</p>
           </div>
         ) : (
@@ -675,24 +660,24 @@ export default function BudgetsTab({
             {filteredNotes.map((note) => (
               <div
                 key={note.id}
-                className={`bg-white rounded-3xl p-6 border shadow-sm transition ${
-                  note.is_issue ? 'border-deep-crimson-200 bg-deep-crimson-50/20' : 'border-gray-100'
+                className={`bg-white/5 backdrop-blur-xl rounded-3xl p-6 border shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition ${
+                  note.is_issue ? 'border-red-500/30 bg-red-900/10' : 'border-white/10'
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold font-lexend text-gray-900">{note.author_name || 'Team Member'}</span>
+                    <span className="text-xs font-bold font-lexend text-white">{note.author_name || 'Team Member'}</span>
                     <span className="text-xs text-gray-400">• {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}</span>
                   </div>
 
                   {note.is_issue && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-deep-crimson-50 text-deep-crimson-700 border border-deep-crimson-200">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-900/30 text-red-400 border border-red-500/30">
                       <AlertTriangle className="w-3 h-3 mr-1" /> {note.priority || 'High'} Issue
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line font-medium">{note.content}</p>
+                <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-line font-medium">{note.content}</p>
               </div>
             ))}
           </div>

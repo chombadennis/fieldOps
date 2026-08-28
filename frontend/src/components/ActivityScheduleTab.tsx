@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageSquare, Send, AlertTriangle, FileSpreadsheet, Layers, Info } from 'lucide-react';
 import ActivityScheduleIntegrations from '@/components/ActivityScheduleIntegrations';
 import ActivityScheduleInlineEditor from '@/components/integrations/ActivityScheduleInlineEditor';
@@ -50,24 +51,11 @@ export default function ActivityScheduleTab({
   const [isIssue, setIsIssue] = useState(false);
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
-  const [activeDocuments, setActiveDocuments] = useState<Document[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
-
-  const fetchActiveDocuments = async () => {
-    setLoadingDocs(true);
-    try {
-      const docs = await getDecoupledDocuments(projectId, 'activity_schedule');
-      setActiveDocuments(docs || []);
-    } catch (err) {
-      console.error('Failed to fetch activity schedule documents:', err);
-    } finally {
-      setLoadingDocs(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchActiveDocuments();
-  }, [projectId, documents]);
+  const queryClient = useQueryClient();
+  const { data: activeDocuments = [], isLoading: loadingDocs } = useQuery({
+    queryKey: ['documents', projectId, 'activity_schedule'],
+    queryFn: () => getDecoupledDocuments(projectId, 'activity_schedule')
+  });
 
   const handlePostNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +101,7 @@ export default function ActivityScheduleTab({
         integrations={integrations}
         documents={documents}
         onRefresh={() => {
-          fetchActiveDocuments();
+          queryClient.invalidateQueries({ queryKey: ['documents', projectId, 'activity_schedule'] });
           if (onRefresh) onRefresh();
         }}
         globalLoading={globalLoading}
@@ -146,14 +134,14 @@ export default function ActivityScheduleTab({
           </div>
         ) : (
           <div className="space-y-4">
-            {activeDocuments.map((doc) => (
+            {activeDocuments.map((doc: any) => (
               <ActivityScheduleInlineEditor
                 key={doc.id}
                 projectId={projectId}
                 documentId={doc.id}
                 documentTitle={doc.title}
                 onRefresh={() => {
-                  fetchActiveDocuments();
+                  queryClient.invalidateQueries({ queryKey: ['documents', projectId, 'activity_schedule'] });
                   if (onRefresh) onRefresh();
                 }}
               />

@@ -166,7 +166,7 @@ export default function ActivityScheduleInlineEditor({
   };
 
   return (
-    <div className="bg-white border border-gray-150 rounded-3xl p-5 shadow-sm space-y-4 transition hover:shadow-md">
+    <div className="bg-black/40/5 border border-white/10 rounded-3xl p-5 shadow-sm space-y-4 transition hover:shadow-md">
       {/* Title & Toggle Button */}
       <div className="flex justify-between items-center">
         <button
@@ -177,7 +177,7 @@ export default function ActivityScheduleInlineEditor({
             <FileSpreadsheet className="w-5 h-5 text-dark-teal-800" />
           </div>
           <div>
-            <h4 className="text-xs font-extrabold font-lexend text-gray-900 group-hover:text-dark-teal-800 transition">
+            <h4 className="text-xs font-extrabold font-lexend text-white drop-shadow-md group-hover:text-dark-teal-800 transition">
               {documentTitle}
             </h4>
             <p className="text-[10px] text-gray-400 font-semibold">
@@ -190,7 +190,7 @@ export default function ActivityScheduleInlineEditor({
           {isOpen && !isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="px-3 py-1.5 bg-gray-50 hover:bg-gray-150 text-gray-700 rounded-xl text-[11px] font-bold flex items-center gap-1 transition"
+              className="px-3 py-1.5 bg-black/40/10 hover:bg-gray-150 text-gray-300 rounded-xl text-[11px] font-bold flex items-center gap-1 transition"
             >
               <Edit3 className="w-3.5 h-3.5" /> Edit Items
             </button>
@@ -198,7 +198,7 @@ export default function ActivityScheduleInlineEditor({
 
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-1.5 bg-gray-50 text-gray-500 rounded-lg hover:bg-gray-150 transition"
+            className="p-1.5 bg-black/40/10 text-gray-400 rounded-lg hover:bg-gray-150 transition"
           >
             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -207,7 +207,7 @@ export default function ActivityScheduleInlineEditor({
 
       {/* Expanded view */}
       {isOpen && (
-        <div className="space-y-4 pt-3 border-t border-gray-100 animate-fade-in">
+        <div className="space-y-4 pt-3 border-t border-white/10 animate-fade-in">
           
           {/* Notifications */}
           {error && (
@@ -226,14 +226,14 @@ export default function ActivityScheduleInlineEditor({
 
           {loading ? (
             <div className="py-8 text-center flex flex-col items-center justify-center space-y-2 text-gray-400">
-              <Loader2 className="w-6 h-6 animate-spin text-dark-teal-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-neon-cyan" />
               <span className="text-xs font-medium">Fetching active activities...</span>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="overflow-x-auto border border-gray-150 rounded-2xl">
+              <div className="overflow-x-auto border border-white/10 rounded-2xl">
                 <table className="w-full text-left text-xs min-w-[800px]">
-                  <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[9px] border-b border-gray-100">
+                  <thead className="bg-black/40/10 text-gray-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/10">
                     <tr>
                       <th className="px-4 py-3 w-[140px]">Activity ID</th>
                       <th className="px-4 py-3">Description</th>
@@ -242,19 +242,19 @@ export default function ActivityScheduleInlineEditor({
                       {isEditing && <th className="px-4 py-3 w-[80px] text-center">Actions</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700 bg-white">
+                  <tbody className="divide-y divide-gray-100 font-medium text-gray-300 bg-black/40">
                     {items.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/50 transition">
+                      <tr key={idx} className="hover:bg-black/40/10/50 transition">
                         <td className="px-4 py-2">
                           {isEditing ? (
                             <input
                               type="text"
                               value={item.activity_id}
                               onChange={(e) => handleItemChange(idx, 'activity_id', e.target.value)}
-                              className="w-full px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-900 focus:outline-none focus:border-dark-teal-500"
+                              className="w-full px-2 py-1 bg-black/40 border border-white/20 rounded-lg text-xs font-bold text-white drop-shadow-md focus:outline-none focus:border-neon-cyan"
                             />
                           ) : (
-                            <span className="font-bold text-gray-900">{item.activity_id || '-'}</span>
+                            <span className="font-bold text-white drop-shadow-md">{item.activity_id || '-'}</span>
                           )}
                         </td>
                         <td className="px-4 py-2">
@@ -263,10 +263,10 @@ export default function ActivityScheduleInlineEditor({
                               type="text"
                               value={item.description}
                               onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                              className="w-full px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-dark-teal-500"
+                              className="w-full px-2 py-1 bg-black/40 border border-white/20 rounded-lg text-xs font-semibold text-gray-200 focus:outline-none focus:border-neon-cyan"
                             />
                           ) : (
-                            <span className="font-semibold text-gray-700">{item.description}</span>
+                            <span className="font-semibold text-gray-300">{item.description}</span>
                           )}
                         </td>
                         <td className="px-4 py-2 text-right">
@@ -274,10 +274,10 @@ export default function ActivityScheduleInlineEditor({
                             <NumberInput
                               value={item.weight_percentage}
                               onChange={(val) => handleItemChange(idx, 'weight_percentage', val)}
-                              className="w-full px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs font-bold text-right text-emerald-950 focus:outline-none focus:border-dark-teal-500"
+                              className="w-full px-2 py-1 bg-black/40 border border-white/20 rounded-lg text-xs font-bold text-right text-emerald-400 focus:outline-none focus:border-neon-cyan"
                             />
                           ) : (
-                            <span className="font-bold text-emerald-950">{item.weight_percentage.toFixed(2)}%</span>
+                            <span className="font-bold text-emerald-400">{item.weight_percentage.toFixed(2)}%</span>
                           )}
                         </td>
                         <td className="px-4 py-2 text-right">
@@ -285,10 +285,10 @@ export default function ActivityScheduleInlineEditor({
                             <NumberInput
                               value={item.fixed_price}
                               onChange={(val) => handleItemChange(idx, 'fixed_price', val)}
-                              className="w-full px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs font-bold text-right text-indigo-950 focus:outline-none focus:border-dark-teal-500"
+                              className="w-full px-2 py-1 bg-black/40 border border-white/20 rounded-lg text-xs font-bold text-right text-neon-purple focus:outline-none focus:border-neon-cyan"
                             />
                           ) : (
-                            <span className="font-bold text-indigo-950">{formatCurrency(item.fixed_price)}</span>
+                            <span className="font-bold text-neon-purple">{formatCurrency(item.fixed_price)}</span>
                           )}
                         </td>
                         {isEditing && (
@@ -305,28 +305,31 @@ export default function ActivityScheduleInlineEditor({
                     ))}
 
                     {/* Autosum Subtotal Row */}
-                    <tr className="bg-emerald-50/60 font-bold text-emerald-950 border-t-2 border-b border-emerald-100">
-                      <td colSpan={2} className="px-4 py-2.5 font-lexend text-xs flex items-center space-x-1.5">
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-700 text-white font-mono text-[9px]">∑ Subtotal</span>
-                        <span className="font-extrabold">{documentTitle}</span>
+                    {/* Autosum Subtotal Row */}
+                    <tr className="bg-transparent font-bold text-white border-t border-b border-white/20">
+                      <td colSpan={2} className="px-4 py-2.5 font-lexend text-xs">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="px-1.5 py-0.5 rounded bg-neon-cyan/20 border border-neon-cyan/50 text-neon-cyan font-mono text-[9px] shadow-[0_0_10px_rgba(0,243,255,0.2)]">∑ Subtotal</span>
+                          <span className="font-extrabold text-white drop-shadow-md">{documentTitle}</span>
+                        </div>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-extrabold text-emerald-950">
+                      <td className="px-4 py-2.5 text-right font-extrabold text-neon-cyan drop-shadow-sm">
                         {totalWeight.toFixed(2)}%
                       </td>
-                      <td className="px-4 py-2.5 text-right font-extrabold text-indigo-950">
+                      <td className="px-4 py-2.5 text-right font-extrabold text-neon-purple drop-shadow-sm">
                         {formatCurrency(totalPrice)}
                       </td>
-                      {isEditing && <td className="bg-white"></td>}
+                      {isEditing && <td className="bg-black/40"></td>}
                     </tr>
                   </tbody>
                 </table>
               </div>
 
               {isEditing ? (
-                <div className="flex justify-between items-center bg-gray-50 border border-gray-150 p-4 rounded-2xl">
+                <div className="flex justify-between items-center bg-black/40/10 border border-white/10 p-4 rounded-2xl">
                   <button
                     onClick={handleAddRow}
-                    className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-800 rounded-xl text-xs font-bold flex items-center gap-1 transition"
+                    className="px-3 py-1.5 bg-black/40 border border-white/20 hover:bg-gray-100 text-gray-200 rounded-xl text-xs font-bold flex items-center gap-1 transition"
                   >
                     <Plus className="w-4 h-4" /> Add Row
                   </button>
@@ -335,7 +338,7 @@ export default function ActivityScheduleInlineEditor({
                     <button
                       onClick={handleCancel}
                       disabled={saving}
-                      className="px-4 py-2 border border-gray-200 bg-white hover:bg-gray-150 text-gray-700 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95"
+                      className="px-4 py-2 border border-white/20 bg-black/40 hover:bg-gray-150 text-gray-300 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95"
                     >
                       <X className="w-4 h-4" /> Cancel
                     </button>

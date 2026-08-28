@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageSquare, Send, AlertTriangle, FileSpreadsheet, Layers, Info, Trash2 } from 'lucide-react';
 import MilestoneClaimsIntegrations from '@/components/MilestoneClaimsIntegrations';
 import MilestoneClaimSheet from '@/components/MilestoneClaimSheet';
@@ -56,8 +57,7 @@ export default function MilestonesTab({
   const [isIssue, setIsIssue] = useState(false);
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
-  const [activeDocuments, setActiveDocuments] = useState<Document[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
+  const queryClient = useQueryClient();
   const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [claimToDelete, setClaimToDelete] = useState<any | null>(null);
@@ -68,7 +68,7 @@ export default function MilestonesTab({
     try {
       await deleteDecoupledDocument(projectId, 'milestone_claims', claimToDelete.id);
       setClaimToDelete(null);
-      fetchActiveDocuments();
+      queryClient.invalidateQueries({ queryKey: ['documents', projectId, 'milestone_claims'] });
     } catch (err) {
       console.error('Failed to delete claim:', err);
       alert('Failed to delete claim');
@@ -77,21 +77,10 @@ export default function MilestonesTab({
     }
   };
 
-  const fetchActiveDocuments = async () => {
-    setLoadingDocs(true);
-    try {
-      const docs = await getDecoupledDocuments(projectId, 'milestone_claims');
-      setActiveDocuments(docs || []);
-    } catch (err) {
-      console.error('Failed to fetch milestone claim documents:', err);
-    } finally {
-      setLoadingDocs(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchActiveDocuments();
-  }, [projectId, documents]);
+  const { data: activeDocuments = [], isLoading: loadingDocs } = useQuery({
+    queryKey: ['documents', projectId, 'milestone_claims'],
+    queryFn: () => getDecoupledDocuments(projectId, 'milestone_claims')
+  });
 
   const handlePostNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +126,7 @@ export default function MilestonesTab({
         integrations={integrations}
         documents={documents}
         onRefresh={() => {
-          fetchActiveDocuments();
+          queryClient.invalidateQueries({ queryKey: ['documents', projectId, 'milestone_claims'] });
           if (onRefresh) onRefresh();
         }}
         globalLoading={globalLoading}
@@ -260,7 +249,7 @@ export default function MilestonesTab({
               try {
                 await updateProjectMilestoneClaim(projectId, selectedClaim.id, data);
                 setSelectedClaim(null);
-                fetchActiveDocuments();
+                queryClient.invalidateQueries({ queryKey: ['documents', projectId, 'milestone_claims'] });
               } catch (err) {
                 console.error('Failed to update claim:', err);
               } finally {

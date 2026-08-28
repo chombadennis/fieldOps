@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getBoqItems, updateBoqItems } from '@/services/api';
 import { X, Search, FileSpreadsheet, Loader2, Edit2, Check, RotateCcw, AlertTriangle } from 'lucide-react';
 
@@ -29,8 +30,7 @@ interface BoqItemsModalProps {
 export default function BoqItemsModal({ isOpen, onClose, boqId, docName, isReadOnly }: BoqItemsModalProps) {
   const [items, setItems] = useState<BoqItem[]>([]);
   const [originalItems, setOriginalItems] = useState<BoqItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+    const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -40,34 +40,32 @@ export default function BoqItemsModal({ isOpen, onClose, boqId, docName, isReadO
   const [showConfirmSave, setShowConfirmSave] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+  
+  const { data: fetchedItems = [], isLoading: loading, error: queryError } = useQuery({
+    queryKey: ['boqItems', boqId],
+    queryFn: () => getBoqItems(boqId!),
+    enabled: isOpen && boqId !== null,
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
-    if (isOpen && boqId !== null) {
-      fetchItems();
-    } else {
+    if (fetchedItems.length > 0) {
+      setItems(fetchedItems);
+      setOriginalItems(JSON.parse(JSON.stringify(fetchedItems)));
+      setIsDirty(false);
+    }
+  }, [fetchedItems]);
+
+  useEffect(() => {
+    if (!isOpen) {
       // Reset state on close
       setIsEditing(false);
       setIsDirty(false);
       setSuccessMessage(null);
       setError(null);
     }
-  }, [isOpen, boqId]);
-
-  const fetchItems = async () => {
-    if (boqId === null) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getBoqItems(boqId);
-      setItems(data);
-      setOriginalItems(JSON.parse(JSON.stringify(data))); // deep copy
-      setIsDirty(false);
-    } catch (err) {
-      setError('Failed to load BOQ items.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isOpen]);
 
   const handleFieldChange = (id: number, field: keyof BoqItem, value: any) => {
     setItems((prevItems) => {
@@ -109,6 +107,7 @@ export default function BoqItemsModal({ isOpen, onClose, boqId, docName, isReadO
     setSuccessMessage(null);
     try {
       await updateBoqItems(boqId, items);
+      queryClient.invalidateQueries({ queryKey: ['boqItems', boqId] });
       setOriginalItems(JSON.parse(JSON.stringify(items)));
       setIsDirty(false);
       setIsEditing(false);

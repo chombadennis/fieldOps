@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getProject,
   deleteBoqDocument,
@@ -36,13 +37,47 @@ import ProgramOfWorksTab from '@/components/ProgramOfWorksTab';
 import ActivityScheduleTab from '@/components/ActivityScheduleTab';
 import MilestonesTab from '@/components/MilestonesTab';
 import DiscussionBoard from '@/components/DiscussionBoard';
-import { AlertTriangle, X, FileSpreadsheet, DollarSign, FileCheck, HardHat, Wrench, Users, Scale, Building2, Calendar, ClipboardList, Ruler, Truck, Clock, Plus, Settings, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Home, AlertTriangle, X, FileSpreadsheet, DollarSign, FileCheck, HardHat, Wrench, Users, Scale, Building2, Calendar, ClipboardList, Ruler, Truck, Clock, Plus, Settings, Trash2 } from 'lucide-react';
+
+const EMPTY_ARRAY: any[] = [];
 
 export default function ProjectDashboardPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
-  const [project, setProject] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+      
+  const queryClient = useQueryClient();
+  const { data: project, isLoading: loading } = useQuery({ queryKey: ['project', projectId], queryFn: () => getProject(projectId) });
+  const { data: budgets = EMPTY_ARRAY } = useQuery({ queryKey: ['budgets', projectId], queryFn: () => getProjectBudgets(projectId).catch(() => []) });
+  const { data: ipcs = EMPTY_ARRAY } = useQuery({ queryKey: ['ipcs', projectId], queryFn: () => getProjectIPCs(projectId).catch(() => []) });
+  const { data: notes = EMPTY_ARRAY } = useQuery({ queryKey: ['notes', projectId], queryFn: () => getProjectNotes(projectId).catch(() => []) });
+  
+  // Parallel query for documents
+  const { data: documents = EMPTY_ARRAY } = useQuery({
+    queryKey: ['documents', projectId],
+    queryFn: async () => {
+      const api = await import('@/services/api');
+      const [dData, techData, fieldOpsData, activityData, milestoneData, rateData, reimbursableData, programData, ipcDocsData] = await Promise.all([
+        getProjectDocuments(projectId).catch(() => []),
+        api.getDecoupledDocuments(projectId, 'tech').catch(() => []),
+        api.getDecoupledDocuments(projectId, 'field_ops').catch(() => []),
+        api.getDecoupledDocuments(projectId, 'activity_schedule').catch(() => []),
+        api.getDecoupledDocuments(projectId, 'milestone_claims').catch(() => []),
+        api.getDecoupledDocuments(projectId, 'rate_schedule').catch(() => []),
+        api.getDecoupledDocuments(projectId, 'reimbursable_claims').catch(() => []),
+        api.getDecoupledDocuments(projectId, 'program_of_works').catch(() => []),
+        api.getDecoupledDocuments(projectId, 'ipc').catch(() => []),
+      ]);
+      return [...dData, ...techData, ...fieldOpsData, ...activityData, ...milestoneData, ...rateData, ...reimbursableData, ...programData, ...ipcDocsData];
+    }
+  });
+
+  const fetchProjectData = async () => {
+    queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['budgets', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['ipcs', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['notes', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['documents', projectId] });
+  };
 
   // Role & Tab Navigation state
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
@@ -66,11 +101,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
   });
 
   // Platform Data states
-  const [budgets, setBudgets] = useState<any[]>([]);
-  const [ipcs, setIpcs] = useState<any[]>([]);
-  const [notes, setNotes] = useState<any[]>([]);
-  const [documents, setDocuments] = useState<any[]>([]);
-
+        
   // BOQ Modal states
   const [selectedBoqId, setSelectedBoqId] = useState<number | null>(null);
   const [selectedBoqName, setSelectedBoqName] = useState<string>('');
@@ -110,14 +141,20 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                 departmentKey: t.name
               };
             });
-          setCustomFieldOpsTabs(customs);
+          setCustomFieldOpsTabs(prev => {
+            // prevent infinite loops if array looks the same (excluding icon which is a function)
+            const prevCompare = prev.map(p => ({...p, icon: null}));
+            const nextCompare = customs.map((c: any) => ({...c, icon: null}));
+            return JSON.stringify(prevCompare) === JSON.stringify(nextCompare) ? prev : customs;
+          });
         } catch (e) {}
       }
       
       const storedHidden = localStorage.getItem('fieldops_hidden_modules');
       if (storedHidden) {
         try {
-          setHiddenModules(JSON.parse(storedHidden));
+          const parsed = JSON.parse(storedHidden);
+          setHiddenModules(prev => JSON.stringify(prev) === storedHidden ? prev : parsed);
         } catch (e) {}
       }
     }
@@ -228,79 +265,26 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
     }
   }, [hiddenModules, fieldOpsSubTab, customFieldOpsTabs]);
 
-  const fetchProjectData = async () => {
-    try {
-      const [
-        projData, bData, iData, nData,
-        dData, techData, fieldOpsData, activityData, milestoneData, rateData, reimbursableData, programData, ipcDocsData
-      ] = await Promise.all([
-        getProject(projectId),
-        getProjectBudgets(projectId).catch(() => []),
-        getProjectIPCs(projectId).catch(() => []),
-        getProjectNotes(projectId).catch(() => []),
-        getProjectDocuments(projectId).catch(() => []), // standard documents
 
-        // Decoupled Documents
-        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'tech')).catch(() => []),
-        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'field_ops')).catch(() => []),
-        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'activity_schedule')).catch(() => []),
-        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'milestone_claims')).catch(() => []),
-        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'rate_schedule')).catch(() => []),
-        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'reimbursable_claims')).catch(() => []),
-        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'program_of_works')).catch(() => []),
-        import('@/services/api').then(m => m.getDecoupledDocuments(projectId, 'ipc')).catch(() => []),
-      ]);
-
-      const allDocs = [
-        ...dData, ...techData, ...fieldOpsData, ...activityData,
-        ...milestoneData, ...rateData, ...reimbursableData, ...programData, ...ipcDocsData
-      ];
-
-      setProject(projData);
-      setBudgets(bData);
-      setIpcs(iData);
-      setNotes(nData);
-      setDocuments(allDocs);
-      setError(null);
-
-      // Cache for SWR
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`project_cache_${projectId}`, JSON.stringify({
-          project: projData,
-          budgets: bData,
-          ipcs: iData,
-          notes: nData,
-          documents: allDocs
-        }));
-      }
-    } catch (err) {
-      setError('Failed to fetch project details.');
-      console.error(err);
-    }
-  };
 
   const handleAddBudget = async (b: { category: string; amount: number; description: string }) => {
     await createProjectBudget(projectId, b);
-    const updated = await getProjectBudgets(projectId);
-    setBudgets(updated);
+    queryClient.invalidateQueries({ queryKey: ['budgets', projectId] });
   };
 
   const handleAddIPC = async (i: { certificate_number: string; amount_claimed: number; status: string }) => {
     await createProjectIPC(projectId, i);
-    const updated = await getProjectIPCs(projectId);
-    setIpcs(updated);
+    queryClient.invalidateQueries({ queryKey: ['ipcs', projectId] });
   };
 
   const handleAddNote = async (n: { content: string; department: string; is_issue: boolean; priority: string }) => {
     await createProjectNote(projectId, n);
-    const updated = await getProjectNotes(projectId);
-    setNotes(updated);
+    queryClient.invalidateQueries({ queryKey: ['notes', projectId] });
   };
 
   const handleAddDocument = async (d: { title: string; file_url: string; department: string }) => {
     await createProjectDocument(projectId, d);
-    const updated = await getProjectDocuments(projectId);
-    setDocuments(updated);
+    queryClient.invalidateQueries({ queryKey: ['documents', projectId] });
   };
 
   const handleViewBoqItems = (boqId: number, docName: string) => {
@@ -321,41 +305,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
     }
   };
 
-  useEffect(() => {
-    const init = async () => {
-      // SWR Pattern: Load from local cache instantly if available
-      let hasCache = false;
-      if (typeof window !== 'undefined') {
-        const cached = localStorage.getItem(`project_cache_${projectId}`);
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            if (parsed.project) {
-              setProject(parsed.project);
-              setBudgets(parsed.budgets || []);
-              setIpcs(parsed.ipcs || []);
-              setNotes(parsed.notes || []);
-              setDocuments(parsed.documents || []);
-              setLoading(false); // Eliminate loading skeleton immediately
-              hasCache = true;
-            }
-          } catch (e) {}
-        }
-      }
 
-      if (!hasCache) {
-        setLoading(true);
-      }
-      
-      // Silently fetch fresh data in the background
-      await fetchProjectData();
-      
-      if (!hasCache) {
-        setLoading(false);
-      }
-    };
-    init();
-  }, [projectId]);
 
   if (loading) {
     return (
@@ -365,10 +315,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
     );
   }
 
-  if (error || !project) {
+  if (!project) {
     return (
       <main className="container mx-auto p-4">
-        <ErrorMessage message={error || 'Project not found.'} />
+        <ErrorMessage message={'Project not found.'} />
       </main>
     );
   }
@@ -428,7 +378,10 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
   }
 
   return (
-    <div className="min-h-screen bg-white pb-20 relative">
+    <div className="min-h-screen bg-[#030305] text-white selection:bg-neon-cyan/30 pb-20 relative font-inter overflow-hidden">
+      {/* Ambient Mesmerizing Background Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-neon-purple/20 rounded-full blur-[120px] animate-blob mix-blend-screen pointer-events-none z-0"></div>
+      <div className="absolute top-[30%] right-[-10%] w-[600px] h-[600px] bg-neon-cyan/20 rounded-full blur-[150px] animate-blob-slow mix-blend-screen pointer-events-none z-0" style={{ animationDelay: '2s' }}></div>
       {globalAlert && (
         <CustomAlert 
           type={globalAlert.type} 
@@ -436,7 +389,17 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           onClose={() => setGlobalAlert(null)} 
         />
       )}
-      <main className="container mx-auto p-4 space-y-6">
+      <main className="container mx-auto p-4 space-y-6 relative z-10">
+        {/* Navigation Breadcrumbs */}
+        <div className="flex items-center space-x-3 mb-2">
+          <Link href="/dashboard" className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-gray-300 hover:text-white transition-all shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Projects Hub
+          </Link>
+          <Link href="/" className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-gray-300 hover:text-white transition-all shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+            <Home className="w-4 h-4 mr-1.5" /> System Home
+          </Link>
+        </div>
+
         {/* Role Switcher Banner */}
         <RoleSwitcher currentRole={currentRole} onRoleChange={setCurrentRole} />
 
@@ -444,7 +407,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
         <ProjectDetails project={project} />
 
       {/* Dashboard Top Section Navigation Bar */}
-      <div className="bg-white rounded-3xl p-2.5 shadow-sm border border-gray-100 flex items-center gap-2 overflow-x-auto">
+      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/10 flex items-center gap-2 overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -453,8 +416,8 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`inline-flex items-center px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${isActive
-                  ? 'bg-dark-teal-900 text-white shadow-md font-lexend'
-                  : 'text-gray-600 hover:bg-dark-teal-50 hover:text-dark-teal-900'
+                  ? 'bg-white/10 text-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.2)] font-lexend border border-white/10'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white border border-transparent'
                 }`}
             >
               <Icon className="w-4 h-4 mr-2" />
@@ -468,22 +431,26 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
       {activeTab === 'pmo' && (
         <div className="space-y-6 animate-fade-in">
           {/* PMO Header Banner */}
-          <div className="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950 text-white rounded-3xl p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+            {/* Background Glow Accents */}
+            <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-80 h-80 bg-neon-purple/20 rounded-full blur-3xl pointer-events-none mix-blend-screen" />
+            <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-neon-cyan/20 rounded-full blur-3xl pointer-events-none mix-blend-screen" />
+
             <div className="relative z-10">
-              <span className="text-xs font-semibold text-dark-teal-300 uppercase tracking-widest">Office Operations</span>
-              <h2 className="text-xl font-bold font-lexend mt-1">Project Management Office (PMO)</h2>
-              <p className="text-xs text-dark-teal-100/80 mt-1 max-w-xl leading-relaxed">
+              <span className="text-xs font-semibold text-neon-cyan uppercase tracking-widest drop-shadow-[0_0_8px_rgba(0,243,255,0.5)]">Office Operations</span>
+              <h2 className="text-xl font-bold font-lexend mt-1 text-white drop-shadow-md">Project Management Office (PMO)</h2>
+              <p className="text-xs text-gray-400 mt-1 max-w-xl leading-relaxed">
                 Consolidated PMO control center for tracking physical Quantities (BoQ), interim payment claims (IPCs), and cost-to-complete budgets.
               </p>
             </div>
             <div className="flex items-center space-x-4 relative z-10 flex-shrink-0">
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 text-right">
-                <p className="text-[10px] font-bold text-dark-teal-200 uppercase">Total Claimed</p>
-                <p className="text-sm font-bold font-lexend text-white mt-0.5">${ipcs.reduce((s, i) => s + (i.amount_claimed || 0), 0).toLocaleString()}</p>
+              <div className="bg-black/40 backdrop-blur-md rounded-2xl p-4 border border-white/5 text-right">
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Total Claimed</p>
+                <p className="text-sm font-bold font-lexend text-white mt-0.5">${ipcs.reduce((s: any, i: any) => s + (i.amount_claimed || 0), 0).toLocaleString()}</p>
               </div>
-              <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/15 text-right">
-                <p className="text-[10px] font-bold text-dark-teal-200 uppercase">Total Budget</p>
-                <p className="text-sm font-bold font-lexend text-white mt-0.5">${budgets.reduce((s, b) => s + (b.amount || 0), 0).toLocaleString()}</p>
+              <div className="bg-black/40 backdrop-blur-md rounded-2xl p-4 border border-white/5 text-right">
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Total Budget</p>
+                <p className="text-sm font-bold font-lexend text-white mt-0.5">${budgets.reduce((s: any, b: any) => s + (b.amount || 0), 0).toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -491,15 +458,15 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Vertical Navigation Grid on the Left */}
             <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
-              <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 space-y-3 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="px-3 py-2 bg-dark-teal-50/70 rounded-2xl border border-dark-teal-100 flex items-center justify-between">
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-3 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="px-3 py-2 bg-black/40 rounded-2xl border border-white/5 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] uppercase font-extrabold tracking-wider text-dark-teal-800 font-inter">
+                    <span className="text-[10px] uppercase font-extrabold tracking-wider text-neon-cyan font-inter">
                       PMO Modules
                     </span>
-                    <h3 className="text-xs font-bold font-lexend text-gray-900">Control Panel</h3>
+                    <h3 className="text-xs font-bold font-lexend text-white">Control Panel</h3>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-dark-teal-900 text-white">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-white border border-white/10">
                     3 Views
                   </span>
                 </div>
@@ -520,22 +487,22 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                           }
                         }}
                         className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 flex items-center justify-between group ${isSubActive
-                            ? 'bg-gradient-to-r from-dark-teal-900 to-dark-teal-950 text-white shadow-md scale-[1.01]'
-                            : 'bg-gray-50/80 hover:bg-dark-teal-50/50 text-gray-700 hover:text-dark-teal-900 border border-gray-100 hover:border-dark-teal-100'
+                            ? 'bg-gradient-to-r from-neon-cyan/20 to-transparent border-l-2 border-neon-cyan text-white shadow-md scale-[1.01]'
+                            : 'bg-transparent hover:bg-white/5 text-gray-400 border-l-2 border-transparent'
                           }`}
                       >
                         <div className="flex items-center space-x-3">
                           <div
                             className={`p-2.5 rounded-xl transition ${isSubActive
-                                ? 'bg-white/10 text-white'
-                                : 'bg-white text-dark-teal-700 shadow-sm border border-gray-100 group-hover:scale-110'
+                                ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 shadow-[0_0_10px_rgba(0,243,255,0.2)]'
+                                : 'bg-white/5 text-gray-400 border border-white/10 group-hover:text-white group-hover:scale-110'
                               }`}
                           >
                             <SubIcon className="w-4 h-4" />
                           </div>
                           <div>
                             <p className="text-xs font-bold font-lexend leading-tight">{sub.label}</p>
-                            <p className={`text-[10px] mt-0.5 leading-snug ${isSubActive ? 'text-dark-teal-200' : 'text-gray-400'}`}>
+                            <p className={`text-[10px] mt-0.5 leading-snug ${isSubActive ? 'text-gray-300' : 'text-gray-500'}`}>
                               {sub.description}
                             </p>
                           </div>
@@ -543,8 +510,8 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                         {sub.badgeCount !== undefined && (
                           <span
                             className={`ml-2 px-2 py-0.5 text-[10px] font-black rounded-full whitespace-nowrap ${isSubActive
-                                ? 'bg-white/20 text-white'
-                                : 'bg-gray-200/80 text-gray-600'
+                                ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30'
+                                : 'bg-white/10 text-gray-400 border border-white/5'
                               }`}
                           >
                             {sub.badgeCount}
@@ -556,19 +523,20 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                 </div>
 
                 {/* Quick Summary Pill inside Left PMO Bar */}
-                <div className="p-3 bg-gradient-to-br from-gray-900 to-dark-teal-950 text-white rounded-2xl text-xs space-y-2 mt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-dark-teal-200 uppercase">PMO Quick Stats</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="p-3 bg-black/60 border border-white/10 text-white rounded-2xl text-xs space-y-2 mt-4 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-neon-cyan/10 to-transparent opacity-50 z-0"></div>
+                  <div className="flex items-center justify-between relative z-10">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">PMO Quick Stats</span>
+                    <span className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse shadow-[0_0_8px_rgba(0,243,255,0.8)]" />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 relative z-10">
                     <div>
                       <p className="text-[9px] text-gray-400 uppercase font-semibold">Total Claimed</p>
-                      <p className="font-bold text-white">${ipcs.reduce((s, i) => s + (i.amount_claimed || 0), 0).toLocaleString()}</p>
+                      <p className="font-bold text-white">${ipcs.reduce((s: any, i: any) => s + (i.amount_claimed || 0), 0).toLocaleString()}</p>
                     </div>
                     <div>
                       <p className="text-[9px] text-gray-400 uppercase font-semibold">Total Budget</p>
-                      <p className="font-bold text-white">${budgets.reduce((s, b) => s + (b.amount || 0), 0).toLocaleString()}</p>
+                      <p className="font-bold text-white">${budgets.reduce((s: any, b: any) => s + (b.amount || 0), 0).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
@@ -784,11 +752,14 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
       {activeTab === 'field_ops' && (
         <div className="space-y-6 animate-fade-in">
           {/* Field Ops Header Banner */}
-          <div className="bg-gradient-to-r from-princeton-orange-950 via-princeton-orange-900 to-autumn-leaf-950 text-white rounded-3xl p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+            {/* Background Glow Accents */}
+            <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-80 h-80 bg-neon-pink/20 rounded-full blur-3xl pointer-events-none mix-blend-screen" />
+            
             <div className="relative z-10">
-              <span className="text-xs font-semibold text-princeton-orange-300 uppercase tracking-widest">Site Execution</span>
-              <h2 className="text-xl font-bold font-lexend mt-1">Field Operations</h2>
-              <p className="text-xs text-princeton-orange-100/80 mt-1 max-w-xl leading-relaxed">
+              <span className="text-xs font-semibold text-neon-pink uppercase tracking-widest drop-shadow-[0_0_8px_rgba(255,0,127,0.5)]">Site Execution</span>
+              <h2 className="text-xl font-bold font-lexend mt-1 text-white drop-shadow-md">Field Operations</h2>
+              <p className="text-xs text-gray-400 mt-1 max-w-xl leading-relaxed">
                 Log daily progress, material deliveries, measurements, and timesheets to substantiate billing.
               </p>
             </div>
@@ -797,21 +768,17 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Vertical Navigation Grid on the Left */}
             <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
-              <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 space-y-3 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="px-3 py-2 bg-princeton-orange-50/70 rounded-2xl border border-princeton-orange-100 flex items-center justify-between">
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-3 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="px-3 py-2 bg-black/40 rounded-2xl border border-white/5 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] uppercase font-extrabold tracking-wider text-princeton-orange-800 font-inter">
-                      Field Logs
+                    <span className="text-[10px] uppercase font-extrabold tracking-wider text-neon-pink font-inter">
+                      Field Modules
                     </span>
-                    <h3 className="text-xs font-bold font-lexend text-gray-900">Categories</h3>
+                    <h3 className="text-xs font-bold font-lexend text-white">Operations</h3>
                   </div>
-                  <button 
-                    onClick={() => setIsManageModulesOpen(true)}
-                    className="p-1.5 rounded-lg text-princeton-orange-600 hover:bg-princeton-orange-100 transition-colors focus:outline-none"
-                    title="Manage Modules"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </button>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-white border border-white/10">
+                    {FIELD_OPS_SUBTABS.length} Views
+                  </span>
                 </div>
 
                 <div className="space-y-2">
@@ -830,31 +797,31 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                           }
                         }}
                         className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 flex items-center justify-between group ${isSubActive
-                            ? 'bg-gradient-to-r from-princeton-orange-900 to-autumn-leaf-900 text-white shadow-md scale-[1.01]'
-                            : 'bg-gray-50/80 hover:bg-princeton-orange-50/50 text-gray-700 hover:text-princeton-orange-900 border border-gray-100 hover:border-princeton-orange-100'
+                            ? 'bg-gradient-to-r from-neon-pink/20 to-transparent border-l-2 border-neon-pink text-white shadow-md scale-[1.01]'
+                            : 'bg-transparent hover:bg-white/5 text-gray-400 border-l-2 border-transparent'
                           }`}
                       >
                         <div className="flex items-center space-x-3">
                           <div
                             className={`p-2.5 rounded-xl transition ${isSubActive
-                                ? 'bg-white/10 text-white'
-                                : 'bg-white text-princeton-orange-700 shadow-sm border border-gray-100 group-hover:scale-110'
+                                ? 'bg-neon-pink/20 text-neon-pink border border-neon-pink/30 shadow-[0_0_10px_rgba(255,0,127,0.2)]'
+                                : 'bg-white/5 text-gray-400 border border-white/10 group-hover:text-white group-hover:scale-110'
                               }`}
                           >
                             <SubIcon className="w-4 h-4" />
                           </div>
                           <div>
                             <p className="text-xs font-bold font-lexend leading-tight">{sub.label}</p>
-                            <p className={`text-[10px] mt-0.5 leading-snug ${isSubActive ? 'text-princeton-orange-200' : 'text-gray-400'}`}>
-                              {sub.description}
+                            <p className={`text-[10px] mt-0.5 leading-snug ${isSubActive ? 'text-gray-300' : 'text-gray-500'}`}>
+                              {sub.description.split('.')[0]}
                             </p>
                           </div>
                         </div>
-                        {sub.badgeCount !== undefined && (
+                        {sub.badgeCount !== undefined && sub.badgeCount > 0 && (
                           <span
                             className={`ml-2 px-2 py-0.5 text-[10px] font-black rounded-full whitespace-nowrap ${isSubActive
-                                ? 'bg-white/20 text-white'
-                                : 'bg-gray-200/80 text-gray-600'
+                                ? 'bg-neon-pink/20 text-neon-pink border border-neon-pink/30'
+                                : 'bg-white/10 text-gray-400 border border-white/5'
                               }`}
                           >
                             {sub.badgeCount}

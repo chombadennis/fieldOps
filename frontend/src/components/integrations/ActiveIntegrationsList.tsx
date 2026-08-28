@@ -59,10 +59,10 @@ export default function ActiveIntegrationsList({
   if (visibleIntegrations.length === 0) return null;
 
   return (
-    <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100 transition-all duration-300">
-      <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
+    <div className="bg-white/5 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl p-6 border border-white/10 transition-all duration-300">
+      <h2 className="text-xl font-bold font-lexend text-white drop-shadow-md mb-4 flex items-center space-x-2">
         <span>Linked Workbooks</span>
-        <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full">
+        <span className="text-xs bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)] font-semibold px-2 py-0.5 rounded-full">
           {visibleIntegrations.length} Active
         </span>
       </h2>
@@ -75,18 +75,18 @@ export default function ActiveIntegrationsList({
           const isSyncing = syncingId === integration.id;
 
           const cardClass = isSyncing
-            ? "bg-gradient-to-r from-indigo-50/30 via-white to-indigo-50/10 border-indigo-200 shadow-sm animate-pulse"
+            ? "border-neon-cyan/50 bg-neon-cyan/10 shadow-[0_0_15px_rgba(0,243,255,0.2)] animate-pulse"
             : isPreviewOnly
-              ? "bg-gradient-to-br from-amber-50/10 to-white border-amber-100 hover:shadow-md"
-              : "bg-gradient-to-br from-emerald-50/5 to-white border-emerald-100/70 hover:shadow-md";
+              ? "border-amber-500/50 bg-amber-500/10 hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)]"
+              : "border-white/10 bg-white/5 hover:border-neon-cyan/50 hover:bg-white/10 hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)]";
 
           const iconClass = isSyncing
-            ? "bg-indigo-100 text-indigo-600 animate-spin"
+            ? "bg-neon-cyan text-black shadow-[0_0_10px_rgba(0,243,255,0.5)] animate-spin"
             : isPreviewOnly
-              ? "bg-amber-50 text-amber-600 border border-amber-100"
+              ? "bg-amber-500/20 text-amber-400 border border-amber-500/50"
               : isGoogle
-                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                : "bg-indigo-50 text-indigo-600 border border-indigo-100";
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50"
+                : "bg-neon-purple/20 text-neon-purple border border-neon-purple/50";
 
           return (
             <div key={integration.id} className="space-y-2">
@@ -106,38 +106,38 @@ export default function ActiveIntegrationsList({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-gray-800 text-sm truncate flex items-center space-x-2 flex-wrap gap-y-1">
+                    <h4 className="font-bold text-white text-sm truncate flex items-center space-x-2 flex-wrap gap-y-1">
                       <a
                         href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/integrations/${integration.id}/open`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="hover:underline text-indigo-650 hover:text-indigo-850 transition-colors inline-flex items-center space-x-1"
+                        className="hover:underline text-white hover:text-neon-cyan transition-colors inline-flex items-center space-x-1 drop-shadow-md"
                         title={`Open in ${isGoogle ? 'Google Sheets' : 'Excel Online'}. Note: Ensure your browser is logged in to the account containing this file.`}
                       >
                         <span>{integration.boq_name || 'Spreadsheet BOQ'}</span>
-                        <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+                        <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
                       </a>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${isGoogle ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${isGoogle ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'}`}>
                         {isGoogle ? 'Google Sheets' : 'OneDrive'}
                       </span>
                       {isPreviewOnly ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
                           Preview Only
                         </span>
                       ) : null}
                       {outOfSyncMap[integration.id] && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)] animate-pulse">
                           <AlertTriangle className="w-2.5 h-2.5 mr-1" />
                           Out of Sync (Edits in cloud)
                         </span>
                       )}
                     </h4>
-                    <p className="text-xs text-gray-500 mt-1 truncate"><span className="font-semibold text-gray-600">File ID:</span> {integration.spreadsheet_id}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate"><span className="font-semibold text-gray-600">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">
+                    <p className="text-xs text-gray-400 mt-1 truncate"><span className="font-semibold text-gray-500">File ID:</span> {integration.spreadsheet_id}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate"><span className="font-semibold text-gray-500">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
+                    <p className="text-[10px] text-gray-500 mt-1">
                       {isSyncing ? (
-                        <span className="text-indigo-650 font-bold animate-pulse flex items-center space-x-1 text-xs">
-                          <Loader2 className="w-3 h-3 animate-spin mr-1 text-indigo-500" />
+                        <span className="text-neon-cyan font-bold animate-pulse flex items-center space-x-1 text-xs">
+                          <Loader2 className="w-3 h-3 animate-spin mr-1 text-neon-cyan" />
                           Sync in progress… updating database structure
                         </span>
                       ) : (
@@ -233,8 +233,8 @@ export default function ActiveIntegrationsList({
                     disabled={isLoading || syncingId !== null || deletingId !== null}
                     onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
                     className={`py-2 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${activeEditorId === integration.id
-                        ? 'bg-indigo-650 border-indigo-600 text-white bg-indigo-600 hover:bg-indigo-750'
-                        : 'border-gray-205 border-gray-200 hover:border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                        ? 'bg-neon-cyan border-neon-cyan text-black hover:bg-white shadow-[0_0_10px_rgba(0,243,255,0.5)]'
+                        : 'border-white/20 hover:border-neon-cyan/50 text-gray-300 bg-black/40 hover:bg-neon-cyan/10 hover:text-neon-cyan'
                       }`}
                     title={activeEditorId === integration.id ? 'Hide inline spreadsheet preview' : 'Open inline spreadsheet preview'}
                   >
@@ -245,7 +245,7 @@ export default function ActiveIntegrationsList({
                     disabled={isLoading || syncingId !== null || deletingId !== null}
                     onClick={() => handleManualSync(integration.id)}
                     title={syncingId === integration.id ? `Syncing worksheets: ${syncingName}` : "Sync workbook data"}
-                    className="py-2 px-3 border border-indigo-600 rounded-lg shadow-sm text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
+                    className="py-2 px-3 border border-neon-purple/50 rounded-lg shadow-[0_0_8px_rgba(188,19,254,0.15)] text-xs font-semibold text-neon-purple bg-black/40 hover:bg-neon-purple/20 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
                   >
                     {syncingId === integration.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     <span>{syncingId === integration.id ? progressMessage : 'Sync Workbook'}</span>
@@ -253,7 +253,7 @@ export default function ActiveIntegrationsList({
                   <button
                     disabled={isLoading || syncingId !== null || deletingId !== null}
                     onClick={() => handleDisconnectClick(integration.id)}
-                    className="p-2 border border-amber-200 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 border border-amber-500/50 rounded-lg text-amber-400 bg-black/40 hover:bg-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.15)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Unlink / Disconnect workbook link (keeps database records)"
                   >
                     <Unlink className="w-4 h-4" />
@@ -262,7 +262,7 @@ export default function ActiveIntegrationsList({
                     <button
                       disabled={isLoading || syncingId !== null || deletingId !== null}
                       onClick={() => handleDeleteClick(integration)}
-                      className="p-2 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2 border border-red-500/50 rounded-lg text-red-400 bg-black/40 hover:bg-red-500/20 shadow-[0_0_8px_rgba(239,68,68,0.15)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete workbook data permanently from database"
                     >
                       <Trash2 className="w-4 h-4" />

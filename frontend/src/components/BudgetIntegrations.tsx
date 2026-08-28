@@ -633,7 +633,7 @@ export default function BudgetIntegrations({
   return (
     <div className="space-y-6">
       {/* Top Title & Connect Actions */}
-      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
         <CloudConnectionCards
           success={actionError ? null : (success ? success : null)}
           moduleContext="budget"
@@ -653,20 +653,20 @@ export default function BudgetIntegrations({
       )}
 
       {/* Active Integrations List */}
-      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-6">
+      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-6">
       {integrations.length === 0 ? (
-        <div className="bg-gray-50/70 rounded-2xl p-8 text-center border border-dashed border-gray-200">
-          <FileSpreadsheet className="w-10 h-10 text-slate-200 drop-shadow-sm mx-auto mb-2" />
-          <p className="text-xs font-semibold text-gray-600">No cloud budget workbooks linked yet.</p>
-          <p className="text-[11px] text-gray-400 mt-1 max-w-sm mx-auto">
+        <div className="bg-black/20 rounded-2xl p-8 text-center border border-dashed border-white/10">
+          <FileSpreadsheet className="w-10 h-10 text-gray-600 drop-shadow-sm mx-auto mb-2" />
+          <p className="text-xs font-bold text-gray-300">No cloud budget workbooks linked yet.</p>
+          <p className="text-[11px] text-gray-500 mt-1 max-w-sm mx-auto">
             Click one of the buttons above to link your master or trade budget spreadsheets from Google Sheets or OneDrive.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Linked Workbooks</h4>
-            <span className="text-[11px] font-bold text-dark-teal-700 bg-dark-teal-50 px-2.5 py-0.5 rounded-full border border-dark-teal-100">
+          <div className="flex justify-between items-center border-b border-white/10 pb-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 font-inter">Linked Workbooks</h4>
+            <span className="text-[11px] font-bold text-neon-cyan bg-neon-cyan/20 px-2.5 py-0.5 rounded-full border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]">
               {integrations.length} {integrations.length > 1 ? 'workbooks' : 'workbook'}
             </span>
           </div>
@@ -685,27 +685,27 @@ export default function BudgetIntegrations({
 
               return (
                 <div key={integration.id} className="space-y-2">
-                  <div className="bg-white rounded-2xl p-5 border border-gray-150 shadow-sm flex flex-col sm:flex-row items-start justify-between gap-4">
+                  <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_20px_rgba(0,243,255,0.2)] hover:border-neon-cyan/60 transition-all duration-300 flex flex-col sm:flex-row items-start justify-between gap-4">
                     <div className="flex items-center space-x-3">
-                      <div className="p-3 bg-dark-teal-50 rounded-xl text-dark-teal-800 border border-dark-teal-100">
+                      <div className="p-3 bg-neon-cyan/20 rounded-xl text-neon-cyan border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]">
                         <FileSpreadsheet className="w-5 h-5" />
                       </div>
                       <div className="space-y-1">
-                        <h4 className="text-xs font-bold font-lexend text-gray-900 leading-tight">
+                        <h4 className="text-xs font-bold font-lexend text-white drop-shadow-md leading-tight">
                           {integration.boq_name || 'Master Budget Sheet'}
                         </h4>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="text-[10px] text-gray-400 font-medium capitalize">
                             Provider: {integration.provider.replace('_', ' ')} • Tab: {integration.sheet_name}
                           </span>
-                          <span className="text-slate-200 drop-shadow-sm hidden sm:inline">•</span>
+                          <span className="text-gray-600 drop-shadow-sm hidden sm:inline">•</span>
                           <div className="flex items-center space-x-1">
-                            <span className="text-[9px] font-bold text-gray-400 uppercase">Tag:</span>
+                            <span className="text-[9px] font-bold text-gray-500 uppercase">Tag:</span>
                             <select
                               value={integration.module === 'progress' ? 'progress' : 'budget'}
                               onChange={(e) => handleUpdateModule(integration.id, e.target.value)}
                               disabled={globalLoading}
-                              className="p-1 px-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-700 hover:bg-gray-100 transition focus:outline-none cursor-pointer"
+                              className="p-1 px-1.5 bg-black/40 border border-white/20 rounded-lg text-[10px] font-bold text-white hover:bg-black/60 focus:border-neon-cyan transition focus:outline-none cursor-pointer"
                             >
                               <option value="budget">Project Budget</option>
                               <option value="progress">Work Progress</option>
@@ -715,13 +715,13 @@ export default function BudgetIntegrations({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
+                    <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={globalLoading || deletingId !== null}
                         onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
-                        className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'hover:bg-white text-gray-600 hover:text-gray-900'
+                        className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 ${activeEditorId === integration.id
+                          ? 'bg-neon-purple text-white shadow-[0_0_10px_rgba(188,19,254,0.4)]'
+                          : 'hover:bg-neon-purple hover:text-white text-gray-400 hover:shadow-[0_0_10px_rgba(188,19,254,0.4)]'
                           }`}
                         title={activeEditorId === integration.id ? 'Hide inline preview' : 'Open inline preview'}
                       >
@@ -732,11 +732,11 @@ export default function BudgetIntegrations({
                       <button
                         disabled={globalLoading || deletingId !== null}
                         onClick={() => setIntegrationToDelete(integration)}
-                        className="p-2 hover:bg-white text-red-655 hover:text-red-700 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm flex items-center justify-center"
+                        className="p-2 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_10px_rgba(239,68,68,0.4)] flex items-center justify-center"
                         title="Delete workbook data permanently from database"
                       >
                         {deletingId === integration.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                          <Loader2 className="w-4 h-4 animate-spin text-red-400" />
                         ) : (
                           <Trash2 className="w-4 h-4" />
                         )}

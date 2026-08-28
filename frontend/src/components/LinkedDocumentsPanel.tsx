@@ -195,17 +195,17 @@ export default function LinkedDocumentsPanel({
   return (
     <div className="space-y-6">
       {/* List / Grid of Linked Documents */}
-      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
-        <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">{title}</h4>
-          <span className="text-[11px] font-bold text-dark-teal-700 bg-dark-teal-50 px-2.5 py-0.5 rounded-full border border-dark-teal-100">
+      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-4">
+        <div className="flex justify-between items-center border-b border-white/10 pb-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-white drop-shadow-md font-inter">{title}</h4>
+          <span className="text-[11px] font-bold text-neon-cyan bg-neon-cyan/20 px-2.5 py-0.5 rounded-full border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]">
             {documents.length} {documents.length === 1 ? 'file' : 'files'}
           </span>
         </div>
 
         {documents.length === 0 ? (
-          <div className="p-8 text-center border border-dashed border-gray-200 rounded-2xl">
-            <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+          <div className="p-8 text-center border border-dashed border-white/10 rounded-2xl bg-black/20">
+            <FileText className="w-8 h-8 text-gray-500 mx-auto mb-2" />
             <p className="text-xs text-gray-400 font-medium">{emptyMessage}</p>
           </div>
         ) : (
@@ -224,19 +224,19 @@ export default function LinkedDocumentsPanel({
               return (
                 <div
                   key={doc.id}
-                  className={`rounded-xl p-5 border flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all duration-300 hover:shadow-md ${isPreviewActive
-                      ? 'border-dark-teal-500 ring-2 ring-dark-teal-500/20 bg-gradient-to-br from-dark-teal-50/10 to-white'
-                      : 'border-gray-100 bg-gradient-to-br from-gray-50/50 to-white'
+                  className={`rounded-xl p-5 border flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all duration-300 hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] ${isPreviewActive
+                      ? 'border-neon-cyan ring-2 ring-neon-cyan/50 bg-neon-cyan/10 shadow-[0_0_15px_rgba(0,243,255,0.2)]'
+                      : 'border-white/10 bg-white/5 hover:border-neon-cyan/50 hover:bg-white/10'
                     }`}
                 >
                   <div className="flex items-start space-x-4 min-w-0 flex-1">
                     <div className={`p-2.5 rounded-xl flex-shrink-0 transition-all duration-300 ${isPreviewActive
-                        ? 'bg-dark-teal-900 text-white'
+                        ? 'bg-neon-cyan text-black shadow-[0_0_10px_rgba(0,243,255,0.5)]'
                         : isSpreadsheet
-                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
                           : isFolder
-                            ? 'bg-amber-50 text-amber-600 border border-amber-100'
-                            : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                            : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'
                       }`}>
                       {isSpreadsheet ? (
                         <FileSpreadsheet className="w-5 h-5" />
@@ -248,22 +248,22 @@ export default function LinkedDocumentsPanel({
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-bold text-gray-800 text-sm truncate flex items-center space-x-2 flex-wrap gap-y-1">
+                      <h4 className="font-bold text-white text-sm truncate flex items-center space-x-2 flex-wrap gap-y-1">
                         <a
                           href={doc.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="hover:underline text-dark-teal-900 hover:text-dark-teal-700 transition-colors inline-flex items-center space-x-1"
+                          className="hover:underline text-white hover:text-neon-cyan transition-colors inline-flex items-center space-x-1 drop-shadow-md"
                           title="Open document in cloud workspace (Login required)"
                         >
                           <span className="truncate max-w-[150px] md:max-w-[200px] lg:max-w-[400px]">{doc.title}</span>
                           <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                         </a>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded capitalize ${isGoogle
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
                             : isOneDrive
-                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                              : 'bg-slate-50 text-slate-700 border border-slate-100'
+                              ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'
+                              : 'bg-white/10 text-gray-300 border border-white/20'
                           }`}>
                           {isGoogle ? 'Google Drive' : isOneDrive ? 'OneDrive' : 'Cloud File'}
                         </span>
@@ -277,12 +277,12 @@ export default function LinkedDocumentsPanel({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end space-x-2 border-t lg:border-t-0 border-gray-50 pt-3 lg:pt-0 w-full lg:w-auto">
+                  <div className="flex items-center justify-end space-x-2 border-t lg:border-t-0 border-white/10 pt-3 lg:pt-0 w-full lg:w-auto">
                     <button
                       onClick={() => setActiveDocPreview(isPreviewActive ? null : doc)}
                       className={`py-1.5 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 ${isPreviewActive
-                          ? 'bg-dark-teal-900 border-dark-teal-900 text-white hover:bg-dark-teal-950'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                          ? 'bg-neon-cyan border-neon-cyan text-black hover:bg-white shadow-[0_0_10px_rgba(0,243,255,0.5)]'
+                          : 'border-white/20 hover:border-neon-cyan/50 text-gray-300 bg-black/40 hover:bg-neon-cyan/10 hover:text-neon-cyan'
                         }`}
                       title={isPreviewActive ? 'Hide inline preview' : 'Open inline preview'}
                     >
@@ -294,11 +294,11 @@ export default function LinkedDocumentsPanel({
                     <button
                       disabled={isUnlinking || isDeletingThis}
                       onClick={() => handleUnlinkClick(doc.id)}
-                      className="p-1.5 border border-amber-200 hover:border-amber-300 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50"
+                      className="p-1.5 border border-amber-500/50 hover:border-amber-400 rounded-lg text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50 bg-black/40 shadow-[0_0_8px_rgba(245,158,11,0.15)]"
                       title="Disconnect document link (keeps DB record unlinked)"
                     >
                       {isUnlinking ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                        <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
                       ) : (
                         <Unlink className="w-4 h-4" />
                       )}
@@ -308,11 +308,11 @@ export default function LinkedDocumentsPanel({
                     <button
                       disabled={isUnlinking || isDeletingThis}
                       onClick={() => setDocToDelete(doc)}
-                      className="p-1.5 border border-red-200 hover:border-red-300 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      className="p-1.5 border border-red-500/50 hover:border-red-400 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 bg-black/40 shadow-[0_0_8px_rgba(239,68,68,0.15)]"
                       title="Delete document data permanently from database"
                     >
                       {isDeletingThis ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                        <Loader2 className="w-4 h-4 animate-spin text-red-400" />
                       ) : (
                         <Trash2 className="w-4 h-4" />
                       )}
@@ -327,38 +327,38 @@ export default function LinkedDocumentsPanel({
 
       {/* Custom Irreversible Deletion Warning Modal */}
       {docToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 flex flex-col relative animate-scale-up">
+        <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#030305] rounded-2xl max-w-md w-full p-6 shadow-[0_0_50px_rgba(239,68,68,0.1)] border border-white/10 flex flex-col relative animate-scale-up">
             <button
               onClick={() => setDocToDelete(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+              className="absolute top-4 right-4 text-gray-500 hover:text-white active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center space-x-3 mb-4">
-              <div className="p-3 bg-red-50 rounded-xl text-red-600">
+              <div className="p-3 bg-red-500/20 rounded-xl text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Irreversible Deletion Warning</h3>
-                <p className="text-xs text-red-500 font-semibold">Database Data Purge</p>
+                <h3 className="text-lg font-bold text-white drop-shadow-md">Irreversible Deletion Warning</h3>
+                <p className="text-xs text-red-400 font-semibold">Database Data Purge</p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 leading-relaxed mb-4">
-              You are about to perform an <span className="font-bold text-red-600">irreversible deletion</span> of the document <span className="font-bold text-gray-800">"{docToDelete.title}"</span> from the database and all of its records will be deleted permanently. Do you wish to continue?
+            <p className="text-sm text-gray-300 leading-relaxed mb-4">
+              You are about to perform an <span className="font-bold text-red-400">irreversible deletion</span> of the document <span className="font-bold text-white">"{docToDelete.title}"</span> from the database and all of its records will be deleted permanently. Do you wish to continue?
             </p>
 
-            <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-xl mb-4">
-              <span className="font-bold block mb-0.5 text-blue-900 uppercase tracking-wider text-[10px]">Cloud Storage Safeguard</span>
-              Note: This action will <span className="font-bold text-blue-900">NOT</span> delete the actual file in your cloud drive.
+            <div className="bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan text-xs p-3 rounded-xl mb-4 shadow-[0_0_15px_rgba(0,243,255,0.1)]">
+              <span className="font-bold block mb-0.5 text-white uppercase tracking-wider text-[10px] drop-shadow-md">Cloud Storage Safeguard</span>
+              Note: This action will <span className="font-bold text-white">NOT</span> delete the actual file in your cloud drive.
             </div>
 
             {isDeleting && (
-              <div className="flex items-center space-x-2 text-red-650 bg-red-50/70 border border-red-100 p-3 rounded-xl mb-4 animate-pulse">
-                <Loader2 className="w-4 h-4 animate-spin text-red-600 flex-shrink-0" />
-                <span className="text-[11px] font-semibold text-red-700">Unlinking and permanently deleting data from database...</span>
+              <div className="flex items-center space-x-2 text-red-400 bg-red-500/10 border border-red-500/30 p-3 rounded-xl mb-4 animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-red-500 flex-shrink-0" />
+                <span className="text-[11px] font-semibold">Unlinking and permanently deleting data from database...</span>
               </div>
             )}
 
@@ -366,14 +366,14 @@ export default function LinkedDocumentsPanel({
               <button
                 disabled={isDeleting}
                 onClick={() => setDocToDelete(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100 disabled:opacity-50"
+                className="flex-1 py-2.5 px-4 border border-white/20 hover:bg-white/10 rounded-xl text-xs font-semibold text-gray-300 active:scale-[0.98] transition-all duration-100 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 disabled={isDeleting}
                 onClick={handleConfirmDelete}
-                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow active:scale-[0.98] transition-all duration-100 disabled:opacity-50 flex items-center justify-center space-x-1.5"
+                className="flex-1 py-2.5 px-4 bg-red-500/20 hover:bg-red-500 border border-red-500/50 hover:text-white text-red-400 rounded-xl text-xs font-semibold shadow-[0_0_10px_rgba(239,68,68,0.2)] active:scale-[0.98] transition-all duration-100 disabled:opacity-50 flex items-center justify-center space-x-1.5"
               >
                 {isDeleting ? (
                   <>
@@ -391,14 +391,14 @@ export default function LinkedDocumentsPanel({
 
       {/* Inline Document Preview Panel */}
       {activeDocPreview && (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-md p-6 space-y-4 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-gray-150 pb-3">
+        <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-6 space-y-4 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-dark-teal-50 text-dark-teal-700 rounded-xl">
+              <div className="p-2.5 bg-neon-cyan/20 border border-neon-cyan/50 text-neon-cyan rounded-xl shadow-[0_0_10px_rgba(0,243,255,0.2)]">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-gray-800 font-lexend">{activeDocPreview.title}</h4>
+                <h4 className="text-sm font-bold text-white font-lexend drop-shadow-md">{activeDocPreview.title}</h4>
                 <p className="text-[10px] text-gray-400 font-bold uppercase">{activeDocPreview.file_type || 'Document'}</p>
               </div>
             </div>
@@ -456,11 +456,11 @@ export default function LinkedDocumentsPanel({
                 );
               })()}
 
-              <div className="h-4 w-px bg-gray-200 mx-1" />
+              <div className="h-4 w-px bg-white/20 mx-1" />
 
               <button
                 onClick={handleRefreshPreview}
-                className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg active:scale-95 transition-all"
+                className="p-2 text-gray-400 hover:text-neon-cyan hover:bg-white/10 rounded-lg active:scale-95 transition-all"
                 title="Refresh preview contents"
               >
                 <RotateCw className="w-4 h-4" />
@@ -470,7 +470,7 @@ export default function LinkedDocumentsPanel({
                 href={activeDocPreview.file_url}
                 target="_blank"
                 rel="noreferrer"
-                className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg active:scale-95 transition-all"
+                className="p-2 text-gray-400 hover:text-neon-cyan hover:bg-white/10 rounded-lg active:scale-95 transition-all"
                 title="Open in new window"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -478,7 +478,7 @@ export default function LinkedDocumentsPanel({
 
               <button
                 onClick={() => setActiveDocPreview(null)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg active:scale-95 transition-all"
+                className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg active:scale-95 transition-all"
                 title="Close Preview"
               >
                 <X className="w-4 h-4" />

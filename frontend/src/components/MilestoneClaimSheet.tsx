@@ -69,12 +69,12 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
 
   return (
     <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up">
+      <div className="bg-black/40 w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up">
         {/* Header */}
-        <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="px-8 py-5 border-b border-white/10 flex justify-between items-center bg-black/40/10/50">
           <div>
-            <h2 className="text-xl font-bold font-lexend text-gray-900">Milestone Claim Claim Details</h2>
-            <p className="text-xs text-gray-500 font-medium mt-1">
+            <h2 className="text-xl font-bold font-lexend text-white drop-shadow-md">Milestone Claim Claim Details</h2>
+            <p className="text-xs text-gray-400 font-medium mt-1">
               Claim No: {claim?.claim_number || 'New'}
             </p>
           </div>
@@ -88,7 +88,7 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
                 <span>View Source Extraction</span>
               </button>
             )}
-            <button onClick={onClose} className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition">
+            <button onClick={onClose} className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-gray-300 hover:bg-gray-100 rounded-xl transition">
               Cancel
             </button>
             <button 
@@ -130,11 +130,11 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
         </div>
         
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 bg-white px-8">
+        <div className="flex border-b border-white/20 bg-black/40 px-8">
             <button
                 onClick={() => setActiveTab('lifecycle')}
                 className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-                    activeTab === 'lifecycle' ? 'border-dark-teal-600 text-dark-teal-800' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    activeTab === 'lifecycle' ? 'border-dark-teal-600 text-dark-teal-800' : 'border-transparent text-gray-400 hover:text-gray-300 hover:bg-black/40/10'
                 }`}
             >
                 Valuation Lifecycle
@@ -142,7 +142,7 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
             <button
                 onClick={() => setActiveTab('extracted')}
                 className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-                    activeTab === 'extracted' ? 'border-dark-teal-600 text-dark-teal-800' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    activeTab === 'extracted' ? 'border-dark-teal-600 text-dark-teal-800' : 'border-transparent text-gray-400 hover:text-gray-300 hover:bg-black/40/10'
                 }`}
             >
                 Ingested Claim Data
@@ -150,7 +150,7 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
         </div>
         
         {/* Body */}
-        <div className="p-8 flex-1 overflow-y-auto bg-gray-50/30">
+        <div className="p-8 flex-1 overflow-y-auto bg-black/40/10/30">
             
             <SourceExtractionViewerModal 
               show={showExtractionModal} 
@@ -162,50 +162,50 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
             {activeTab === 'lifecycle' && (
               <div className="space-y-8 animate-fade-in">
                 {/* Section 1: Approval Lifecycle */}
-                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center"><FileText className="w-4 h-4 mr-2 text-dark-teal-600"/> 1. Certification & Approval</h3>
+                <div className="bg-black/40 p-6 rounded-2xl border border-white/20 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-200 mb-4 flex items-center"><FileText className="w-4 h-4 mr-2 text-neon-cyan"/> 1. Certification & Approval</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">Claim Number</label>
+                        <label className="block text-xs font-bold text-gray-300 mb-2">Claim Number</label>
                         <input 
                             type="text" 
                             value={claimNumber}
                             onChange={(e) => setClaimNumber(e.target.value)}
                             placeholder="e.g. MC-001"
-                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-dark-teal-500"
+                            className="w-full p-2.5 bg-black/40/10 border border-white/20 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-neon-cyan"
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">Approval Status</label>
+                        <label className="block text-xs font-bold text-gray-300 mb-2">Approval Status</label>
                         <select 
                             value={status} 
                             onChange={(e) => setStatus(e.target.value)}
-                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-dark-teal-500"
+                            className="w-full p-2.5 bg-black/40/10 border border-white/20 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-neon-cyan"
                         >
                             <option value="Draft">Draft (Preparing)</option>
                             <option value="Submitted">Submitted to Consultant</option>
                             <option value="Certified">Certified (Approved)</option>
                         </select>
-                        <p className="text-[10px] text-gray-500 mt-1">Is this still a draft or has it been approved?</p>
+                        <p className="text-[10px] text-gray-400 mt-1">Is this still a draft or has it been approved?</p>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">Valuation / Certified Date</label>
+                        <label className="block text-xs font-bold text-gray-300 mb-2">Valuation / Certified Date</label>
                         <input 
                             type="date" 
                             value={valuationDate}
                             onChange={(e) => setValuationDate(e.target.value)}
-                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-dark-teal-500"
+                            className="w-full p-2.5 bg-black/40/10 border border-white/20 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-neon-cyan"
                         />
                     </div>
                 </div>
             </div>
 
             {/* Section 2: Valuation Amounts */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm relative">
+            <div className="bg-black/40 p-6 rounded-2xl border border-white/20 shadow-sm relative">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-bold text-gray-800 flex items-center"><DollarSign className="w-4 h-4 mr-2 text-dark-teal-600"/> 2. Valuation Amounts</h3>
+                    <h3 className="text-sm font-bold text-gray-200 flex items-center"><DollarSign className="w-4 h-4 mr-2 text-neon-cyan"/> 2. Valuation Amounts</h3>
                     {!isValuationEditing ? (
-                        <button onClick={() => setIsValuationEditing(true)} className="text-xs font-bold text-dark-teal-600 hover:text-dark-teal-800 px-3 py-1 bg-dark-teal-50 rounded-lg">
+                        <button onClick={() => setIsValuationEditing(true)} className="text-xs font-bold text-neon-cyan hover:text-dark-teal-800 px-3 py-1 bg-dark-teal-50 rounded-lg">
                             Edit Amounts
                         </button>
                     ) : (
@@ -228,19 +228,19 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">Gross Claimed</label>
+                        <label className="block text-xs font-bold text-gray-300 mb-2">Gross Claimed</label>
                         {isValuationEditing ? (
-                            <input type="number" value={grossClaimed} onChange={(e) => setGrossClaimed(Number(e.target.value))} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold"/>
+                            <input type="number" value={grossClaimed} onChange={(e) => setGrossClaimed(Number(e.target.value))} className="w-full p-2.5 bg-black/40/10 border border-white/20 rounded-xl text-sm font-semibold"/>
                         ) : (
-                            <div className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold text-gray-800">${grossClaimed.toLocaleString()}</div>
+                            <div className="p-2.5 bg-black/40/10 border border-white/10 rounded-xl text-sm font-bold text-gray-200">${grossClaimed.toLocaleString()}</div>
                         )}
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">Gross Certified</label>
+                        <label className="block text-xs font-bold text-gray-300 mb-2">Gross Certified</label>
                         {isValuationEditing ? (
-                            <input type="number" value={grossCertified} onChange={(e) => setGrossCertified(Number(e.target.value))} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold"/>
+                            <input type="number" value={grossCertified} onChange={(e) => setGrossCertified(Number(e.target.value))} className="w-full p-2.5 bg-black/40/10 border border-white/20 rounded-xl text-sm font-semibold"/>
                         ) : (
-                            <div className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold text-gray-800">${grossCertified.toLocaleString()}</div>
+                            <div className="p-2.5 bg-black/40/10 border border-white/10 rounded-xl text-sm font-bold text-gray-200">${grossCertified.toLocaleString()}</div>
                         )}
                     </div>
                     <div>
@@ -250,33 +250,33 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
                         ) : (
                             <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-black text-emerald-800">${netAmountDue.toLocaleString()}</div>
                         )}
-                        <p className="text-[10px] text-gray-500 mt-1">Amount after taxes & retention</p>
+                        <p className="text-[10px] text-gray-400 mt-1">Amount after taxes & retention</p>
                     </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-gray-100 bg-gray-50/50 p-4 rounded-xl">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Database Ingested Values</h4>
+                <div className="mt-6 pt-4 border-t border-white/10 bg-black/40/10/50 p-4 rounded-xl">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Database Ingested Values</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <p className="text-[10px] uppercase font-bold text-gray-400">DB Gross Claimed</p>
-                            <p className="text-sm font-bold text-gray-600">${(claim?.gross_amount_claimed || 0).toLocaleString()}</p>
+                            <p className="text-sm font-bold text-gray-400">${(claim?.gross_amount_claimed || 0).toLocaleString()}</p>
                         </div>
                         <div>
                             {/* Typically not ingested at creation, leaving blank for alignment */}
                         </div>
                         <div>
                             <p className="text-[10px] uppercase font-bold text-gray-400">DB Net Amount Due</p>
-                            <p className="text-sm font-bold text-gray-600">${(claim?.net_amount_due || 0).toLocaleString()}</p>
+                            <p className="text-sm font-bold text-gray-400">${(claim?.net_amount_due || 0).toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Section 3: Payment Lifecycle (Auto-expanding) */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden">
+            <div className="bg-black/40 p-6 rounded-2xl border border-white/20 shadow-sm relative overflow-hidden">
                 {derivedPaymentStatus === 'PAID' && <div className="absolute top-0 right-0 w-2 h-full bg-emerald-500"></div>}
-                <h3 className="text-sm font-bold text-gray-800 mb-6 flex items-center justify-between">
-                    <span className="flex items-center"><CheckCircle className="w-4 h-4 mr-2 text-dark-teal-600"/> 3. Payment Tracking</span>
+                <h3 className="text-sm font-bold text-gray-200 mb-6 flex items-center justify-between">
+                    <span className="flex items-center"><CheckCircle className="w-4 h-4 mr-2 text-neon-cyan"/> 3. Payment Tracking</span>
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
                         derivedPaymentStatus === 'PAID' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                         derivedPaymentStatus === 'PARTIAL' ? 'bg-amber-50 text-amber-700 border-amber-200' :
@@ -289,11 +289,11 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
                 <div className="space-y-6">
                     {/* Active Input Row (Only hides if fully paid off) */}
                     {!(totalPaid >= netAmountDue && netAmountDue > 0) && (
-                        <div className="bg-gray-50 border-2 border-dark-teal-100 p-5 rounded-2xl">
+                        <div className="bg-black/40/10 border-2 border-dark-teal-100 p-5 rounded-2xl">
                             <h4 className="text-xs font-bold text-dark-teal-800 uppercase tracking-wider mb-4">Record New Payment</h4>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-2">Amount Paid</label>
+                                    <label className="block text-xs font-bold text-gray-300 mb-2">Amount Paid</label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-2.5 text-gray-400 font-bold">$</span>
                                         <input 
@@ -301,20 +301,20 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
                                             value={newPaymentAmount}
                                             onChange={(e) => setNewPaymentAmount(e.target.value === '' ? '' : Number(e.target.value))}
                                             placeholder="0.00"
-                                            className="w-full p-2.5 pl-7 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:ring-2 focus:ring-dark-teal-500"
+                                            className="w-full p-2.5 pl-7 bg-black/40 border border-white/20 rounded-xl text-sm font-bold text-gray-200 focus:ring-2 focus:ring-neon-cyan"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-2">Date of Payment</label>
+                                    <label className="block text-xs font-bold text-gray-300 mb-2">Date of Payment</label>
                                     <input 
                                         type="date" 
                                         value={newPaymentDate}
                                         onChange={(e) => setNewPaymentDate(e.target.value)}
-                                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-dark-teal-500"
+                                        className="w-full p-2.5 bg-black/40 border border-white/20 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-neon-cyan"
                                     />
                                 </div>
-                                <div className="bg-white p-2.5 rounded-xl border border-red-100 flex flex-col justify-center">
+                                <div className="bg-black/40 p-2.5 rounded-xl border border-red-100 flex flex-col justify-center">
                                     <label className="block text-[10px] font-bold text-red-700 uppercase tracking-wide">Remaining Unpaid</label>
                                     <span className="text-lg font-black text-red-600">${remainingAfterNew.toLocaleString()}</span>
                                 </div>
@@ -334,16 +334,16 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
                     {/* Historical Payments Saved Below */}
                     {payments.length > 0 && (
                         <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Payment History Ledger</h4>
+                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider pl-1">Payment History Ledger</h4>
                             {payments.map((payment, index) => (
-                                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-6 p-4 bg-white border border-gray-100 shadow-sm rounded-xl items-center relative">
+                                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-6 p-4 bg-black/40/5 border border-white/10 shadow-sm rounded-xl items-center relative">
                                     <div>
                                         <p className="text-[10px] text-gray-400 font-bold uppercase">Amount Paid</p>
                                         <p className="text-sm font-bold text-emerald-700">${payment.amount.toLocaleString()}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] text-gray-400 font-bold uppercase">Date</p>
-                                        <p className="text-sm font-bold text-gray-800">{payment.date}</p>
+                                        <p className="text-sm font-bold text-gray-200">{payment.date}</p>
                                     </div>
                                     <div>
                                         {/* Empty column to match grid alignment */}
@@ -366,17 +366,17 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
             <div className="space-y-6 animate-fade-in">
               {/* Unified Raw Data Table (All JSONB) */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold font-lexend text-gray-800">All Raw Extracted Data (Document & Row Level)</h4>
-                <div className="overflow-x-auto border border-gray-150 rounded-2xl shadow-sm">
+                <h4 className="text-xs font-bold font-lexend text-gray-200">All Raw Extracted Data (Document & Row Level)</h4>
+                <div className="overflow-x-auto border border-white/10 rounded-2xl shadow-sm">
                   <table className="w-full text-left text-xs min-w-[800px]">
-                    <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[9px] border-b border-gray-100">
+                    <thead className="bg-black/40/10 text-gray-400 font-bold uppercase tracking-wider text-[9px] border-b border-white/10">
                       <tr>
                         <th className="px-4 py-3 w-[200px]">Source / Ref</th>
                         <th className="px-4 py-3 w-[300px]">Raw JSON Key</th>
                         <th className="px-4 py-3">Raw Value</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-150 text-gray-700 font-medium bg-white">
+                    <tbody className="divide-y divide-gray-150 text-gray-300 font-medium bg-black/40">
                       
                       {/* Document Level JSONB */}
                       {(() => {
@@ -393,14 +393,14 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
 
                         return (
                           <>
-                            <tr className="bg-gray-50/80">
-                              <td colSpan={3} className="px-4 py-2 text-[9px] font-extrabold uppercase tracking-widest text-gray-600">Document Totals / Header</td>
+                            <tr className="bg-black/40/10/80">
+                              <td colSpan={3} className="px-4 py-2 text-[9px] font-extrabold uppercase tracking-widest text-gray-400">Document Totals / Header</td>
                             </tr>
                             {headerKeys.map(key => (
-                              <tr key={`doc-${key}`} className="hover:bg-gray-50/50 transition">
+                              <tr key={`doc-${key}`} className="hover:bg-black/40/10/50 transition">
                                 <td className="px-4 py-3 text-xs font-bold text-gray-400">Cover Page</td>
-                                <td className="px-4 py-3 font-bold text-gray-800">{key}</td>
-                                <td className="px-4 py-3 text-gray-700">
+                                <td className="px-4 py-3 font-bold text-gray-200">{key}</td>
+                                <td className="px-4 py-3 text-gray-300">
                                   {String(combinedHeaderMetrics[key])}
                                 </td>
                               </tr>
@@ -411,8 +411,8 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
 
                       {/* Row Level JSONB */}
                       {claim?.values_map?.extraction?.items && claim.values_map.extraction.items.length > 0 && (
-                        <tr className="bg-gray-50/80">
-                          <td colSpan={3} className="px-4 py-2 text-[9px] font-extrabold uppercase tracking-widest text-gray-600">Activity Rows Matrix</td>
+                        <tr className="bg-black/40/10/80">
+                          <td colSpan={3} className="px-4 py-2 text-[9px] font-extrabold uppercase tracking-widest text-gray-400">Activity Rows Matrix</td>
                         </tr>
                       )}
                       {(claim?.values_map?.extraction?.items || []).flatMap((item: any, idx: number) => {
@@ -420,10 +420,10 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
                         const allKeys = Object.keys(rawData);
                         
                         return allKeys.map(key => (
-                          <tr key={`row-${idx}-${key}`} className="hover:bg-gray-50/50 transition">
-                            <td className="px-4 py-3 text-xs font-bold text-gray-500">Activity ID: {item.activity_id || idx + 1}</td>
-                            <td className="px-4 py-3 font-bold text-gray-800">{key}</td>
-                            <td className="px-4 py-3 text-gray-700">{String(rawData[key])}</td>
+                          <tr key={`row-${idx}-${key}`} className="hover:bg-black/40/10/50 transition">
+                            <td className="px-4 py-3 text-xs font-bold text-gray-400">Activity ID: {item.activity_id || idx + 1}</td>
+                            <td className="px-4 py-3 font-bold text-gray-200">{key}</td>
+                            <td className="px-4 py-3 text-gray-300">{String(rawData[key])}</td>
                           </tr>
                         ));
                       })}
@@ -445,18 +445,18 @@ export default function MilestoneClaimSheet({ claim, contractParams, onSave, onC
         </div>
 
         {/* Modal Footer (Summary) */}
-        <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/80 flex items-center justify-between">
+        <div className="px-8 py-5 border-t border-white/10 bg-black/40/10/80 flex items-center justify-between">
             <div className="flex space-x-12">
                 <div>
-                    <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Total Net Amount Due</p>
-                    <p className="text-xl font-black text-gray-900">${netAmountDue.toLocaleString()}</p>
+                    <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total Net Amount Due</p>
+                    <p className="text-xl font-black text-white drop-shadow-md">${netAmountDue.toLocaleString()}</p>
                 </div>
                 <div>
-                    <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Total Paid So Far</p>
+                    <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total Paid So Far</p>
                     <p className="text-xl font-black text-emerald-600">${totalPaid.toLocaleString()}</p>
                 </div>
                 <div>
-                    <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Remaining Unpaid</p>
+                    <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Remaining Unpaid</p>
                     <p className={`text-xl font-black ${remainingBeforeNew > 0 ? 'text-red-600' : 'text-gray-400'}`}>
                         ${remainingBeforeNew.toLocaleString()}
                     </p>
