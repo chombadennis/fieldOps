@@ -11,7 +11,7 @@ const Footer = () => {
               Field<span className="text-crimson-violet-400">Ops</span>
             </Link>
             <p className="text-sm text-brown-300 leading-relaxed">
-              Optimizing construction workflows from bidding to completion. Empowering teams with real-time data and seamless collaboration.
+              Bringing order to project chaos. Keep all your project data in one place, build a historical footprint and keep your team on the same page.
             </p>
           </div>
 
@@ -36,13 +36,13 @@ const Footer = () => {
             <h4 className="text-white font-bold mb-6">Features</h4>
             <ul className="space-y-4 text-sm">
               <li>
-                <Link href="/features/bidding" className="hover:text-crimson-violet-400 transition-colors">Bidding</Link>
+                <Link href="/features/all-in-one-place" className="hover:text-crimson-violet-400 transition-colors">All in One Place</Link>
               </li>
               <li>
-                <Link href="/features/management" className="hover:text-crimson-violet-400 transition-colors">Project Management</Link>
+                <Link href="/features/historical-records" className="hover:text-crimson-violet-400 transition-colors">Historical Records</Link>
               </li>
               <li>
-                <Link href="/features/analytics" className="hover:text-crimson-violet-400 transition-colors">Analytics</Link>
+                <Link href="/features/communication" className="hover:text-crimson-violet-400 transition-colors">Team Communication</Link>
               </li>
             </ul>
           </div>
