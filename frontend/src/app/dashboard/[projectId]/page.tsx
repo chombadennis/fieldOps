@@ -349,7 +349,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
   } else {
     // GENERAL - ALL TABS ACTIVE
     PMO_SUBTABS = [
-      { key: 'boq', label: 'BoQ & Files', description: `Bills of Quantities (Expected: Excel Workbooks). ${contractContext}`, icon: FileSpreadsheet, badgeCount: project.boq_documents?.length || 0 },
+      { key: 'boq', label: 'BoQ & Files', description: `Bills of Quantities (Expected: Excel Workbooks). ${contractContext}`, icon: FileSpreadsheet, badgeCount: (project.boq_documents || []).filter((d: any) => !d.preview_only && d.validation_status !== 'rejected').length },
       { key: 'ipcs', label: 'IPC & Claims', description: `Interim Payment Certificates (Expected: PDF/Excel). ${contractContext}`, icon: FileCheck, badgeCount: documents.filter((d) => d.department?.toUpperCase() === 'IPC' || d.department?.toLowerCase() === 'ipc').length },
       { key: 'budgets', label: 'Budget & EVM', description: `Project budget, cost tracking, and Work Progress Calculations. ${contractContext}`, icon: DollarSign, badgeCount: ((project.integrations || []).filter((i: any) => i.module === 'budget' || i.module === 'budgets' || i.module === 'progress' || i.module === 'cost')).length },
       { key: 'scheduling', label: 'Scheduling & Timeline', description: `Upload Program of Works (Expected: MPP/Excel). ${contractContext}`, icon: Calendar, badgeCount: documents.filter((d) => d.department?.toLowerCase() === 'program_of_works').length },
@@ -562,7 +562,7 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
                       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 text-right">
                         <p className="text-xs font-semibold text-indigo-200 uppercase">Total BoQs</p>
                         <p className="text-sm font-bold font-lexend text-white mt-0.5">
-                          {(project.boq_documents || []).length}
+                          {(project.boq_documents || []).filter((d: any) => !d.preview_only && d.validation_status !== 'rejected').length}
                         </p>
                       </div>
                     </div>

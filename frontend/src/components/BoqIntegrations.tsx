@@ -86,7 +86,7 @@ export default function BoqIntegrations({
   // Fetch spreadsheets/folders when the OAuth setup completes or folder changes
   useEffect(() => {
     const loadFiles = async () => {
-      if (oauthProvider && refreshToken && refreshToken !== 'existing') {
+      if (showConfigModal && oauthProvider && refreshToken && refreshToken !== 'existing') {
         setFetchingFiles(true);
         setError(null);
         try {
@@ -102,7 +102,7 @@ export default function BoqIntegrations({
       }
     };
     loadFiles();
-  }, [oauthProvider, refreshToken, currentFolderId]);
+  }, [showConfigModal, oauthProvider, refreshToken, currentFolderId]);
 
   const visibleIntegrations = integrations.filter(i => {
     if (i.id === deletingId) return false;

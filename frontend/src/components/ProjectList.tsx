@@ -59,7 +59,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
           <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
             <div className="flex items-center space-x-2 text-[11px] font-medium text-gray-500">
               <FileSpreadsheet className="w-3.5 h-3.5 text-neon-purple" />
-              <span>{project.boq_documents?.length || 0} BoQs Linked</span>
+              <span>{(project.boq_documents || []).filter((d: any) => !d.preview_only && d.validation_status !== 'rejected').length} BoQs Linked</span>
             </div>
 
             <Link

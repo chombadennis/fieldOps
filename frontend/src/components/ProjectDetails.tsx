@@ -39,7 +39,7 @@ export default function ProjectDetails({ project }: ProjectDetailsProps) {
         <div className="flex items-center space-x-3 bg-black/40 p-3 rounded-2xl border border-white/10 shadow-inner">
           <div className="text-right px-2">
             <p className="text-[10px] uppercase font-bold text-gray-500">Attached BoQs</p>
-            <p className="text-lg font-black font-lexend text-neon-cyan drop-shadow-sm">{project.boq_documents?.length || 0}</p>
+            <p className="text-lg font-black font-lexend text-neon-cyan drop-shadow-sm">{(project.boq_documents || []).filter((d: any) => !d.preview_only && d.validation_status !== 'rejected').length}</p>
           </div>
           <div className="h-8 w-px bg-white/10" />
           <div className="text-right px-2">

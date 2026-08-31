@@ -132,7 +132,7 @@ export default function ReimbursableCostsIntegrations({
   // Fetch spreadsheets/folders when the OAuth setup completes or folder changes
   useEffect(() => {
     const loadFiles = async () => {
-      if (oauthProvider && refreshToken) {
+      if (showConfigModal && oauthProvider && refreshToken) {
         setFetchingFiles(true);
         setError(null);
         try {
@@ -148,7 +148,7 @@ export default function ReimbursableCostsIntegrations({
       }
     };
     loadFiles();
-  }, [oauthProvider, refreshToken, currentFolderId, moduleContext]);
+  }, [showConfigModal, oauthProvider, refreshToken, currentFolderId, moduleContext]);
 
   const expectedModule = moduleContext === 'department' ? departmentName.toLowerCase() : moduleContext;
   const visibleIntegrations = integrations.filter(i => {
@@ -737,7 +737,7 @@ export default function ReimbursableCostsIntegrations({
       setModalMessage({ type: 'info', text: 'Finalizing database link...' });
 
       let integrationId: number | undefined;
-      if (oauthProvider && refreshToken) {
+      if (showConfigModal && oauthProvider && refreshToken) {
         const savedInt = await saveIntegration({
           project_id: typeof projectId === 'string' ? parseInt(projectId) : projectId,
           provider: oauthProvider,
@@ -865,7 +865,7 @@ export default function ReimbursableCostsIntegrations({
       }
 
       let integrationId: number | undefined;
-      if (oauthProvider && refreshToken) {
+      if (showConfigModal && oauthProvider && refreshToken) {
         const savedInt = await saveIntegration({
           project_id: typeof projectId === 'string' ? parseInt(projectId) : projectId,
           provider: oauthProvider,

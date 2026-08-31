@@ -463,7 +463,7 @@ export default function MilestoneClaimsIntegrations({
     setModalMessage({ type: 'info', text: 'Validating document as Milestone Claim…' });
 
     try {
-      if (oauthProvider && refreshToken) {
+      if (showConfigModal && oauthProvider && refreshToken) {
         // Step 1: Validate the document first (decoupled from extraction)
         const validationResult = await validateMilestoneClaim(projectId, {
           project_id: typeof projectId === 'string' ? parseInt(projectId as any) : projectId,

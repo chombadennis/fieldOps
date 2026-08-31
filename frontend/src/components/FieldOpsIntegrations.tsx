@@ -84,7 +84,7 @@ export default function FieldOpsIntegrations({
 
     const lowerDept = (departmentName || '').toLowerCase();
     if (lowerDept.includes('tech') || lowerDept.includes('engineering')) return ['.pdf', '.dwg', '.jpg', '.png', '.jpeg'];
-    if (lowerDept.includes('field')) return ['.pdf', '.doc', '.docx', '.jpg', '.png', '.jpeg'];
+    if (lowerDept.includes('field')) return ['.pdf', '.doc', '.docx', '.xlsx', '.xls', '.csv'];
     if (lowerDept.includes('hr') || lowerDept.includes('legal')) return ['.pdf', '.doc', '.docx', '.xlsx', '.xls'];
 
     if (moduleContext === 'ipc') return ['.xlsx', '.xls'];
@@ -129,16 +129,23 @@ export default function FieldOpsIntegrations({
   const [ipcExtractionData, setIpcExtractionData] = useState<any>(null);
   const [pendingIpcFileDetails, setPendingIpcFileDetails] = useState<any>(null);
 
-  // Fetch spreadsheets/folders when the OAuth setup completes or folder changes
+  // Fetch spreadsheets/folders when the OAuth setup completes or folder changes or modal opens
   useEffect(() => {
     const loadFiles = async () => {
-      if (oauthProvider && refreshToken) {
+      if (showConfigModal && oauthProvider && refreshToken) {
         setFetchingFiles(true);
         setError(null);
         try {
           const filterType = moduleContext === 'ipc' ? 'spreadsheets' : 'all';
-          const files = await listCloudFiles(oauthProvider, refreshToken, currentFolderId || undefined, filterType);
-          setAvailableFiles(files);
+          const files = await listCloudFiles(
+            oauthProvider, 
+            refreshToken, 
+            currentFolderId || undefined, 
+            filterType, 
+            projectId, 
+            moduleContext === 'department' ? departmentName?.toLowerCase() : moduleContext
+          );
+          setAvailableFiles(files || []);
         } catch (err) {
           setError('Failed to fetch files from drive.');
           console.error(err);
@@ -148,7 +155,7 @@ export default function FieldOpsIntegrations({
       }
     };
     loadFiles();
-  }, [oauthProvider, refreshToken, currentFolderId, moduleContext]);
+  }, [showConfigModal, oauthProvider, refreshToken, currentFolderId, moduleContext]);
 
   const expectedModule = moduleContext === 'department' ? departmentName.toLowerCase() : moduleContext;
   const visibleIntegrations = integrations.filter(i => {
@@ -395,7 +402,7 @@ export default function FieldOpsIntegrations({
     const handleOAuthMessage = (event: MessageEvent) => {
       // For window.postMessage, verify origin. BroadcastChannel doesn't have event.origin in the same way, 
       // but it's restricted to same-origin by the browser automatically.
-      if (event.origin && event.origin !== window.location.origin) return;
+      if (event.origin && event.origin !== window.location.origin && event.origin !== '') return;
       
       if (event.data?.type === 'OAUTH_CALLBACK') {
         const { provider, token } = event.data;
@@ -532,7 +539,7 @@ export default function FieldOpsIntegrations({
       if (authCheck && authCheck.has_auth) {
         try {
           const filterType = moduleContext === 'ipc' ? 'spreadsheets' : 'all';
-          await listCloudFiles(dbProvider, authCheck.refresh_token, undefined, filterType, projectId, moduleContext);
+          await listCloudFiles(dbProvider, authCheck.refresh_token, undefined, filterType, projectId, moduleContext === 'department' ? departmentName?.toLowerCase() : moduleContext);
           setOauthProvider(dbProvider);
           setRefreshToken(authCheck.refresh_token);
           setShowConfigModal(true);
@@ -561,11 +568,14 @@ export default function FieldOpsIntegrations({
 
     try {
       let url = '';
+      const currentActiveTab = activeTab || (moduleContext === 'department' ? 'field_ops' : moduleContext === 'budget' ? 'financials' : 'pmo');
+      const currentSubTab = pmoSubTab || (moduleContext === 'department' ? departmentKey : moduleContext === 'budget' ? 'budget' : moduleContext === 'ipc' ? 'ipcs' : moduleContext === 'boq' ? 'boq' : moduleContext === 'activity_schedule' ? 'activity_schedule' : 'milestone_payments');
+      
       if (provider === 'google') {
-        const res = await getGoogleAuthUrl(projectId, activeTab, pmoSubTab);
+        const res = await getGoogleAuthUrl(projectId, currentActiveTab, currentSubTab);
         url = res.url;
       } else {
-        const res = await getOneDriveAuthUrl(projectId, activeTab, pmoSubTab);
+        const res = await getOneDriveAuthUrl(projectId, currentActiveTab, currentSubTab);
         url = res.url;
       }
 
@@ -1142,7 +1152,7 @@ export default function FieldOpsIntegrations({
   };
 
   // Find active integrations
-  const googleIntegration = integrations.find((i) => i.provider === 'google_sheets');
+  const googleIntegration = integrations.find((i) => i.provider === 'google_sheets' || i.provider === 'google');
   const onedriveIntegration = integrations.find((i) => i.provider === 'onedrive');
 
   const showList = false;
@@ -1365,26 +1375,36 @@ export default function FieldOpsIntegrations({
                             <span className="text-[11px]">{syncingId === integration.id ? 'Extracting...' : 'Re-extract IPC'}</span>
                           </button>
                         ) : (
-                          <div
-                            title="Workbook is up to date with cloud file. Re-extraction activates automatically when cloud edits are detected."
-                            className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-[11px] font-bold flex items-center space-x-1.5 opacity-80 cursor-not-allowed select-none"
-                          >
-                            <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span>Synced</span>
-                          </div>
-                        )
-                      ) : (
-                        <button
-                          disabled={isLoading || syncingId !== null || deletingId !== null}
-                          onClick={() => handleManualSync(integration.id)}
-                          title={syncingId === integration.id ? `Syncing worksheets: ${syncingName}` : "Sync workbook data"}
-                          className="p-2 hover:bg-white text-indigo-750 hover:text-indigo-905 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                        <div
+                          title="Workbook is up to date with cloud file. Re-extraction activates automatically when cloud edits are detected."
+                          className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-[11px] font-bold flex items-center space-x-1.5 opacity-80 cursor-not-allowed select-none"
                         >
-                          <RefreshCw className={`w-4 h-4 ${syncingId === integration.id ? 'animate-spin text-indigo-900' : ''}`} />
-                        </button>
-                      )}
+                          <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Synced</span>
+                        </div>
+                      )
+                    ) : moduleContext === 'department' ? (
+                        <div
+                          title="Document is linked successfully."
+                          className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-[11px] font-bold flex items-center space-x-1.5 opacity-80 cursor-not-allowed select-none"
+                        >
+                          <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Linked</span>
+                        </div>
+                    ) : (
+                      <button
+                        disabled={isLoading || syncingId !== null || deletingId !== null}
+                        onClick={() => handleManualSync(integration.id)}
+                        title={syncingId === integration.id ? `Syncing worksheets: ${syncingName}` : "Sync workbook data"}
+                        className="p-2 hover:bg-white text-indigo-750 hover:text-indigo-905 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${syncingId === integration.id ? 'animate-spin text-indigo-900' : ''}`} />
+                      </button>
+                    )}
 
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
@@ -1438,6 +1458,7 @@ export default function FieldOpsIntegrations({
 
         <CloudConfigModal
           moduleContext={moduleContext}
+          departmentName={departmentName}
           trackingMode={trackingMode}
           setTrackingMode={setTrackingMode}
           showConfigModal={showConfigModal}
