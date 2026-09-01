@@ -47,8 +47,8 @@ export default function CloudConfigModal(props: any) {
   return (
     <>
       {showConfigModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col relative overflow-hidden">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
+          <div className="bg-slate-900 rounded-2xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-slate-700/50 max-h-[90vh] flex flex-col relative overflow-hidden">
             {/* In-modal overlay: progress / success / error / warning */}
             {modalMessage && (
               <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center p-8 rounded-2xl transition-all duration-300 ${modalMessage.type === 'info'
@@ -160,11 +160,11 @@ export default function CloudConfigModal(props: any) {
                 )}
               </div>
             )}
-            <h3 className="text-xl font-bold text-gray-800 mb-2 flex-shrink-0">
+            <h3 className="text-xl font-bold font-lexend text-white mb-2 flex-shrink-0">
               {moduleContext === 'budget' ? 'Workbook Linkage Setup' : moduleContext === 'activity_schedule' ? 'Activity Schedule Linkage Setup' : moduleContext === 'milestone_claims' ? 'Milestone Claim Setup' : moduleContext === 'department' ? `${props.departmentName || 'Department'} Linkage Setup` : 'Link Cloud Document'}
             </h3>
-            <p className="text-sm text-gray-500 mb-4 flex-shrink-0">
-              Successfully authenticated with <span className="font-semibold capitalize text-gray-700">{oauthProvider === 'google_sheets' || oauthProvider === 'google' ? 'Google Drive' : oauthProvider === 'onedrive' ? 'OneDrive' : oauthProvider?.replace('_', ' ')}</span>. {moduleContext === 'budget' ? 'Select a budget spreadsheet workbook below:' : moduleContext === 'activity_schedule' ? 'Select an Activity Schedule (Excel, PDF, or Word) below:' : moduleContext === 'milestone_claims' ? 'Select a Milestone Claim document (Excel, PDF, or Word) below:' : moduleContext === 'department' ? `Select a ${props.departmentName || 'Department'} document or spreadsheet below:` : 'Select a document or spreadsheet file below:'}
+            <p className="text-sm text-slate-400 mb-4 flex-shrink-0">
+              Successfully authenticated with <span className="font-semibold capitalize text-white">{oauthProvider === 'google_sheets' || oauthProvider === 'google' ? 'Google Drive' : oauthProvider === 'onedrive' ? 'OneDrive' : oauthProvider?.replace('_', ' ')}</span>. {moduleContext === 'budget' ? 'Select a budget spreadsheet workbook below:' : moduleContext === 'activity_schedule' ? 'Select an Activity Schedule (Excel, PDF, or Word) below:' : moduleContext === 'milestone_claims' ? 'Select a Milestone Claim document (Excel, PDF, or Word) below:' : moduleContext === 'department' ? `Select a ${props.departmentName || 'Department'} document or spreadsheet below:` : 'Select a document or spreadsheet file below:'}
             </p>
 
             <form onSubmit={handleSaveConfig} className="flex-1 flex flex-col min-h-0">
@@ -172,25 +172,25 @@ export default function CloudConfigModal(props: any) {
 
 
                 {refreshToken === 'existing' ? (
-                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3.5 flex items-center space-x-3 text-sm text-indigo-950">
-                    <FileSpreadsheet className="w-6 h-6 text-indigo-600 flex-shrink-0" />
+                  <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-3.5 flex items-center space-x-3 text-sm text-indigo-100">
+                    <FileSpreadsheet className="w-6 h-6 text-indigo-400 flex-shrink-0" />
                     <div>
-                      <span className="block font-semibold text-xs text-indigo-500 uppercase tracking-wide">Linked Cloud Document</span>
-                      <span className="font-bold text-gray-800">{boqName || 'Cloud Document'}</span>
-                      <span className="block text-[10px] text-gray-400 mt-0.5 font-mono">File ID: {spreadsheetId}</span>
+                      <span className="block font-semibold text-xs text-indigo-300 uppercase tracking-wide">Linked Cloud Document</span>
+                      <span className="font-bold text-white">{boqName || 'Cloud Document'}</span>
+                      <span className="block text-[10px] text-indigo-300/70 mt-0.5 font-mono">File ID: {spreadsheetId}</span>
                     </div>
                   </div>
                 ) : (
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-semibold text-gray-600 uppercase">
+                      <label className="block text-xs font-semibold text-slate-400 uppercase">
                         {moduleContext === 'budget' ? 'Select Workbook' : moduleContext === 'activity_schedule' ? 'Select Activity Schedule Document' : moduleContext === 'milestone_claims' ? 'Select Milestone Claim Document' : moduleContext === 'department' ? `Select ${props.departmentName || 'Department'} File` : 'Select File or Document'}
                       </label>
                       {navigationHistory.length > 0 && (
                         <button
                           type="button"
                           onClick={handleNavigateBack}
-                          className="flex items-center space-x-1 text-xs text-indigo-600 hover:text-indigo-800 font-bold"
+                          className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 font-bold"
                         >
                           <ArrowLeft className="w-3 h-3" />
                           <span>Back</span>
@@ -199,35 +199,35 @@ export default function CloudConfigModal(props: any) {
                     </div>
 
                     {/* Breadcrumbs Path */}
-                    <div className="text-[11px] text-gray-400 truncate mb-2 bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                      <span className="font-semibold text-gray-600">Path:</span> Home
+                    <div className="text-[11px] text-slate-400 truncate mb-2 bg-slate-800/50 p-1.5 rounded-lg border border-slate-700/50">
+                      <span className="font-semibold text-slate-300">Path:</span> Home
                       {navigationHistory.map((folder: any) => (
                         <span key={folder.id}> / {folder.name}</span>
                       ))}
                     </div>
 
                     {oauthProvider === 'google_sheets' && moduleContext === 'budget' && (
-                      <div className="mb-2 bg-blue-50/80 border border-blue-200 rounded-lg p-2.5 text-xs text-blue-900 leading-relaxed">
-                        <span className="font-bold">Google Drive Format:</span> Any Excel file (<code className="font-mono bg-blue-100 px-1 rounded text-[11px]">.xlsx</code>) you click will be automatically converted to native Google Sheets format so its worksheets can be loaded. If auto-conversion is restricted by Drive permissions, open the file in Google Drive and select <strong>File &gt; Save as Google Sheets</strong>.
+                      <div className="mb-2 bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-2.5 text-xs text-indigo-200 leading-relaxed">
+                        <span className="font-bold">Google Drive Format:</span> Any Excel file (<code className="font-mono bg-indigo-950 px-1 rounded text-[11px] text-indigo-300">.xlsx</code>) you click will be automatically converted to native Google Sheets format so its worksheets can be loaded. If auto-conversion is restricted by Drive permissions, open the file in Google Drive and select <strong>File &gt; Save as Google Sheets</strong>.
                       </div>
                     )}
 
                     {oauthProvider === 'onedrive' && moduleContext === 'budget' && (
-                      <div className="mb-2 bg-blue-50/80 border border-blue-200 rounded-lg p-2.5 text-xs text-blue-900 leading-relaxed">
-                        <span className="font-bold">OneDrive Format:</span> Microsoft OneDrive integration only supports native Excel Workbooks (<code className="font-mono bg-blue-100 px-1 rounded text-[11px]">.xlsx</code>). CSV files are not supported and are hidden from this list. If you need to link a CSV file, please open it in OneDrive and save it as an Excel Workbook first.
+                      <div className="mb-2 bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-2.5 text-xs text-indigo-200 leading-relaxed">
+                        <span className="font-bold">OneDrive Format:</span> Microsoft OneDrive integration only supports native Excel Workbooks (<code className="font-mono bg-indigo-950 px-1 rounded text-[11px] text-indigo-300">.xlsx</code>). CSV files are not supported and are hidden from this list. If you need to link a CSV file, please open it in OneDrive and save it as an Excel Workbook first.
                       </div>
                     )}
 
                     {fetchingFiles ? (
-                      <div className="w-full h-48 border border-gray-200 rounded-xl bg-gray-50/50 flex flex-col items-center justify-center text-gray-500 space-y-2">
+                      <div className="w-full h-64 border border-slate-700/50 rounded-xl bg-slate-800/50 flex flex-col items-center justify-center text-slate-400 space-y-2">
                         <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
                         <span className="text-xs font-medium">Scanning drive folder...</span>
                       </div>
                     ) : (
-                      <div className="w-full h-48 border border-gray-200 rounded-xl overflow-y-auto divide-y divide-gray-100 bg-white">
+                      <div className="w-full h-64 border border-slate-700/50 rounded-xl overflow-y-auto divide-y divide-slate-700/50 bg-slate-900/50">
                         {availableFiles.filter(isFileAllowed).length === 0 ? (
-                          <div className="h-full flex flex-col items-center justify-center text-xs text-gray-400 p-6 text-center space-y-2">
-                            <span className="font-semibold text-gray-500">No supported files found in this folder.</span>
+                          <div className="h-full flex flex-col items-center justify-center text-xs text-slate-500 p-6 text-center space-y-2">
+                            <span className="font-semibold text-slate-400">No supported files found in this folder.</span>
                             <span>{formatGuidelines}</span>
                           </div>
                         ) : (
@@ -241,10 +241,10 @@ export default function CloudConfigModal(props: any) {
                                 <div
                                   key={file.id}
                                   className={`flex items-center justify-between p-3 transition-all duration-150 ${file.already_linked_module
-                                    ? 'opacity-60 bg-gray-50 cursor-not-allowed border-l-4 border-gray-300'
+                                    ? 'opacity-60 bg-slate-800/30 cursor-not-allowed border-l-4 border-slate-600'
                                     : isSelected
-                                      ? 'bg-emerald-50 text-emerald-950 font-bold border-l-4 border-emerald-500'
-                                      : 'hover:bg-gray-50 text-gray-700 font-medium'
+                                      ? 'bg-emerald-900/20 text-emerald-400 font-bold border-l-4 border-emerald-500'
+                                      : 'hover:bg-slate-800/50 text-slate-300 font-medium'
                                     }`}
                                 >
                                   <div
@@ -257,11 +257,11 @@ export default function CloudConfigModal(props: any) {
                                     {isFolder ? (
                                       <Folder className="w-5 h-5 text-amber-500 fill-amber-100 flex-shrink-0" />
                                     ) : (
-                                      <FileSpreadsheet className={`w-5 h-5 flex-shrink-0 ${file.already_linked_module ? 'text-gray-400' : isSelected ? 'text-emerald-600' : 'text-gray-400'}`} />
+                                      <FileSpreadsheet className={`w-5 h-5 flex-shrink-0 ${file.already_linked_module ? 'text-slate-600' : isSelected ? 'text-emerald-500' : 'text-slate-500'}`} />
                                     )}
                                     <span className="text-xs truncate">{file.name}</span>
                                     {file.already_linked_module && (
-                                      <span className="text-[9px] bg-red-50 text-red-700 border border-red-200 font-extrabold px-2 py-0.5 rounded flex-shrink-0 flex items-center space-x-1">
+                                      <span className="text-[9px] bg-red-900/30 text-red-400 border border-red-500/30 font-extrabold px-2 py-0.5 rounded flex-shrink-0 flex items-center space-x-1">
                                         <span>Linked in [{file.already_linked_module}] • Locked</span>
                                       </span>
                                     )}
@@ -270,8 +270,8 @@ export default function CloudConfigModal(props: any) {
                                         Flagged ({file.rejected_reason})
                                       </span>
                                     )}
-                                    {oauthProvider === 'google_sheets' && !isFolder && !file.already_linked_module && (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) && (
-                                      <span className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200 font-semibold px-1 py-0.5 rounded flex-shrink-0">
+                                    {oauthProvider === 'google_sheets' && moduleContext !== 'department' && !isFolder && !file.already_linked_module && (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) && (
+                                      <span className="text-[9px] bg-amber-900/30 text-amber-400 border border-amber-500/30 font-semibold px-1 py-0.5 rounded flex-shrink-0">
                                         Excel (.xlsx) - Auto-Convert
                                       </span>
                                     )}
@@ -279,7 +279,7 @@ export default function CloudConfigModal(props: any) {
                                   <div className="flex items-center space-x-2 flex-shrink-0">
                                     {isFolder ? (
                                       <ChevronRight
-                                        className="w-4 h-4 text-gray-400 hover:text-indigo-500 cursor-pointer"
+                                        className="w-4 h-4 text-slate-500 hover:text-indigo-400 cursor-pointer"
                                         onClick={() => handleFolderClick(file.id, file.name)}
                                       />
                                     ) : (
@@ -311,8 +311,8 @@ export default function CloudConfigModal(props: any) {
                       </div>
                     )}
                     {spreadsheetId && (
-                      <div className="mt-2 text-xs text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-100 flex items-center">
-                        <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" />
+                      <div className="mt-2 text-xs text-emerald-400 bg-emerald-900/20 p-2 rounded-lg border border-emerald-500/30 flex items-center">
+                        <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-500" />
                         <span>Selected: {availableFiles.find((f: any) => f.id === spreadsheetId)?.name}</span>
                       </div>
                     )}
@@ -320,7 +320,7 @@ export default function CloudConfigModal(props: any) {
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
                     {moduleContext === 'budget' ? 'Workbook Title / Label (Optional)' : moduleContext === 'activity_schedule' ? 'Activity Schedule Title / Label (Optional)' : moduleContext === 'milestone_claims' ? 'Milestone Claim Title / Label (Optional)' : moduleContext === 'department' ? `${props.departmentName || 'Department'} Title / Label (Optional)` : 'Document Title / Label (Optional)'}
                   </label>
                   <input
@@ -328,7 +328,7 @@ export default function CloudConfigModal(props: any) {
                     placeholder={moduleContext === 'budget' ? 'e.g. Master Project Budget / Structural Trade' : moduleContext === 'activity_schedule' ? 'e.g. Master Activity Schedule Rev 2' : moduleContext === 'milestone_claims' ? 'e.g. Milestone Claim No. 5' : moduleContext === 'department' ? `e.g. ${props.departmentName || 'Department'} Report` : 'e.g. IPC Claim No. 8 / Structural Report'}
                     value={boqName}
                     onChange={(e) => setBoqName(e.target.value)}
-                    className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-800"
+                    className="w-full p-2.5 border border-slate-700/50 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-800/50 text-white placeholder-slate-500 transition-all"
                   />
                 </div>
 
@@ -354,7 +354,7 @@ export default function CloudConfigModal(props: any) {
                   const selectedFile = availableFiles.find((f: any) => f.id === spreadsheetId);
                   if (!selectedFile) {
                     return (
-                      <div className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100">
+                      <div className="text-xs text-slate-500 italic bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
                         Select a file or spreadsheet above to configure details.
                       </div>
                     );
@@ -365,38 +365,38 @@ export default function CloudConfigModal(props: any) {
                   return (
                     <div className="space-y-3">
                       {selectedFile.already_linked_module && (
-                        <div className="bg-indigo-50/80 border border-indigo-200 rounded-xl p-3 text-xs text-indigo-900 leading-relaxed flex items-start space-x-2">
-                          <AlertTriangle className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
+                        <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-3 text-xs text-indigo-200 leading-relaxed flex items-start space-x-2">
+                          <AlertTriangle className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
                           <div>
-                            <span className="font-bold block text-indigo-950">Cross-Module Integration Notice</span>
+                            <span className="font-bold block text-indigo-300">Cross-Module Integration Notice</span>
                             This file is currently linked in the <strong>[{selectedFile.already_linked_module}]</strong> module. Linking it here will share cloud data updates across both tabs.
                           </div>
                         </div>
                       )}
 
                       {!isSpreadsheet ? (
-                        <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3.5 text-xs text-indigo-900 leading-relaxed">
-                          <span className="font-bold block text-xs text-indigo-950 mb-0.5">Document Selected ({selectedFile.name})</span>
+                        <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-3.5 text-xs text-indigo-200 leading-relaxed">
+                          <span className="font-bold block text-xs text-indigo-300 mb-0.5">Document Selected ({selectedFile.name})</span>
                           This file format will be linked directly to your workspace without worksheet mapping.
                         </div>
                       ) : (
                         <div>
-                          <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">
+                          <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">
                             Select Worksheets to Link
                           </label>
                           {fetchingSheets ? (
-                            <div className="flex items-center space-x-2 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <div className="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
                               <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
                               <span>Loading worksheets...</span>
                             </div>
                           ) : sheetsList.length === 0 ? (
-                            <div className="text-xs text-amber-800 bg-amber-50 p-3 rounded-lg border border-amber-200/60 leading-relaxed font-medium">
+                            <div className="text-xs text-amber-400 bg-amber-900/20 p-3 rounded-lg border border-amber-500/30 leading-relaxed font-medium">
                               No worksheets found or could not load structure. Please verify the workbook format.
                             </div>
                           ) : (
-                            <div className="space-y-2 max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50/50">
+                            <div className="space-y-2 max-h-36 overflow-y-auto border border-slate-700/50 rounded-xl p-3 bg-slate-900/50">
                               {sheetsList.map((sheet: any) => (
-                                <label key={sheet.id} className="flex items-start space-x-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-gray-100/70 transition-colors">
+                                <label key={sheet.id} className="flex items-start space-x-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-slate-800 transition-colors">
                                   <input
                                     type="checkbox"
                                     checked={!!selectedSheets[sheet.id] || !!selectedSheets[sheet.name]}
@@ -410,10 +410,10 @@ export default function CloudConfigModal(props: any) {
                                         handleSheetSelection(moduleContext === 'activity_schedule' ? sheet.name : (sheet.id || sheet.name));
                                       }
                                     }}
-                                    className="mt-0.5 w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                    className="mt-0.5 w-4 h-4 text-indigo-600 bg-slate-800 border-slate-600 rounded focus:ring-indigo-500 focus:ring-offset-slate-900"
                                   />
                                   <div className="flex-1 min-w-0">
-                                    <span className="text-xs font-semibold text-gray-700 truncate block">{sheet.name}</span>
+                                    <span className="text-xs font-semibold text-slate-300 truncate block">{sheet.name}</span>
                                   </div>
                                 </label>
                               ))}
@@ -427,11 +427,11 @@ export default function CloudConfigModal(props: any) {
 
               </div>
 
-              <div className="flex space-x-3 pt-4 border-t border-gray-100 flex-shrink-0 bg-white">
+              <div className="flex space-x-3 pt-4 border-t border-slate-700 flex-shrink-0 bg-slate-900">
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="flex-1 py-2.5 px-4 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="flex-1 py-2.5 px-4 border border-slate-700 rounded-lg text-sm font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition-colors"
                 >
                   Cancel
                 </button>

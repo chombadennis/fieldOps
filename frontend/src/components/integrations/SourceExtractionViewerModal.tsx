@@ -21,7 +21,7 @@ export default function SourceExtractionViewerModal({ show, onClose, extractionD
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col relative overflow-hidden">
+      <div className="bg-slate-900 rounded-2xl w-full max-w-4xl shadow-2xl border border-slate-700/50 max-h-[90vh] flex flex-col relative overflow-hidden">
         
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-5 flex items-center justify-between flex-shrink-0">

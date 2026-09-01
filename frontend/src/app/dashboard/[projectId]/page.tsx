@@ -989,42 +989,54 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
       )}
 
       {showAddModulePrompt && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-up border border-gray-100">
-            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden relative animate-scale-up">
+            {/* Background glowing effects */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-princeton-orange-500/20 rounded-full blur-3xl opacity-50 pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-autumn-leaf-500/20 rounded-full blur-3xl opacity-50 pointer-events-none" />
+            
+            <div className="relative p-6 border-b border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold font-lexend text-gray-900 flex items-center">
-                  <Plus className="w-5 h-5 mr-2 text-princeton-orange-600" />
-                  Add New Module
+                <h3 className="text-xl font-bold font-lexend text-white flex items-center">
+                  <Plus className="w-5 h-5 mr-2 text-princeton-orange-500" />
+                  Add Custom Module
                 </h3>
-                <p className="text-xs text-gray-500 mt-1">Create a custom tracking module for field operations.</p>
+                <p className="text-sm text-slate-400 mt-1">Create a new workspace for tracking specialized operations.</p>
               </div>
-              <button onClick={() => setShowAddModulePrompt(false)} className="text-gray-400 hover:text-gray-600 transition p-1 rounded-full hover:bg-gray-100">
+              <button onClick={() => setShowAddModulePrompt(false)} className="text-slate-400 hover:text-white transition p-2 rounded-xl hover:bg-slate-800">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6">
-              <label className="block text-xs font-bold text-gray-700 mb-2">Module Name</label>
-              <input 
-                type="text" 
-                autoFocus 
-                value={newModuleName} 
-                onChange={e => setNewModuleName(e.target.value)} 
-                onKeyDown={e => e.key === 'Enter' && handleAddCustomModule()}
-                placeholder="e.g. Concrete Pour Log" 
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-princeton-orange-500 text-sm outline-none transition font-medium" 
-              />
+            <div className="relative p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">Module Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <ClipboardList className="h-5 w-5 text-slate-500" />
+                  </div>
+                  <input 
+                    type="text" 
+                    autoFocus 
+                    value={newModuleName} 
+                    onChange={e => setNewModuleName(e.target.value)} 
+                    onKeyDown={e => e.key === 'Enter' && handleAddCustomModule()}
+                    placeholder="e.g., Concrete Pour Log" 
+                    className="w-full pl-11 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl focus:bg-slate-800 focus:border-princeton-orange-500 focus:ring-1 focus:ring-princeton-orange-500 text-white placeholder-slate-500 outline-none transition font-medium" 
+                  />
+                </div>
+              </div>
             </div>
-            <div className="p-6 pt-0 flex space-x-3">
+            <div className="relative p-6 pt-2 flex space-x-3">
               <button 
                 onClick={() => setShowAddModulePrompt(false)}
-                className="flex-1 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition shadow-sm"
+                className="flex-1 py-3 text-sm font-bold text-slate-300 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 hover:text-white transition"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleAddCustomModule}
-                className="flex-1 py-2.5 text-sm font-bold text-white bg-princeton-orange-600 rounded-xl hover:bg-princeton-orange-700 shadow-sm shadow-princeton-orange-200 transition"
+                disabled={!newModuleName.trim()}
+                className="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-princeton-orange-600 to-autumn-leaf-600 rounded-xl hover:from-princeton-orange-500 hover:to-autumn-leaf-500 shadow-[0_0_15px_rgba(245,111,0,0.3)] hover:shadow-[0_0_20px_rgba(245,111,0,0.5)] transition disabled:opacity-50 disabled:cursor-not-allowed border border-princeton-orange-500/50"
               >
                 Create Module
               </button>
@@ -1034,39 +1046,49 @@ export default function ProjectDashboardPage({ params }: { params: { projectId: 
       )}
 
       {moduleToDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden animate-scale-up border border-red-100 text-center">
-            <div className="pt-8 pb-6 px-6">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-8 h-8 text-red-600" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
+          <div className="bg-slate-900 border border-red-900/50 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden relative animate-scale-up text-center">
+            {/* Background glowing effects */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-red-500/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
+            
+            <div className="relative pt-8 pb-6 px-6">
+              <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-500" />
               </div>
-              <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Delete Module?</h3>
-              <p className="text-sm text-gray-500 mb-2">
-                You are about to permanently delete <strong className="text-gray-900">{moduleToDelete.name}</strong>.
+              <h3 className="text-xl font-bold font-lexend text-white mb-2">Delete Module?</h3>
+              <p className="text-sm text-slate-400 mb-4">
+                You are about to permanently delete <strong className="text-white">{moduleToDelete.name}</strong>.
               </p>
-              <p className="text-xs text-red-600 font-medium bg-red-50 p-3 rounded-lg border border-red-100">
-                This action will permanently erase all configuration and <strong>permanently purge all documents and records</strong> associated with this module from the database. This cannot be undone.
-              </p>
+              <div className="text-xs text-red-400 font-medium bg-red-950/30 p-4 rounded-xl border border-red-900/50 text-left flex items-start space-x-3">
+                <Trash2 className="w-5 h-5 flex-shrink-0 text-red-500 mt-0.5" />
+                <p>
+                  This action will erase all configuration and <strong>permanently purge all documents and records</strong> associated with this module from the database. This cannot be undone.
+                </p>
+              </div>
             </div>
-            <div className="p-6 pt-0 flex space-x-3 bg-gray-50/50">
+            <div className="relative p-6 pt-0 flex space-x-3">
               <button 
                 onClick={() => setModuleToDelete(null)}
-                className="flex-1 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition shadow-sm"
+                className="flex-1 py-3 text-sm font-bold text-slate-300 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 hover:text-white transition"
               >
                 Cancel
               </button>
               <button 
                 onClick={confirmDeleteModule}
                 disabled={isDeletingModule}
-                className={`flex-1 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition flex items-center justify-center ${isDeletingModule ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 shadow-red-200'}`}
+                className="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-xl hover:from-red-500 hover:to-rose-500 shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_20px_rgba(220,38,38,0.5)] transition flex justify-center items-center disabled:opacity-50 border border-red-500/50"
               >
                 {isDeletingModule ? (
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting...
+                  </>
                 ) : (
-                  'Delete'
+                  'Delete Module'
                 )}
               </button>
             </div>

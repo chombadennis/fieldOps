@@ -40,3 +40,11 @@ class Document(Base, CustomBase):
     @title.setter
     def title(self, value):
         self.name = value
+
+    @property
+    def extracted_data(self):
+        return self.metadata_map
+
+    @extracted_data.setter
+    def extracted_data(self, value):
+        self.metadata_map = value

@@ -203,7 +203,7 @@ export default function LandingPage() {
               <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-neon-cyan/20 blur-[100px] rounded-full mix-blend-screen pointer-events-none"></div>
               <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-neon-pink/20 blur-[100px] rounded-full mix-blend-screen pointer-events-none"></div>
               
-              <h2 className="text-3xl md:text-5xl font-bold mb-6 font-lexend text-white relative z-10 drop-shadow-lg">Ready to take control of your projects?</h2>
+              <h2 className="text-2xl md:text-3xl font-bold mb-6 font-lexend text-white relative z-10 drop-shadow-lg">Ready to take control of your projects?</h2>
               <p className="text-lg text-gray-300 mb-10 max-w-2xl mx-auto relative z-10">
                 Join hundreds of construction firms scaling their operations with FieldOps.
               </p>

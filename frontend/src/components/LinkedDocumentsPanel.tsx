@@ -24,6 +24,7 @@ interface Document {
   cloud_file_id?: string;
   department?: string;
   integration_id?: number;
+  extracted_data?: any;
 }
 
 interface LinkedDocumentsPanelProps {
@@ -35,6 +36,7 @@ interface LinkedDocumentsPanelProps {
   title: string;
   emptyMessage?: string;
   docType?: string;
+  onEnterData?: (doc: Document) => void;
 }
 
 export default function LinkedDocumentsPanel({
@@ -45,7 +47,8 @@ export default function LinkedDocumentsPanel({
   deletingId = null,
   title,
   emptyMessage = "No linked documents yet.",
-  docType
+  docType,
+  onEnterData
 }: LinkedDocumentsPanelProps) {
   const [activeDocPreview, setActiveDocPreview] = useState<Document | null>(null);
   const [docToDelete, setDocToDelete] = useState<Document | null>(null);
@@ -274,13 +277,37 @@ export default function LinkedDocumentsPanel({
                       <p className="text-[10px] text-gray-400 hover:text-dark-teal-800 mt-0.5 font-medium transition-colors cursor-help" title="To modify contents, open file directly in cloud workspace.">
                         Click name to edit in cloud (Login required)
                       </p>
+                      {onEnterData && (!doc.extracted_data || !doc.extracted_data.items || doc.extracted_data.items.length === 0) ? (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/50 px-2 py-0.5 rounded font-bold uppercase shadow-[0_0_8px_rgba(239,68,68,0.2)]">No Data Saved</span>
+                          <button
+                            disabled={isUnlinking || isDeletingThis}
+                            onClick={() => onEnterData(doc)}
+                            className="text-[10px] bg-neon-cyan/20 hover:bg-neon-cyan/30 text-neon-cyan border border-neon-cyan/50 px-2 py-0.5 rounded font-bold uppercase transition-colors active:scale-95 shadow-[0_0_8px_rgba(0,243,255,0.2)] disabled:opacity-50"
+                          >
+                            Enter Data
+                          </button>
+                        </div>
+                      ) : onEnterData ? (
+                        <div className="mt-2 flex items-center space-x-2">
+                           <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-2 py-0.5 rounded font-bold uppercase shadow-[0_0_8px_rgba(16,185,129,0.2)]">Data Saved</span>
+                           <button
+                             disabled={isUnlinking || isDeletingThis}
+                             onClick={() => onEnterData(doc)}
+                             className="text-[10px] bg-white/10 hover:bg-white/20 text-gray-300 border border-white/20 px-2 py-0.5 rounded font-bold uppercase transition-colors active:scale-95 disabled:opacity-50"
+                           >
+                             Update Data
+                           </button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-end space-x-2 border-t lg:border-t-0 border-white/10 pt-3 lg:pt-0 w-full lg:w-auto">
                     <button
+                      disabled={isUnlinking || isDeletingThis}
                       onClick={() => setActiveDocPreview(isPreviewActive ? null : doc)}
-                      className={`py-1.5 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 ${isPreviewActive
+                      className={`py-1.5 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 disabled:opacity-50 ${isPreviewActive
                           ? 'bg-neon-cyan border-neon-cyan text-black hover:bg-white shadow-[0_0_10px_rgba(0,243,255,0.5)]'
                           : 'border-white/20 hover:border-neon-cyan/50 text-gray-300 bg-black/40 hover:bg-neon-cyan/10 hover:text-neon-cyan'
                         }`}
@@ -290,19 +317,7 @@ export default function LinkedDocumentsPanel({
                       <span>{isPreviewActive ? 'Hide Preview' : 'Inline Preview'}</span>
                     </button>
 
-                    {/* Unlink Button */}
-                    <button
-                      disabled={isUnlinking || isDeletingThis}
-                      onClick={() => handleUnlinkClick(doc.id)}
-                      className="p-1.5 border border-amber-500/50 hover:border-amber-400 rounded-lg text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50 bg-black/40 shadow-[0_0_8px_rgba(245,158,11,0.15)]"
-                      title="Disconnect document link (keeps DB record unlinked)"
-                    >
-                      {isUnlinking ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-                      ) : (
-                        <Unlink className="w-4 h-4" />
-                      )}
-                    </button>
+
 
                     {/* Delete Button */}
                     <button

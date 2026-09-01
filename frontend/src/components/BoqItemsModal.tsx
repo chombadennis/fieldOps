@@ -210,7 +210,7 @@ export default function BoqItemsModal({ isOpen, onClose, boqId, docName, isReadO
                 onClick={() => setIsEditing(!isEditing)}
                 className={`flex items-center space-x-2 font-bold py-2 px-4 rounded-xl border text-sm transition-all shadow-sm ${
                   isEditing
-                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                    ? 'bg-emerald-900/200/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
                     : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20'
                 }`}
               >
@@ -226,7 +226,7 @@ export default function BoqItemsModal({ isOpen, onClose, boqId, docName, isReadO
 
         {/* Success/Error Banners */}
         {successMessage && (
-          <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-3 flex items-center text-emerald-400 text-sm font-bold">
+          <div className="bg-emerald-900/200/10 border-b border-emerald-500/20 px-6 py-3 flex items-center text-emerald-400 text-sm font-bold">
             <Check className="w-4 h-4 mr-2" />
             {successMessage}
           </div>
@@ -241,13 +241,13 @@ export default function BoqItemsModal({ isOpen, onClose, boqId, docName, isReadO
         {/* Modal Search Bar */}
         <div className="p-4 border-b border-white/10 flex items-center space-x-4 bg-black/20">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
             <input
               type="text"
               placeholder="Search items by number or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-full bg-black/50 border border-white/10 focus:border-neon-cyan focus:bg-black/80 text-white text-sm font-medium rounded-xl py-2.5 outline-none transition-all placeholder:text-gray-600"
+              className="pl-10 w-full bg-black/50 border border-white/10 focus:border-neon-cyan focus:bg-black/80 text-white text-sm font-medium rounded-xl py-2.5 outline-none transition-all placeholder:text-slate-400"
             />
           </div>
         </div>
@@ -261,8 +261,8 @@ export default function BoqItemsModal({ isOpen, onClose, boqId, docName, isReadO
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="h-full flex items-center justify-center p-6">
-              <div className="text-center text-gray-500">
-                <FileSpreadsheet className="w-12 h-12 text-gray-700 mx-auto mb-3" />
+              <div className="text-center text-slate-400">
+                <FileSpreadsheet className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <p className="font-bold">No items found matching search query.</p>
               </div>
             </div>
@@ -431,7 +431,7 @@ export default function BoqItemsModal({ isOpen, onClose, boqId, docName, isReadO
               <button
                 onClick={() => setShowConfirmSave(true)}
                 disabled={!isDirty || saving}
-                className="flex items-center space-x-2 bg-neon-cyan hover:bg-white text-black font-bold py-2 px-5 rounded-xl shadow-[0_0_15px_rgba(0,243,255,0.3)] text-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                className="flex items-center space-x-2 bg-neon-cyan hover:bg-slate-900 text-black font-bold py-2 px-5 rounded-xl shadow-[0_0_15px_rgba(0,243,255,0.3)] text-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 <Check className="w-4 h-4" />
                 <span>Save Changes</span>
@@ -462,7 +462,7 @@ export default function BoqItemsModal({ isOpen, onClose, boqId, docName, isReadO
                 <button
                   onClick={handleSaveChanges}
                   disabled={saving}
-                  className="flex items-center justify-center space-x-2 bg-neon-cyan hover:bg-white text-black font-bold py-2.5 px-6 rounded-xl shadow-[0_0_15px_rgba(0,243,255,0.3)] text-sm transition-all active:scale-95 min-w-[120px]"
+                  className="flex items-center justify-center space-x-2 bg-neon-cyan hover:bg-slate-900 text-black font-bold py-2.5 px-6 rounded-xl shadow-[0_0_15px_rgba(0,243,255,0.3)] text-sm transition-all active:scale-95 min-w-[120px]"
                 >
                   {saving ? (
                     <>

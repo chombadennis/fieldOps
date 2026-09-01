@@ -76,7 +76,7 @@ export default function BudgetBundleSetupModal({
 
   return (
     <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-gray-100 flex flex-col overflow-hidden relative">
+      <div className="bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl border border-slate-700/50 flex flex-col overflow-hidden relative">
         
         {/* Header Banner */}
         <div className="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950 p-6 text-white flex items-center justify-between">
@@ -97,16 +97,16 @@ export default function BudgetBundleSetupModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 bg-gray-50/40">
+        <div className="p-6 space-y-5 bg-slate-800/50/40">
 
           {/* Remaining Slots Info Banner (when structure is locked) */}
           {isStructureLocked && (
-            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-start gap-3 animate-fade-in">
+            <div className="bg-indigo-50 border border-indigo-500/40 rounded-2xl p-4 flex items-start gap-3 animate-fade-in">
               <div className="p-2 bg-indigo-100 rounded-xl flex-shrink-0 mt-0.5">
                 <Info className="w-4 h-4 text-indigo-700" />
               </div>
               <div>
-                <p className="text-xs font-bold text-indigo-900 font-lexend">
+                <p className="text-xs font-bold text-indigo-200 font-lexend">
                   {remainingSlots > 0
                     ? `${remainingSlots} workbook${remainingSlots > 1 ? 's' : ''} remaining to link`
                     : 'All workbooks have been linked'
@@ -124,7 +124,7 @@ export default function BudgetBundleSetupModal({
           
           {/* Question 1: Single vs Multi-Bundle */}
           <div className="space-y-3">
-            <label className="block text-xs font-bold font-lexend text-gray-900">
+            <label className="block text-xs font-bold font-lexend text-white">
               {isStructureLocked ? (
                 <span className="flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-gray-400" />
@@ -146,12 +146,12 @@ export default function BudgetBundleSetupModal({
                   isStructureLocked
                     ? (!isBundle
                       ? 'bg-dark-teal-50/60 border-dark-teal-400 text-dark-teal-800 opacity-80 cursor-not-allowed'
-                      : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50')
+                      : 'bg-slate-800 text-gray-400 border-slate-700/50 cursor-not-allowed opacity-50')
                     : currentLinkedCount > 1
-                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
+                    ? 'bg-slate-800 text-gray-400 border-slate-700/50 cursor-not-allowed opacity-60'
                     : !isBundle
                     ? 'bg-dark-teal-50/80 border-dark-teal-600 ring-2 ring-dark-teal-500/20 text-dark-teal-950 shadow-sm'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    : 'bg-slate-900 border-slate-700/50 text-slate-300 hover:bg-slate-800/50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -161,7 +161,7 @@ export default function BudgetBundleSetupModal({
                 </div>
                 <div>
                   <p className="text-xs font-bold font-lexend">Single Master Workbook</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">One workbook holds the complete project budget.</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">One workbook holds the complete project budget.</p>
                 </div>
               </button>
 
@@ -176,10 +176,10 @@ export default function BudgetBundleSetupModal({
                   isStructureLocked
                     ? (isBundle
                       ? 'bg-indigo-50/60 border-indigo-400 text-indigo-800 opacity-80 cursor-not-allowed'
-                      : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50')
+                      : 'bg-slate-800 text-gray-400 border-slate-700/50 cursor-not-allowed opacity-50')
                     : isBundle
                     ? 'bg-indigo-50/80 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 shadow-sm'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    : 'bg-slate-900 border-slate-700/50 text-slate-300 hover:bg-slate-800/50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -189,7 +189,7 @@ export default function BudgetBundleSetupModal({
                 </div>
                 <div>
                   <p className="text-xs font-bold font-lexend">Multi-Trade Bundle</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Multiple workbooks (Builders, Electrical, etc.).</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Multiple workbooks (Builders, Electrical, etc.).</p>
                 </div>
               </button>
             </div>
@@ -197,8 +197,8 @@ export default function BudgetBundleSetupModal({
 
           {/* Question 2: Total Workbooks Count (If Multi-Bundle) — hidden when locked */}
           {isBundle && !isStructureLocked && (
-            <div className="space-y-2 bg-white p-4 rounded-2xl border border-indigo-150 shadow-sm animate-fade-in">
-              <label className="block text-xs font-bold text-gray-900 font-lexend">
+            <div className="space-y-2 bg-slate-900 p-4 rounded-2xl border border-indigo-150 shadow-sm animate-fade-in">
+              <label className="block text-xs font-bold text-white font-lexend">
                 2. How many workbooks in total make up this project budget bundle? (Max 5)
               </label>
               {currentLinkedCount > 1 && (
@@ -217,10 +217,10 @@ export default function BudgetBundleSetupModal({
                       onClick={() => setExpectedCount(cnt)}
                       className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${
                         isDisabled
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
+                          ? 'bg-slate-800 text-gray-400 border-slate-700/50 cursor-not-allowed opacity-60'
                           : expectedCount === cnt
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow'
-                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                          : 'bg-slate-800/50 text-slate-300 border-slate-700/50 hover:bg-slate-800'
                       }`}
                     >
                       {cnt} Workbooks
@@ -233,10 +233,10 @@ export default function BudgetBundleSetupModal({
 
           {/* Locked workbook count display (when locked and multi-trade) */}
           {isBundle && isStructureLocked && (
-            <div className="bg-white p-4 rounded-2xl border border-indigo-150 shadow-sm animate-fade-in">
+            <div className="bg-slate-900 p-4 rounded-2xl border border-indigo-150 shadow-sm animate-fade-in">
               <div className="flex items-center gap-2">
                 <Lock className="w-3.5 h-3.5 text-gray-400" />
-                <label className="text-xs font-bold text-gray-900 font-lexend">
+                <label className="text-xs font-bold text-white font-lexend">
                   2. Workbook count (locked):
                 </label>
                 <span className="ml-auto px-3 py-1 bg-indigo-600 text-white rounded-xl text-xs font-bold">
@@ -247,8 +247,8 @@ export default function BudgetBundleSetupModal({
           )}
 
           {/* Question 3: Trade Label Assignment */}
-          <div className="space-y-2 bg-white p-4 rounded-2xl border border-gray-150 shadow-sm">
-            <label className="block text-xs font-bold text-gray-900 font-lexend">
+          <div className="space-y-2 bg-slate-900 p-4 rounded-2xl border border-gray-150 shadow-sm">
+            <label className="block text-xs font-bold text-white font-lexend">
               {isStructureLocked ? (
                 <span>{isBundle ? '3' : '2'}. Assign Trade Discipline Label to this Workbook:</span>
               ) : (
@@ -258,7 +258,7 @@ export default function BudgetBundleSetupModal({
             <select
               value={tradeLabel}
               onChange={(e) => setTradeLabel(e.target.value)}
-              className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:ring-2 focus:ring-dark-teal-500"
+              className="w-full p-2.5 bg-slate-800/50 border border-slate-700/50 rounded-xl text-xs font-bold text-slate-200 focus:ring-2 focus:ring-dark-teal-500"
             >
               {COMMON_TRADES.map((t) => (
                 <option key={t} value={t}>{t}</option>
@@ -272,7 +272,7 @@ export default function BudgetBundleSetupModal({
                 placeholder="Enter custom trade discipline name..."
                 value={customTrade}
                 onChange={(e) => setCustomTrade(e.target.value)}
-                className="w-full mt-2 p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-dark-teal-500"
+                className="w-full mt-2 p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-dark-teal-500"
               />
             )}
           </div>
@@ -280,10 +280,10 @@ export default function BudgetBundleSetupModal({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+        <div className="p-4 bg-slate-800/50 border-t border-slate-700/50 flex items-center justify-between">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-150 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+            className="px-4 py-2 bg-gray-150 hover:bg-gray-200 text-slate-300 rounded-xl text-xs font-bold transition"
           >
             Cancel
           </button>

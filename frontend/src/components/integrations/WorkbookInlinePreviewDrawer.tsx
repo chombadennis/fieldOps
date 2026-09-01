@@ -123,14 +123,14 @@ export default function WorkbookInlinePreviewDrawer({
   };
 
   return (
-    <div className="border border-gray-200 rounded-2xl bg-white overflow-hidden shadow-sm transition">
+    <div className="border border-slate-700/50 rounded-2xl bg-slate-900 overflow-hidden shadow-sm transition">
       {/* Drawer Header Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-3.5 px-4 bg-gray-50/80 hover:bg-gray-100/80 transition flex items-center justify-between text-left"
+        className="w-full p-3.5 px-4 bg-slate-800/50/80 hover:bg-slate-800/80 transition flex items-center justify-between text-left"
       >
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-white rounded-xl text-dark-teal-800 border border-gray-200 shadow-xs">
+          <div className="p-2 bg-slate-900 rounded-xl text-dark-teal-800 border border-slate-700/50 shadow-xs">
             <FileSpreadsheet className="w-4 h-4" />
           </div>
           <div>
@@ -139,12 +139,12 @@ export default function WorkbookInlinePreviewDrawer({
                 {tradeLabel || 'Trade Workbook Summary'}
               </span>
               {appr && appr !== orig && (
-                <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-500/40">
                   Appraised
                 </span>
               )}
             </div>
-            <p className="text-xs font-bold font-lexend text-gray-900 leading-tight">
+            <p className="text-xs font-bold font-lexend text-white leading-tight">
               {workbookData.title || 'Workbook Summary Table'}
             </p>
           </div>
@@ -153,9 +153,9 @@ export default function WorkbookInlinePreviewDrawer({
         <div className="flex items-center space-x-3">
           <div className="text-right hidden sm:block">
             <p className="text-[10px] font-bold text-gray-400 uppercase">Effective Budget / EV</p>
-            <p className="text-xs font-bold text-gray-800">{formatCurrency(eff)} / {formatCurrency(ev)}</p>
+            <p className="text-xs font-bold text-slate-200">{formatCurrency(eff)} / {formatCurrency(ev)}</p>
           </div>
-          <div className="p-1.5 rounded-lg bg-white border border-gray-200 text-gray-600">
+          <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-700/50 text-slate-400">
             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </div>
         </div>
@@ -163,10 +163,10 @@ export default function WorkbookInlinePreviewDrawer({
 
       {/* Expandable Drawer Body */}
       {isOpen && (
-        <div className="p-5 space-y-4 border-t border-gray-200 bg-gray-50/30 animate-fade-in">
+        <div className="p-5 space-y-4 border-t border-slate-700/50 bg-slate-800/50/30 animate-fade-in">
           {/* Top Feedback Banners */}
           {saveSuccess && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 font-bold flex items-center space-x-2">
+            <div className="p-3 bg-emerald-900/20 border border-emerald-200 rounded-xl text-xs text-emerald-900 font-bold flex items-center space-x-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
               <span>{saveSuccess}</span>
             </div>
@@ -182,15 +182,15 @@ export default function WorkbookInlinePreviewDrawer({
           )}
 
           {/* Action Header bar for Editing */}
-          <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-slate-700/50">
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold text-gray-700">Source Trade Header:</span>
+              <span className="text-xs font-bold text-slate-300">Source Trade Header:</span>
               {isEditing ? (
                 <input
                   type="text"
                   value={tradeLabel}
                   onChange={(e) => setTradeLabel(e.target.value)}
-                  className="p-2 px-3 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-dark-teal-500 min-w-[240px] shadow-xs"
+                  className="p-2 px-3 bg-slate-900 border border-slate-600 rounded-xl text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-dark-teal-500 min-w-[240px] shadow-xs"
                   placeholder="Trade Label (e.g. Electrical)"
                 />
               ) : (
@@ -209,7 +209,7 @@ export default function WorkbookInlinePreviewDrawer({
                   })));
                   setIsEditing(true);
                 }}
-                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs border border-indigo-200 transition flex items-center space-x-1.5"
+                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs border border-indigo-500/40 transition flex items-center space-x-1.5"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>Edit Workbook Values</span>
@@ -222,7 +222,7 @@ export default function WorkbookInlinePreviewDrawer({
                     setCategories(workbookData.categories ? JSON.parse(JSON.stringify(workbookData.categories)) : []);
                     setTradeLabel(workbookData.trade_label || 'Trade Workbook');
                   }}
-                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition"
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-gray-200 text-slate-300 font-bold rounded-xl text-xs transition"
                 >
                   Cancel
                 </button>
@@ -240,34 +240,34 @@ export default function WorkbookInlinePreviewDrawer({
 
           {/* Core Metrics Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="bg-white p-3 rounded-xl border border-gray-150 space-y-0.5">
+            <div className="bg-slate-900 p-3 rounded-xl border border-gray-150 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-gray-400">Original Contract Sum</span>
-              <p className="font-bold text-gray-900">{formatCurrency(orig)}</p>
+              <p className="font-bold text-white">{formatCurrency(orig)}</p>
             </div>
-            <div className="bg-white p-3 rounded-xl border border-gray-150 space-y-0.5">
+            <div className="bg-slate-900 p-3 rounded-xl border border-gray-150 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-gray-400">Appraised Budget</span>
-              <p className="font-bold text-indigo-900">{formatCurrency(appr)}</p>
+              <p className="font-bold text-indigo-200">{formatCurrency(appr)}</p>
             </div>
-            <div className="bg-white p-3 rounded-xl border border-gray-150 space-y-0.5">
+            <div className="bg-slate-900 p-3 rounded-xl border border-gray-150 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-gray-400">Earned Value to Date</span>
-              <p className="font-bold text-emerald-700">{formatCurrency(ev)}</p>
+              <p className="font-bold text-emerald-400">{formatCurrency(ev)}</p>
             </div>
-            <div className="bg-white p-3 rounded-xl border border-gray-150 space-y-0.5">
+            <div className="bg-slate-900 p-3 rounded-xl border border-gray-150 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-gray-400">Remaining Balance</span>
               <p className="font-bold text-dark-teal-900">{formatCurrency(rem)}</p>
             </div>
           </div>
 
           {/* Itemized Categories Table */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden space-y-2">
-            <div className="px-4 py-2 bg-gray-50 border-b border-gray-150 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+          <div className="bg-slate-900 rounded-xl border border-slate-700/50 overflow-hidden space-y-2">
+            <div className="px-4 py-2 bg-slate-800/50 border-b border-gray-150 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Extracted Component Categories ({categories.length})
               </span>
               {isEditing && (
                 <button
                   onClick={handleAddCategory}
-                  className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-bold border border-emerald-200 transition flex items-center space-x-1"
+                  className="px-2.5 py-1 bg-emerald-900/20 hover:bg-emerald-100 text-emerald-400 rounded-lg text-[10px] font-bold border border-emerald-200 transition flex items-center space-x-1"
                 >
                   <Plus className="w-3 h-3" />
                   <span>Add Component Row</span>
@@ -277,7 +277,7 @@ export default function WorkbookInlinePreviewDrawer({
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50/50 text-gray-400 font-bold uppercase text-[9px] border-b border-gray-150">
+                <thead className="bg-slate-800/50/50 text-gray-400 font-bold uppercase text-[9px] border-b border-gray-150">
                   <tr>
                     <th className="px-4 py-2">Category Name</th>
                     <th className="px-4 py-2 text-right">Original ($)</th>
@@ -286,7 +286,7 @@ export default function WorkbookInlinePreviewDrawer({
                     {isEditing && <th className="px-3 py-2 text-center w-12">Action</th>}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+                <tbody className="divide-y divide-gray-100 text-slate-300 font-medium">
                   {categories.length === 0 ? (
                     <tr>
                       <td colSpan={isEditing ? 5 : 4} className="px-4 py-4 text-center text-gray-400 italic text-[11px]">
@@ -300,14 +300,14 @@ export default function WorkbookInlinePreviewDrawer({
                       const cEv = c.earned_value_to_date || 0;
 
                       return (
-                        <tr key={idx} className="hover:bg-gray-50/60">
-                          <td className="px-4 py-2.5 font-bold text-gray-900 min-w-[240px]">
+                        <tr key={idx} className="hover:bg-slate-800/50/60">
+                          <td className="px-4 py-2.5 font-bold text-white min-w-[240px]">
                             {isEditing ? (
                               <input
                                 type="text"
                                 value={c.category_name || ''}
                                 onChange={(e) => handleCategoryChange(idx, 'category_name', e.target.value)}
-                                className="w-full p-2 bg-white border border-gray-300 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-dark-teal-500 shadow-xs"
+                                className="w-full p-2 bg-slate-900 border border-slate-600 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-dark-teal-500 shadow-xs"
                                 placeholder="Component Category Name"
                               />
                             ) : (
@@ -321,13 +321,13 @@ export default function WorkbookInlinePreviewDrawer({
                                 step="any"
                                 value={c.original_amount ?? 0}
                                 onChange={(e) => handleCategoryChange(idx, 'original_amount', e.target.value)}
-                                className="w-36 text-right p-2 bg-white border border-gray-300 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-dark-teal-500 shadow-xs ml-auto"
+                                className="w-36 text-right p-2 bg-slate-900 border border-slate-600 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-dark-teal-500 shadow-xs ml-auto"
                               />
                             ) : (
                               formatCurrency(cOrig)
                             )}
                           </td>
-                          <td className="px-4 py-2.5 text-right font-semibold text-indigo-900 min-w-[160px]">
+                          <td className="px-4 py-2.5 text-right font-semibold text-indigo-200 min-w-[160px]">
                             {isEditing ? (
                               <input
                                 type="number"
@@ -335,7 +335,7 @@ export default function WorkbookInlinePreviewDrawer({
                                 placeholder="None"
                                 value={c.appraised_amount ?? ''}
                                 onChange={(e) => handleCategoryChange(idx, 'appraised_amount', e.target.value)}
-                                className="w-36 text-right p-2 bg-white border border-gray-300 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs ml-auto"
+                                className="w-36 text-right p-2 bg-slate-900 border border-slate-600 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs ml-auto"
                               />
                             ) : (
                               formatCurrency(cAppr ?? cOrig)
@@ -348,7 +348,7 @@ export default function WorkbookInlinePreviewDrawer({
                                 step="any"
                                 value={c.earned_value_to_date ?? 0}
                                 onChange={(e) => handleCategoryChange(idx, 'earned_value_to_date', e.target.value)}
-                                className="w-36 text-right p-2 bg-white border border-gray-300 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs ml-auto"
+                                className="w-36 text-right p-2 bg-slate-900 border border-slate-600 rounded-xl font-bold text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs ml-auto"
                               />
                             ) : (
                               formatCurrency(cEv)

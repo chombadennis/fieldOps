@@ -195,6 +195,9 @@ async def get_document_embed_url(
     elif doc_type == "boq":
         from ..models.boq_document import BoqDocument
         doc = db.query(BoqDocument).filter(BoqDocument.id == document_id).first()
+    elif doc_type == "field_ops":
+        from ..models.field_ops import FieldOpsDocument
+        doc = db.query(FieldOpsDocument).filter(FieldOpsDocument.id == document_id).first()
     else:
         doc = db.query(Document).filter(Document.id == document_id).first()
         
@@ -348,6 +351,9 @@ async def stream_project_document(
     elif doc_type == "boq":
         from ..models.boq_document import BoqDocument
         doc = db.query(BoqDocument).filter(BoqDocument.id == document_id).first()
+    elif doc_type == "field_ops":
+        from ..models.field_ops import FieldOpsDocument
+        doc = db.query(FieldOpsDocument).filter(FieldOpsDocument.id == document_id).first()
     else:
         doc = db.query(Document).filter(Document.id == document_id).first()
 
@@ -437,3 +443,21 @@ async def stream_project_document(
             )
     else:
         raise HTTPException(status_code=400, detail="Unsupported provider for streaming.")
+
+@router.patch("/projects/{project_id}/documents/{document_id}", response_model=platform_schemas.Document)
+def update_project_document(
+    project_id: int,
+    document_id: int,
+    doc_update: platform_schemas.DocumentUpdate,
+    db: Session = Depends(get_db)
+):
+    doc = db.query(Document).filter(Document.id == document_id, Document.project_id == project_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    if doc_update.extracted_data is not None:
+        doc.extracted_data = doc_update.extracted_data
+    
+    db.commit()
+    db.refresh(doc)
+    return doc

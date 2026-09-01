@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { MessageSquare, AlertTriangle } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import FieldOpsIntegrations from '@/components/FieldOpsIntegrations';
 import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
 import DiscussionNoteInput from '@/components/DiscussionNoteInput';
-import { unlinkProjectDocument, unlinkDecoupledDocument, deleteProjectDocument, deleteDecoupledDocument } from '@/services/api';
+import ManualEntryModal from '@/components/integrations/ManualEntryModal';
+import { unlinkProjectDocument, unlinkDecoupledDocument, deleteProjectDocument, deleteDecoupledDocument, updateProjectDocument } from '@/services/api';
 import { renderSafeHtml } from '@/lib/sanitize';
 
 interface Note {
@@ -64,6 +66,9 @@ export default function FieldOpsTab({
 }: DepartmentTabProps) {
   const [unlinkingId, setUnlinkingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [updatingDocument, setUpdatingDocument] = useState<Document | null>(null);
+  
+  const queryClient = useQueryClient();
 
   const handleUnlinkDocument = async (documentId: number) => {
     if (!onRefresh) return;
@@ -75,6 +80,13 @@ export default function FieldOpsTab({
       } else {
         await unlinkProjectDocument(projectId, documentId);
       }
+      
+      // Optimistic UI update: instantly remove from screen
+      queryClient.setQueryData(['documents', projectId], (oldData: any) => {
+        if (!oldData) return [];
+        return oldData.filter((doc: any) => doc.id !== documentId);
+      });
+
       await onRefresh();
     } catch (err) {
       console.error(err);
@@ -95,6 +107,13 @@ export default function FieldOpsTab({
       } else {
         await deleteProjectDocument(projectId, documentId);
       }
+      
+      // Optimistic UI update: instantly remove from screen
+      queryClient.setQueryData(['documents', projectId], (oldData: any) => {
+        if (!oldData) return [];
+        return oldData.filter((doc: any) => doc.id !== documentId);
+      });
+
       await onRefresh();
     } catch (err) {
       console.error(err);
@@ -108,6 +127,31 @@ export default function FieldOpsTab({
   // Filter notes and docs for this department
   const filteredNotes = notes.filter((n) => n.department?.toLowerCase() === departmentKey.toLowerCase() || departmentKey === 'all');
   const filteredDocs = documents.filter((d) => d.department?.toLowerCase() === departmentKey.toLowerCase() || departmentKey === 'all');
+
+  const handleUpdateDocumentData = async (title: string, payload: any) => {
+    if (!updatingDocument) return;
+    if (setGlobalLoading) setGlobalLoading(true);
+    try {
+      const extractedDataPayload = {
+        items: [
+          {
+            description: payload.description || departmentName,
+            values_map: payload
+          }
+        ]
+      };
+      await updateProjectDocument(projectId, updatingDocument.id, {
+        extracted_data: extractedDataPayload
+      });
+      if (onRefresh) onRefresh();
+      setUpdatingDocument(null);
+    } catch (err: any) {
+      console.error(err);
+      alert('Failed to update document data.');
+    } finally {
+      if (setGlobalLoading) setGlobalLoading(false);
+    }
+  };
 
 
 
@@ -144,11 +188,13 @@ export default function FieldOpsTab({
       <LinkedDocumentsPanel
         title="Linked Documents"
         documents={filteredDocs}
+        docType="field_ops"
         onUnlink={handleUnlinkDocument}
         onDelete={handleDeleteDocument}
         unlinkingId={unlinkingId}
         deletingId={deletingId}
         emptyMessage="No documents linked to this department section."
+        onEnterData={(doc) => setUpdatingDocument(doc)}
       />
 
       <DiscussionNoteInput 
@@ -195,6 +241,15 @@ export default function FieldOpsTab({
           </div>
         )}
       </div>
+
+      <ManualEntryModal
+        isOpen={!!updatingDocument}
+        onClose={() => setUpdatingDocument(null)}
+        onSave={handleUpdateDocumentData}
+        isLoading={!!globalLoading}
+        departmentKey={departmentKey}
+        departmentName={departmentName}
+      />
     </div>
   );
 }

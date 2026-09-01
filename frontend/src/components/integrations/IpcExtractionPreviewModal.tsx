@@ -75,7 +75,7 @@ export default function IpcExtractionPreviewModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col relative overflow-hidden">
+      <div className="bg-slate-900 rounded-2xl w-full max-w-4xl shadow-2xl border border-slate-700/50 max-h-[90vh] flex flex-col relative overflow-hidden">
 
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-900 to-indigo-800 p-5 flex items-center justify-between flex-shrink-0">
@@ -86,7 +86,7 @@ export default function IpcExtractionPreviewModal({
             <div>
               <h2 className="text-lg font-extrabold text-white tracking-wide flex items-center">
                 Extracted IPC Data
-                <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] uppercase font-bold tracking-widest">
+                <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-900/200/20 border border-emerald-400/30 text-emerald-300 text-[10px] uppercase font-bold tracking-widest">
                   <CheckCircle2 className="w-3 h-3 mr-1" /> Verified IPC
                 </span>
               </h2>
@@ -116,17 +116,17 @@ export default function IpcExtractionPreviewModal({
         </div>
 
         {/* Multi-Tab Navigation */}
-        <div className="flex border-b border-gray-100 bg-gray-50/50 px-4 flex-shrink-0">
+        <div className="flex border-b border-slate-700/50 bg-slate-800/50/50 px-4 flex-shrink-0">
           <button
             onClick={() => setActiveTab('main')}
-            className={`py-3.5 px-5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${activeTab === 'main' ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+            className={`py-3.5 px-5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${activeTab === 'main' ? 'border-indigo-600 text-indigo-700 bg-indigo-900/20' : 'border-transparent text-slate-400 hover:text-slate-300 hover:bg-slate-800'
               }`}
           >
             Main IPC Summary
           </button>
           <button
             onClick={() => setActiveTab('advance')}
-            className={`py-3.5 px-5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center space-x-2 ${activeTab === 'advance' ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+            className={`py-3.5 px-5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center space-x-2 ${activeTab === 'advance' ? 'border-indigo-600 text-indigo-700 bg-indigo-900/20' : 'border-transparent text-slate-400 hover:text-slate-300 hover:bg-slate-800'
               }`}
           >
             <span>Advance Recovery</span>
@@ -136,7 +136,7 @@ export default function IpcExtractionPreviewModal({
           </button>
           <button
             onClick={() => setActiveTab('boq')}
-            className={`py-3.5 px-5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center space-x-2 ${activeTab === 'boq' ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+            className={`py-3.5 px-5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center space-x-2 ${activeTab === 'boq' ? 'border-indigo-600 text-indigo-700 bg-indigo-900/20' : 'border-transparent text-slate-400 hover:text-slate-300 hover:bg-slate-800'
               }`}
           >
             <span>BoQ Grand Summary</span>
@@ -147,7 +147,7 @@ export default function IpcExtractionPreviewModal({
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-800/50">
 
           {extractedData?.legacy_exists && (
             <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl flex items-start space-x-3">
@@ -163,10 +163,10 @@ export default function IpcExtractionPreviewModal({
 
           {activeTab === 'main' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                  <h3 className="text-sm font-bold text-gray-800">Financial Metrics</h3>
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Editable Grid</span>
+              <div className="bg-slate-900 border border-slate-700/50 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-slate-800/50 border-b border-slate-700/50 flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-slate-200">Financial Metrics</h3>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Editable Grid</span>
                 </div>
                 <div className="grid grid-cols-2 gap-px bg-gray-200">
 
@@ -185,8 +185,8 @@ export default function IpcExtractionPreviewModal({
                     { key: 'total_deductions', label: 'Total Deductions' },
                     { key: 'net_amount_due', label: 'Net Amount Due' },
                   ].map((field) => (
-                    <div key={field.key} className="bg-white p-4 flex justify-between items-center group">
-                      <span className="text-xs font-semibold text-gray-600">{field.label}</span>
+                    <div key={field.key} className="bg-slate-900 p-4 flex justify-between items-center group">
+                      <span className="text-xs font-semibold text-slate-400">{field.label}</span>
                       <div className="relative">
                         {field.key !== 'certificate_number' && (
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
@@ -200,7 +200,7 @@ export default function IpcExtractionPreviewModal({
                             const num = parseFloat(e.target.value.replace(/[^0-9.-]+/g, '')) || 0;
                             handleMetricChange(field.key, formatCurrency(num));
                           }}
-                          className={`w-48 py-1.5 px-3 ${field.key !== 'certificate_number' ? 'pl-7 text-right' : 'text-left'} text-sm font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all hover:bg-gray-100 group-hover:border-indigo-300`}
+                          className={`w-48 py-1.5 px-3 ${field.key !== 'certificate_number' ? 'pl-7 text-right' : 'text-left'} text-sm font-bold text-slate-200 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-slate-900 transition-all hover:bg-slate-800 group-hover:border-indigo-300`}
                         />
                       </div>
                     </div>
@@ -214,24 +214,24 @@ export default function IpcExtractionPreviewModal({
           {activeTab === 'advance' && (
             <div className="animate-fade-in h-full flex flex-col items-center justify-center text-center">
               {extractedData?.advance_recovery?.found ? (
-                <div className="w-full h-full overflow-y-auto border border-gray-200 rounded-xl bg-white shadow-sm">
+                <div className="w-full h-full overflow-y-auto border border-slate-700/50 rounded-xl bg-slate-900 shadow-sm">
                   <table className="w-full text-left text-sm border-collapse">
-                    <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                    <thead className="bg-slate-800/50 border-b border-slate-700/50 sticky top-0">
                       <tr>
-                        <th className="px-4 py-3 font-semibold text-gray-600">Description</th>
-                        <th className="px-4 py-3 font-semibold text-gray-600 text-right">Amount</th>
+                        <th className="px-4 py-3 font-semibold text-slate-400">Description</th>
+                        <th className="px-4 py-3 font-semibold text-slate-400 text-right">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(extractedData?.advance_recovery?.raw_breakdown || []).map((row: any, i: number) => (
-                        <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-gray-800">{row.description || '—'}</td>
-                          <td className="px-4 py-3 text-gray-800 font-bold text-right">{formatCurrency(row.amount)}</td>
+                        <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+                          <td className="px-4 py-3 text-slate-200">{row.description || '—'}</td>
+                          <td className="px-4 py-3 text-slate-200 font-bold text-right">{formatCurrency(row.amount)}</td>
                         </tr>
                       ))}
                       {(extractedData?.advance_recovery?.raw_breakdown?.length === 0) && (
                         <tr>
-                          <td colSpan={2} className="px-4 py-8 text-center text-gray-500 text-sm italic">
+                          <td colSpan={2} className="px-4 py-8 text-center text-slate-400 text-sm italic">
                             No row items found in this sheet.
                           </td>
                         </tr>
@@ -240,12 +240,12 @@ export default function IpcExtractionPreviewModal({
                   </table>
                 </div>
               ) : (
-                <div className="p-8 border-2 border-dashed border-gray-200 rounded-2xl bg-white max-w-sm w-full">
-                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="p-8 border-2 border-dashed border-slate-700/50 rounded-2xl bg-slate-900 max-w-sm w-full">
+                  <div className="w-12 h-12 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-3">
                     <FileText className="w-6 h-6 text-gray-400" />
                   </div>
-                  <h3 className="text-sm font-bold text-gray-700 mb-1">Sheet Not Detected</h3>
-                  <p className="text-xs text-gray-500">The optional Advance Recovery sheet was not found in this document.</p>
+                  <h3 className="text-sm font-bold text-slate-300 mb-1">Sheet Not Detected</h3>
+                  <p className="text-xs text-slate-400">The optional Advance Recovery sheet was not found in this document.</p>
                 </div>
               )}
             </div>
@@ -254,28 +254,28 @@ export default function IpcExtractionPreviewModal({
           {activeTab === 'boq' && (
             <div className="animate-fade-in h-full flex flex-col items-center justify-center text-center">
               {extractedData?.boq_grand_summary?.found ? (
-                <div className="w-full h-full overflow-y-auto border border-gray-200 rounded-xl bg-white shadow-sm">
+                <div className="w-full h-full overflow-y-auto border border-slate-700/50 rounded-xl bg-slate-900 shadow-sm">
                   <table className="w-full text-left text-sm border-collapse">
-                    <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                    <thead className="bg-slate-800/50 border-b border-slate-700/50 sticky top-0">
                       <tr>
-                        <th className="px-4 py-3 font-semibold text-gray-600 w-24">Bill No</th>
-                        <th className="px-4 py-3 font-semibold text-gray-600">Description</th>
-                        <th className="px-4 py-3 font-semibold text-gray-600 text-right">Tender Amount</th>
-                        <th className="px-4 py-3 font-semibold text-gray-600 text-right">Total To Date</th>
+                        <th className="px-4 py-3 font-semibold text-slate-400 w-24">Bill No</th>
+                        <th className="px-4 py-3 font-semibold text-slate-400">Description</th>
+                        <th className="px-4 py-3 font-semibold text-slate-400 text-right">Tender Amount</th>
+                        <th className="px-4 py-3 font-semibold text-slate-400 text-right">Total To Date</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(extractedData?.boq_grand_summary?.data || []).map((row: any, i: number) => (
-                        <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-gray-500 font-mono text-xs">{row.bill_no || '—'}</td>
-                          <td className="px-4 py-3 text-gray-800 font-medium">{row.description || '—'}</td>
-                          <td className="px-4 py-3 text-gray-600 text-right">{formatCurrency(row.tender_amount)}</td>
+                        <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+                          <td className="px-4 py-3 text-slate-400 font-mono text-xs">{row.bill_no || '—'}</td>
+                          <td className="px-4 py-3 text-slate-200 font-medium">{row.description || '—'}</td>
+                          <td className="px-4 py-3 text-slate-400 text-right">{formatCurrency(row.tender_amount)}</td>
                           <td className="px-4 py-3 text-indigo-700 font-bold text-right">{formatCurrency(row.total_to_date)}</td>
                         </tr>
                       ))}
                       {(extractedData?.boq_grand_summary?.data?.length === 0) && (
                         <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-gray-500 text-sm italic">
+                          <td colSpan={4} className="px-4 py-8 text-center text-slate-400 text-sm italic">
                             No row items found in this sheet.
                           </td>
                         </tr>
@@ -284,12 +284,12 @@ export default function IpcExtractionPreviewModal({
                   </table>
                 </div>
               ) : (
-                <div className="p-8 border-2 border-dashed border-gray-200 rounded-2xl bg-white max-w-sm w-full">
-                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="p-8 border-2 border-dashed border-slate-700/50 rounded-2xl bg-slate-900 max-w-sm w-full">
+                  <div className="w-12 h-12 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-3">
                     <FileText className="w-6 h-6 text-gray-400" />
                   </div>
-                  <h3 className="text-sm font-bold text-gray-700 mb-1">Sheet Not Detected</h3>
-                  <p className="text-xs text-gray-500">The optional BoQ Grand Summary sheet was not found in this document.</p>
+                  <h3 className="text-sm font-bold text-slate-300 mb-1">Sheet Not Detected</h3>
+                  <p className="text-xs text-slate-400">The optional BoQ Grand Summary sheet was not found in this document.</p>
                 </div>
               )}
             </div>
@@ -298,7 +298,7 @@ export default function IpcExtractionPreviewModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-5 border-t border-gray-100 bg-white flex items-center justify-between flex-shrink-0">
+        <div className="p-5 border-t border-slate-700/50 bg-slate-900 flex items-center justify-between flex-shrink-0">
 
           {/* Validation Warning */}
           <div className="flex-1">
@@ -314,7 +314,7 @@ export default function IpcExtractionPreviewModal({
             <button
               onClick={onClose}
               disabled={isSaving}
-              className="px-6 py-2.5 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-400 hover:bg-slate-800 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>

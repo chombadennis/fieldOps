@@ -85,7 +85,7 @@ export default function ActiveIntegrationsList({
             : isPreviewOnly
               ? "bg-amber-500/20 text-amber-400 border border-amber-500/50"
               : isGoogle
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50"
+                ? "bg-emerald-900/200/20 text-emerald-400 border border-emerald-500/50"
                 : "bg-neon-purple/20 text-neon-purple border border-neon-purple/50";
 
           return (
@@ -117,7 +117,7 @@ export default function ActiveIntegrationsList({
                         <span>{integration.boq_name || 'Spreadsheet BOQ'}</span>
                         <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
                       </a>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${isGoogle ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${isGoogle ? 'bg-emerald-900/200/20 text-emerald-400 border border-emerald-500/50' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'}`}>
                         {isGoogle ? 'Google Sheets' : 'OneDrive'}
                       </span>
                       {isPreviewOnly ? (
@@ -132,9 +132,9 @@ export default function ActiveIntegrationsList({
                         </span>
                       )}
                     </h4>
-                    <p className="text-xs text-gray-400 mt-1 truncate"><span className="font-semibold text-gray-500">File ID:</span> {integration.spreadsheet_id}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 truncate"><span className="font-semibold text-gray-500">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
-                    <p className="text-[10px] text-gray-500 mt-1">
+                    <p className="text-xs text-gray-400 mt-1 truncate"><span className="font-semibold text-slate-400">File ID:</span> {integration.spreadsheet_id}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate"><span className="font-semibold text-slate-400">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">
                       {isSyncing ? (
                         <span className="text-neon-cyan font-bold animate-pulse flex items-center space-x-1 text-xs">
                           <Loader2 className="w-3 h-3 animate-spin mr-1 text-neon-cyan" />
@@ -145,7 +145,7 @@ export default function ActiveIntegrationsList({
                           Last Synced: {integration.last_synced_at ? new Date(integration.last_synced_at).toLocaleString() : 'Never'}
                           <span className="text-gray-300 mx-1.5">•</span>
                           <span
-                            className="text-gray-500 font-medium cursor-help hover:text-indigo-600 transition-colors"
+                            className="text-slate-400 font-medium cursor-help hover:text-indigo-600 transition-colors"
                             title={`Important: Ensure your web browser is signed in to the ${isGoogle ? 'Google' : 'Microsoft'} account containing this file, otherwise access will be denied.`}
                           >
                             Click name to edit in cloud (Login required)
@@ -197,7 +197,7 @@ export default function ActiveIntegrationsList({
                                 <button
                                   disabled={isLoading}
                                   onClick={() => handleDismissAlert(integration.id, newSheetsMap[integration.id] || [])}
-                                  className="text-[10px] bg-white border border-amber-200 hover:bg-amber-100 text-amber-900 font-semibold py-1 px-2.5 rounded transition-colors disabled:opacity-50"
+                                  className="text-[10px] bg-slate-900 border border-amber-200 hover:bg-amber-100 text-amber-900 font-semibold py-1 px-2.5 rounded transition-colors disabled:opacity-50"
                                 >
                                   Clear Alert
                                 </button>
@@ -205,11 +205,11 @@ export default function ActiveIntegrationsList({
                             </div>
                           </div>
                         ) : (
-                          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs space-y-2">
-                            <span className="font-semibold text-gray-700 block">Available Worksheets (Not Imported):</span>
+                          <div className="mt-3 bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 text-xs space-y-2">
+                            <span className="font-semibold text-slate-300 block">Available Worksheets (Not Imported):</span>
                             <div className="flex flex-wrap gap-2 pt-1">
                               {newSheetsMap[integration.id].map((sheetName) => (
-                                <div key={sheetName} className="flex items-center space-x-2 bg-white border border-gray-200 rounded-lg py-1 px-2.5 text-gray-700">
+                                <div key={sheetName} className="flex items-center space-x-2 bg-slate-900 border border-slate-700/50 rounded-lg py-1 px-2.5 text-slate-300">
                                   <span className="font-mono text-xs">{sheetName}</span>
                                   <button
                                     disabled={isLoading}
@@ -233,7 +233,7 @@ export default function ActiveIntegrationsList({
                     disabled={isLoading || syncingId !== null || deletingId !== null}
                     onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
                     className={`py-2 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${activeEditorId === integration.id
-                        ? 'bg-neon-cyan border-neon-cyan text-black hover:bg-white shadow-[0_0_10px_rgba(0,243,255,0.5)]'
+                        ? 'bg-neon-cyan border-neon-cyan text-black hover:bg-slate-900 shadow-[0_0_10px_rgba(0,243,255,0.5)]'
                         : 'border-white/20 hover:border-neon-cyan/50 text-gray-300 bg-black/40 hover:bg-neon-cyan/10 hover:text-neon-cyan'
                       }`}
                     title={activeEditorId === integration.id ? 'Hide inline spreadsheet preview' : 'Open inline spreadsheet preview'}
@@ -250,14 +250,7 @@ export default function ActiveIntegrationsList({
                     {syncingId === integration.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     <span>{syncingId === integration.id ? progressMessage : 'Sync Workbook'}</span>
                   </button>
-                  <button
-                    disabled={isLoading || syncingId !== null || deletingId !== null}
-                    onClick={() => handleDisconnectClick(integration.id)}
-                    className="p-2 border border-amber-500/50 rounded-lg text-amber-400 bg-black/40 hover:bg-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.15)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Unlink / Disconnect workbook link (keeps database records)"
-                  >
-                    <Unlink className="w-4 h-4" />
-                  </button>
+
                   {handleDeleteClick && (
                     <button
                       disabled={isLoading || syncingId !== null || deletingId !== null}
@@ -286,7 +279,7 @@ export default function ActiveIntegrationsList({
                   <p className="flex-1 text-xs font-semibold">{syncResultMap[integration.id]?.text}</p>
                   <button
                     onClick={() => setSyncResultMap(prev => ({ ...prev, [integration.id]: null }))}
-                    className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
+                    className="text-gray-400 hover:text-slate-400 flex-shrink-0 ml-2"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

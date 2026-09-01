@@ -276,6 +276,11 @@ export const getProjectDocuments = async (projectId: string | number, department
   return response.data;
 };
 
+export const updateProjectDocument = async (projectId: string | number, documentId: string | number, docUpdate: any) => {
+  const response = await apiClient.patch(`/projects/${projectId}/documents/${documentId}`, docUpdate);
+  return response.data;
+};
+
 export const createProjectDocument = async (
   projectId: string | number,
   doc: { title: string; file_url: string; department?: string; note_id?: number; file_type?: string; file_size?: number; cloud_file_id?: string; origin?: string; integration_id?: number }

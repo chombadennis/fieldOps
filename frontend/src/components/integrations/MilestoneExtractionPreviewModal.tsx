@@ -228,7 +228,7 @@ export default function MilestoneExtractionPreviewModal({
 
   return (
     <div className="fixed inset-0 bg-dark-teal-950/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-5xl shadow-2xl border border-gray-150 flex flex-col max-h-[90vh] overflow-hidden">
+      <div className="bg-slate-900 rounded-3xl w-full max-w-5xl shadow-2xl border border-gray-150 flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header Banner */}
         <div className="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950 p-6 text-white flex justify-between items-center flex-shrink-0">
           <div className="flex items-center space-x-3">
@@ -248,12 +248,12 @@ export default function MilestoneExtractionPreviewModal({
         {/* Error Overlay */}
         {actionError && (
           <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in rounded-3xl">
-            <div className="bg-white border border-red-200 shadow-xl rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center">
+            <div className="bg-slate-900 border border-red-200 shadow-xl rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-5">
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Save Failed</h3>
-              <p className="text-sm text-gray-600 mb-8 leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-2">Save Failed</h3>
+              <p className="text-sm text-slate-400 mb-8 leading-relaxed">
                 {actionError}
               </p>
               <button
@@ -269,12 +269,12 @@ export default function MilestoneExtractionPreviewModal({
         {/* Success Overlay */}
         {actionSuccess && (
           <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in rounded-3xl">
-            <div className="bg-white border border-emerald-200 shadow-xl rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center">
+            <div className="bg-slate-900 border border-emerald-200 shadow-xl rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center">
               <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-5">
                 <CheckCircle2 className="w-8 h-8 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Success!</h3>
-              <p className="text-sm text-gray-600 mb-8 leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-2">Success!</h3>
+              <p className="text-sm text-slate-400 mb-8 leading-relaxed">
                 {actionSuccess}
               </p>
               <button
@@ -291,7 +291,7 @@ export default function MilestoneExtractionPreviewModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
           {/* Metadata Grid */}
-          <div className="bg-gray-50 border border-gray-150 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-800/50 border border-gray-150 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Title / Name</label>
               <input
@@ -299,7 +299,7 @@ export default function MilestoneExtractionPreviewModal({
                 value={docTitle}
                 onChange={(e) => setDocTitle(e.target.value)}
                 placeholder="Enter document title..."
-                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-dark-teal-500/20 focus:border-dark-teal-500 transition shadow-xs"
+                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/50 rounded-xl text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-dark-teal-500/20 focus:border-dark-teal-500 transition shadow-xs"
               />
             </div>
             <div className="space-y-1">
@@ -316,7 +316,7 @@ export default function MilestoneExtractionPreviewModal({
                     <span>View Original Document</span>
                   </a>
                 ) : (
-                  <span className="text-xs font-medium text-gray-500 italic">No cloud link available</span>
+                  <span className="text-xs font-medium text-slate-400 italic">No cloud link available</span>
                 )}
               </div>
             </div>
@@ -338,11 +338,11 @@ export default function MilestoneExtractionPreviewModal({
           )}
 
           {/* Tabs */}
-          <div className="flex space-x-4 border-b border-gray-200">
+          <div className="flex space-x-4 border-b border-slate-700/50">
             <button
               onClick={() => setActiveTab('matrix')}
               className={`py-2 px-1 border-b-2 text-sm font-bold transition-colors ${
-                activeTab === 'matrix' ? 'border-dark-teal-600 text-dark-teal-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'matrix' ? 'border-dark-teal-600 text-dark-teal-900' : 'border-transparent text-slate-400 hover:text-slate-300'
               }`}
             >
               Main Summary & Strict Matrix
@@ -350,7 +350,7 @@ export default function MilestoneExtractionPreviewModal({
             <button
               onClick={() => setActiveTab('dynamic_data')}
               className={`py-2 px-1 border-b-2 text-sm font-bold transition-colors ${
-                activeTab === 'dynamic_data' ? 'border-amber-600 text-amber-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'dynamic_data' ? 'border-amber-600 text-amber-900' : 'border-transparent text-slate-400 hover:text-slate-300'
               }`}
             >
               All Raw Data (JSONB)
@@ -358,7 +358,7 @@ export default function MilestoneExtractionPreviewModal({
             <button
               onClick={() => setActiveTab('json')}
               className={`py-2 px-1 border-b-2 text-sm font-bold transition-colors ${
-                activeTab === 'json' ? 'border-indigo-600 text-indigo-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'json' ? 'border-indigo-600 text-indigo-200' : 'border-transparent text-slate-400 hover:text-slate-300'
               }`}
             >
               Diagnostic Metadata
@@ -372,7 +372,7 @@ export default function MilestoneExtractionPreviewModal({
               {/* Unified Matrix Table */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <h4 className="text-xs font-bold font-lexend text-gray-800">Unified Extracted Matrix (Editable)</h4>
+                  <h4 className="text-xs font-bold font-lexend text-slate-200">Unified Extracted Matrix (Editable)</h4>
 
                   <button
                     onClick={handleAddItem}
@@ -384,7 +384,7 @@ export default function MilestoneExtractionPreviewModal({
 
                 <div className="overflow-x-auto border border-gray-150 rounded-2xl shadow-sm">
                   <table className="w-full text-left text-xs min-w-[800px]">
-                    <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[9px] border-b border-gray-100">
+                    <thead className="bg-slate-800/50 text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-slate-700/50">
                       <tr>
                         <th className="px-4 py-3 w-[140px]">Activity ID</th>
                         <th className="px-4 py-3">Description</th>
@@ -393,15 +393,15 @@ export default function MilestoneExtractionPreviewModal({
                         <th className="px-4 py-3 w-[80px] text-center">Actions</th>
                       </tr>
                     </thead>
-                  <tbody className="divide-y divide-gray-150 text-gray-700 font-medium bg-white">
+                  <tbody className="divide-y divide-gray-150 text-slate-300 font-medium bg-slate-900">
                     {items.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/50 transition">
+                      <tr key={idx} className="hover:bg-slate-800/50/50 transition">
                         <td className="px-4 py-2">
                           <input
                             type="text"
                             value={item.activity_id}
                             onChange={(e) => handleItemChange(idx, 'activity_id', e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-900 focus:outline-none focus:border-dark-teal-500"
+                            className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-dark-teal-500"
                           />
                         </td>
                         <td className="px-4 py-2">
@@ -409,21 +409,21 @@ export default function MilestoneExtractionPreviewModal({
                             type="text"
                             value={item.description}
                             onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-dark-teal-500"
+                            className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-semibold text-slate-200 focus:outline-none focus:border-dark-teal-500"
                           />
                         </td>
                         <td className="px-4 py-2 text-right">
                           <NumberInput
                             value={item.percentage_complete_this_period}
                             onChange={(val) => handleItemChange(idx, 'percentage_complete_this_period', val)}
-                            className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-right text-emerald-900 focus:outline-none focus:border-dark-teal-500"
+                            className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-bold text-right text-emerald-900 focus:outline-none focus:border-dark-teal-500"
                           />
                         </td>
                         <td className="px-4 py-2 text-right">
                           <NumberInput
                             value={item.amount_claimed_this_period}
                             onChange={(val) => handleItemChange(idx, 'amount_claimed_this_period', val)}
-                            className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-right text-indigo-900 focus:outline-none focus:border-dark-teal-500"
+                            className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-bold text-right text-indigo-200 focus:outline-none focus:border-dark-teal-500"
                           />
                         </td>
                         <td className="px-4 py-2 text-center">
@@ -439,41 +439,41 @@ export default function MilestoneExtractionPreviewModal({
                     ))}
                     
                     {/* Unified Document Totals */}
-                    <tr className="hover:bg-gray-50/50 transition">
-                      <td className="px-4 py-2 font-bold text-gray-500 text-center">-</td>
-                      <td className="px-4 py-2 font-bold text-gray-900">Gross Amount Claimed</td>
+                    <tr className="hover:bg-slate-800/50/50 transition">
+                      <td className="px-4 py-2 font-bold text-slate-400 text-center">-</td>
+                      <td className="px-4 py-2 font-bold text-white">Gross Amount Claimed</td>
                       <td className="px-4 py-2 text-right"></td>
                       <td className="px-4 py-2 text-right">
                         <NumberInput
                           value={metrics.gross_amount_claimed}
                           onChange={(val) => handleMetricChange('gross_amount_claimed', val)}
-                          className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-right text-gray-900 focus:outline-none focus:border-dark-teal-500"
+                          className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-bold text-right text-white focus:outline-none focus:border-dark-teal-500"
                         />
                       </td>
                       <td className="px-4 py-2"></td>
                     </tr>
-                    <tr className="hover:bg-gray-50/50 transition">
-                      <td className="px-4 py-2 font-bold text-gray-500 text-center">-</td>
-                      <td className="px-4 py-2 font-bold text-gray-900">Retention Deducted</td>
+                    <tr className="hover:bg-slate-800/50/50 transition">
+                      <td className="px-4 py-2 font-bold text-slate-400 text-center">-</td>
+                      <td className="px-4 py-2 font-bold text-white">Retention Deducted</td>
                       <td className="px-4 py-2 text-right"></td>
                       <td className="px-4 py-2 text-right">
                         <NumberInput
                           value={metrics.retention_deducted}
                           onChange={(val) => handleMetricChange('retention_deducted', val)}
-                          className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-right text-gray-900 focus:outline-none focus:border-dark-teal-500"
+                          className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-bold text-right text-white focus:outline-none focus:border-dark-teal-500"
                         />
                       </td>
                       <td className="px-4 py-2"></td>
                     </tr>
-                    <tr className="hover:bg-gray-50/50 transition">
-                      <td className="px-4 py-2 font-bold text-gray-500 text-center">-</td>
-                      <td className="px-4 py-2 font-bold text-gray-900">Net Amount Due</td>
+                    <tr className="hover:bg-slate-800/50/50 transition">
+                      <td className="px-4 py-2 font-bold text-slate-400 text-center">-</td>
+                      <td className="px-4 py-2 font-bold text-white">Net Amount Due</td>
                       <td className="px-4 py-2 text-right"></td>
                       <td className="px-4 py-2 text-right">
                         <NumberInput
                           value={metrics.net_amount_due}
                           onChange={(val) => handleMetricChange('net_amount_due', val)}
-                          className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-right text-gray-900 focus:outline-none focus:border-dark-teal-500"
+                          className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-bold text-right text-white focus:outline-none focus:border-dark-teal-500"
                         />
                       </td>
                       <td className="px-4 py-2"></td>
@@ -492,29 +492,29 @@ export default function MilestoneExtractionPreviewModal({
               </div>
             </div>
           ) : activeTab === 'json' ? (
-            <div className="bg-white border border-gray-150 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-slate-900 border border-gray-150 rounded-2xl overflow-hidden shadow-sm">
               <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 border-b border-gray-150 text-gray-500 font-bold uppercase tracking-wider text-[9px]">
+                <thead className="bg-slate-800/50 border-b border-gray-150 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
                   <tr>
                     <th className="px-6 py-3 w-1/3">Property / Metric</th>
                     <th className="px-6 py-3 w-2/3">Extracted Value</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">Document Type Identified</td>
+                <tbody className="divide-y divide-gray-100 font-medium text-slate-300">
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">Document Type Identified</td>
                     <td className="px-6 py-3">{extractedData?.identified_document_type || 'Unknown'}</td>
                   </tr>
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">Is Milestone Claim</td>
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">Is Milestone Claim</td>
                     <td className="px-6 py-3">
                       <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${extractedData?.is_milestone_document ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
                         {extractedData?.is_milestone_document ? 'TRUE' : 'FALSE'}
                       </span>
                     </td>
                   </tr>
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">Validation Status</td>
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">Validation Status</td>
                     <td className="px-6 py-3">
                       <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
                         extractedData?.validation_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 
@@ -524,19 +524,19 @@ export default function MilestoneExtractionPreviewModal({
                       </span>
                     </td>
                   </tr>
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">Confidence Score</td>
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">Confidence Score</td>
                     <td className="px-6 py-3">
                       {extractedData?.validation_score ? `${(extractedData.validation_score * 100).toFixed(0)}%` : 'N/A'}
                     </td>
                   </tr>
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">Total Items Parsed</td>
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">Total Items Parsed</td>
                     <td className="px-6 py-3">{extractedData?.items?.length || 0}</td>
                   </tr>
                   {extractedData?.validation_issues && extractedData.validation_issues.length > 0 && (
-                    <tr className="hover:bg-gray-50/50">
-                      <td className="px-6 py-3 text-gray-500 font-bold align-top">Diagnostic Issues</td>
+                    <tr className="hover:bg-slate-800/50/50">
+                      <td className="px-6 py-3 text-slate-400 font-bold align-top">Diagnostic Issues</td>
                       <td className="px-6 py-3">
                         <ul className="list-disc list-inside space-y-1 text-amber-700">
                           {extractedData.validation_issues.map((issue: string, idx: number) => (
@@ -553,7 +553,7 @@ export default function MilestoneExtractionPreviewModal({
             <div className="space-y-6">
               {/* Unified Raw Data Table (All JSONB) */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold font-lexend text-gray-800">All Raw JSONB Data (Document & Row Level)</h4>
+                <h4 className="text-xs font-bold font-lexend text-slate-200">All Raw JSONB Data (Document & Row Level)</h4>
                 <div className="overflow-x-auto border border-amber-200 rounded-2xl">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-amber-50 text-amber-700 font-bold uppercase tracking-wider text-[9px] border-b border-amber-100">
@@ -563,7 +563,7 @@ export default function MilestoneExtractionPreviewModal({
                         <th className="px-4 py-3 w-1/2">Raw Value</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-amber-100 text-gray-700 font-medium bg-white">
+                    <tbody className="divide-y divide-amber-100 text-slate-300 font-medium bg-slate-900">
                       
                       {/* Document Level JSONB */}
                       <tr className="bg-amber-50/50">
@@ -572,13 +572,13 @@ export default function MilestoneExtractionPreviewModal({
                       {['gross_amount_claimed', 'retention_deducted', 'net_amount_due'].map(key => (
                         <tr key={`doc-strict-${key}`} className="hover:bg-amber-50/30 transition">
                           <td className="px-4 py-2 text-xs font-bold text-gray-400">Cover Page</td>
-                          <td className="px-4 py-2 font-bold text-gray-800">{key}</td>
+                          <td className="px-4 py-2 font-bold text-slate-200">{key}</td>
                           <td className="px-4 py-2">
                             <input
                               type="text"
                               value={(metrics as any)[key] || ''}
                               onChange={(e) => handleMetricChange(key as keyof MilestoneClaimMetrics, e.target.value)}
-                              className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-amber-500"
+                              className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500"
                             />
                           </td>
                         </tr>
@@ -586,13 +586,13 @@ export default function MilestoneExtractionPreviewModal({
                       {metricDynamicKeys.map(key => (
                         <tr key={`doc-${key}`} className="hover:bg-amber-50/30 transition">
                           <td className="px-4 py-2 text-xs font-bold text-gray-400">Cover Page</td>
-                          <td className="px-4 py-2 font-bold text-gray-800">{key}</td>
+                          <td className="px-4 py-2 font-bold text-slate-200">{key}</td>
                           <td className="px-4 py-2">
                             <input
                               type="text"
                               value={metrics.values_map?.[key] || ''}
                               onChange={(e) => handleMetricDynamicChange(key, e.target.value)}
-                              className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-amber-500"
+                              className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500"
                             />
                           </td>
                         </tr>
@@ -607,14 +607,14 @@ export default function MilestoneExtractionPreviewModal({
                       {items.flatMap((item, idx) => {
                         return itemDynamicKeys.filter(key => item.values_map?.[key] !== undefined).map(key => (
                           <tr key={`row-${idx}-${key}`} className="hover:bg-amber-50/30 transition">
-                            <td className="px-4 py-2 text-xs font-bold text-gray-600">Activity ID: {item.activity_id}</td>
-                            <td className="px-4 py-2 font-bold text-gray-800">{key}</td>
+                            <td className="px-4 py-2 text-xs font-bold text-slate-400">Activity ID: {item.activity_id}</td>
+                            <td className="px-4 py-2 font-bold text-slate-200">{key}</td>
                             <td className="px-4 py-2">
                               <input
                                 type="text"
                                 value={item.values_map?.[key] || ''}
                                 onChange={(e) => handleItemDynamicChange(idx, key, e.target.value)}
-                                className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-amber-500"
+                                className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500"
                               />
                             </td>
                           </tr>
@@ -637,10 +637,10 @@ export default function MilestoneExtractionPreviewModal({
         </div>
 
         {/* Footer controls */}
-        <div className="bg-gray-50 border-t border-gray-150 p-6 flex justify-between items-center flex-shrink-0">
+        <div className="bg-slate-800/50 border-t border-gray-150 p-6 flex justify-between items-center flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 border border-gray-200 bg-white hover:bg-gray-150 text-gray-700 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95"
+            className="px-5 py-2.5 border border-slate-700/50 bg-slate-900 hover:bg-gray-150 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95"
           >
             Cancel
           </button>

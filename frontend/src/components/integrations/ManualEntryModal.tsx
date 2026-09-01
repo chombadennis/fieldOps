@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Save, Table2, Settings2, Layers, FileText } from 'lucide-react';
+import { X, Plus, Trash2, Save, Table2, Settings2, Layers, FileText, AlertTriangle } from 'lucide-react';
 
 interface ManualEntryModalProps {
   isOpen: boolean;
@@ -8,6 +8,7 @@ interface ManualEntryModalProps {
   isLoading: boolean;
   departmentKey: string;
   departmentName?: string;
+  isNewLinkContext?: boolean;
 }
 
 interface Section {
@@ -45,7 +46,7 @@ const PREDEFINED_TEMPLATES: Template[] = [
   }
 ];
 
-export default function ManualEntryModal({ isOpen, onClose, onSave, isLoading, departmentKey, departmentName }: ManualEntryModalProps) {
+export default function ManualEntryModal({ isOpen, onClose, onSave, isLoading, departmentKey, departmentName, isNewLinkContext }: ManualEntryModalProps) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [description, setDescription] = useState('');
@@ -53,6 +54,7 @@ export default function ManualEntryModal({ isOpen, onClose, onSave, isLoading, d
   const [sections, setSections] = useState<Section[]>([]);
   const [savedTemplates, setSavedTemplates] = useState<Template[]>([]);
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [showCloseWarning, setShowCloseWarning] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -87,6 +89,8 @@ export default function ManualEntryModal({ isOpen, onClose, onSave, isLoading, d
           isEditColumns: false
         }]);
       }
+    } else {
+      setShowCloseWarning(false);
     }
   }, [isOpen, departmentKey]);
 
@@ -222,7 +226,35 @@ export default function ManualEntryModal({ isOpen, onClose, onSave, isLoading, d
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#030305]/80 backdrop-blur-md p-4">
-      <div className="bg-[#030305] border border-white/10 rounded-3xl w-full max-w-[95vw] xl:max-w-7xl h-[95vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] animate-fade-in-up overflow-hidden">
+      <div className="bg-[#030305] border border-white/10 rounded-3xl w-full max-w-[95vw] xl:max-w-7xl h-[95vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] animate-fade-in-up overflow-hidden relative">
+        
+        {showCloseWarning && (
+          <div className="absolute inset-0 z-[60] bg-[#030305]/90 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0b0b0e] border border-white/10 p-6 rounded-2xl max-w-md w-full shadow-2xl flex flex-col animate-fade-in">
+              <div className="flex items-center space-x-3 text-neon-pink mb-3">
+                <AlertTriangle className="w-6 h-6" />
+                <h3 className="text-lg font-bold">Skip Data Entry?</h3>
+              </div>
+              <p className="text-sm text-gray-300 mb-6 leading-relaxed">
+                The linked document does not have any data in our database yet and will not be mapped for system analysis. Are you sure you want to skip inputting data right now?
+              </p>
+              <div className="flex space-x-3 justify-end">
+                <button 
+                  onClick={() => setShowCloseWarning(false)}
+                  className="px-4 py-2 text-sm font-bold text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl transition"
+                >
+                  No, go back to enter data
+                </button>
+                <button 
+                  onClick={() => { setShowCloseWarning(false); onClose(); }}
+                  className="px-4 py-2 text-sm font-bold text-white bg-neon-pink hover:bg-neon-pink/90 shadow-[0_0_15px_rgba(255,0,127,0.4)] rounded-xl transition"
+                >
+                  Yes, skip for now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5 flex-shrink-0">
@@ -233,7 +265,13 @@ export default function ManualEntryModal({ isOpen, onClose, onSave, isLoading, d
             </h3>
             <p className="text-xs text-gray-400 mt-1">Design multi-section tables for the {departmentName || 'current'} module.</p>
           </div>
-          <button onClick={onClose} disabled={isLoading} className="text-gray-500 hover:text-white active:scale-95 transition-all duration-100">
+          <button onClick={() => {
+            if (isNewLinkContext) {
+              setShowCloseWarning(true);
+            } else {
+              onClose();
+            }
+          }} disabled={isLoading} className="text-gray-500 hover:text-white active:scale-95 transition-all duration-100">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -241,6 +279,16 @@ export default function ManualEntryModal({ isOpen, onClose, onSave, isLoading, d
         {/* Body */}
         <div className="flex-1 overflow-y-auto flex flex-col p-6 space-y-8 bg-transparent">
           
+          {isNewLinkContext && (
+            <div className="bg-neon-pink/10 border border-neon-pink/30 rounded-2xl p-4 flex items-start space-x-3 text-neon-pink shadow-sm animate-fade-in-up flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <span className="font-bold block mb-1">Data Mapping Required</span>
+                <span className="text-neon-pink/80">Input the <strong>{departmentName || 'Daily Progress Report'}</strong> data below to save in the database for system analysis and to create a historical footprint of the day's activities and production.</span>
+              </div>
+            </div>
+          )}
+
           {/* Metadata Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/5 border border-white/10 p-5 rounded-2xl shadow-sm flex-shrink-0">
             <div className="space-y-4">
@@ -274,7 +322,7 @@ export default function ManualEntryModal({ isOpen, onClose, onSave, isLoading, d
                   type="date" 
                   value={date} 
                   onChange={e => setDate(e.target.value)} 
-                  className="w-full px-4 py-2 bg-black/40 border border-white/10 rounded-xl text-white focus:bg-black focus:ring-2 focus:ring-neon-pink focus:border-neon-pink text-sm outline-none font-medium" 
+                  className="w-full px-4 py-2 bg-black/40 border border-white/10 rounded-xl text-white focus:bg-black focus:ring-2 focus:ring-neon-pink focus:border-neon-pink text-sm outline-none font-medium [color-scheme:dark]" 
                 />
               </div>
               <div>
@@ -448,9 +496,15 @@ export default function ManualEntryModal({ isOpen, onClose, onSave, isLoading, d
         <div className="p-6 border-t border-white/10 bg-[#030305] rounded-b-3xl flex justify-end items-center flex-shrink-0">
           <div className="flex space-x-3">
             <button 
-              onClick={onClose}
+              onClick={() => {
+                if (isNewLinkContext) {
+                  setShowCloseWarning(true);
+                } else {
+                  onClose();
+                }
+              }}
               disabled={isLoading}
-              className="px-5 py-2.5 text-sm font-bold text-gray-300 bg-transparent border border-white/10 rounded-xl hover:bg-white/5 transition shadow-sm"
+              className="px-5 py-2.5 text-sm font-bold text-gray-300 bg-transparent border border-white/10 rounded-xl hover:bg-white/5 transition shadow-sm disabled:opacity-50"
             >
               Cancel
             </button>

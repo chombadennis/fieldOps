@@ -216,7 +216,7 @@ export default function BudgetExtractionPreviewModal({
 
   return (
     <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-5xl shadow-2xl border border-gray-100 max-h-[92vh] flex flex-col relative overflow-hidden">
+      <div className="bg-slate-900 rounded-3xl w-full max-w-5xl shadow-2xl border border-slate-700/50 max-h-[92vh] flex flex-col relative overflow-hidden">
         
         {/* Header Banner */}
         <div className="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950 p-6 flex items-center justify-between flex-shrink-0 text-white">
@@ -229,7 +229,7 @@ export default function BudgetExtractionPreviewModal({
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-[10px] font-bold">
                   <Layers className="w-3 h-3 mr-1" /> Workbook {currentWorkbookIndex} of {expectedCount}
                 </span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-900/200/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold">
                   <CheckCircle2 className="w-3 h-3 mr-1" /> System Verified
                 </span>
               </div>
@@ -270,22 +270,22 @@ export default function BudgetExtractionPreviewModal({
         )}
 
         {/* Modal Scrollable Body */}
-        <div className="p-6 flex-1 overflow-y-auto space-y-6 bg-gray-50/40">
+        <div className="p-6 flex-1 overflow-y-auto space-y-6 bg-slate-800/50/40">
           
           {/* Trade & Module Category Assignment Inputs */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex flex-col justify-between gap-2 border-b md:border-b-0 md:border-r border-gray-100 pb-4 md:pb-0 md:pr-6">
+          <div className="bg-slate-900 p-5 rounded-2xl border border-gray-150 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col justify-between gap-2 border-b md:border-b-0 md:border-r border-slate-700/50 pb-4 md:pb-0 md:pr-6">
               <div>
-                <label className="block text-xs font-bold font-lexend text-gray-900 uppercase tracking-wide">
+                <label className="block text-xs font-bold font-lexend text-white uppercase tracking-wide">
                   Confirm Trade Discipline for Workbook ({currentWorkbookIndex} of {expectedCount}):
                 </label>
-                <p className="text-[11px] text-gray-500 mt-0.5">Categorizes this workbook in the Master Bundle Matrix.</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Categorizes this workbook in the Master Bundle Matrix.</p>
               </div>
               <div className="flex items-center space-x-2 mt-2">
                 <select
                   value={tradeLabel}
                   onChange={(e) => setTradeLabel(e.target.value)}
-                  className="p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:ring-2 focus:ring-dark-teal-500"
+                  className="p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl text-xs font-bold text-slate-200 focus:ring-2 focus:ring-dark-teal-500"
                 >
                   {COMMON_TRADES.map((t) => (
                     <option key={t} value={t}>{t}</option>
@@ -299,7 +299,7 @@ export default function BudgetExtractionPreviewModal({
                     placeholder="Custom trade..."
                     value={customTrade}
                     onChange={(e) => setCustomTrade(e.target.value)}
-                    className="p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold"
+                    className="p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl text-xs font-semibold"
                   />
                 )}
               </div>
@@ -307,16 +307,16 @@ export default function BudgetExtractionPreviewModal({
 
             <div className="flex flex-col justify-between gap-2">
               <div>
-                <label className="block text-xs font-bold font-lexend text-gray-900 uppercase tracking-wide">
+                <label className="block text-xs font-bold font-lexend text-white uppercase tracking-wide">
                   Module Tag / Tab Destination:
                 </label>
-                <p className="text-[11px] text-gray-500 mt-0.5">Determines which tab this linked workbook displays under on the dashboard.</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Determines which tab this linked workbook displays under on the dashboard.</p>
               </div>
               <div className="mt-2">
                 <select
                   value={moduleTag}
                   onChange={(e) => setModuleTag(e.target.value)}
-                  className="p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:ring-2 focus:ring-dark-teal-500 w-full max-w-[240px]"
+                  className="p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl text-xs font-bold text-slate-200 focus:ring-2 focus:ring-dark-teal-500 w-full max-w-[240px]"
                 >
                   <option value="budget">Project Budget</option>
                   <option value="progress">Work Progress Calculations</option>
@@ -327,51 +327,51 @@ export default function BudgetExtractionPreviewModal({
 
           {/* Executive Summary Top Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-sm space-y-1">
+            <div className="bg-slate-900 p-4 rounded-2xl border border-gray-150 shadow-sm space-y-1">
               <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Original Contract Sum</span>
-              <div className="flex items-center space-x-1 text-gray-900 font-bold font-lexend text-sm">
+              <div className="flex items-center space-x-1 text-white font-bold font-lexend text-sm">
                 <span>$</span>
                 <NumberInput
                   value={originalSum}
                   onChange={(val) => setOriginalSum(val || 0)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold text-gray-900 focus:ring-2 focus:ring-dark-teal-500"
+                  className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-2 py-1 text-xs font-bold text-white focus:ring-2 focus:ring-dark-teal-500"
                 />
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-sm space-y-1 relative">
+            <div className="bg-slate-900 p-4 rounded-2xl border border-gray-150 shadow-sm space-y-1 relative">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Appraised Budget</span>
                 {isAppraised && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-500/40">
                     <Tag className="w-2.5 h-2.5 mr-0.5" /> Appraised
                   </span>
                 )}
               </div>
-              <div className="flex items-center space-x-1 text-indigo-900 font-bold font-lexend text-sm">
+              <div className="flex items-center space-x-1 text-indigo-200 font-bold font-lexend text-sm">
                 <span>$</span>
                 <NumberInput
                   placeholder="Optional Appraised Sum"
                   value={appraisedBudget === '' ? undefined : appraisedBudget}
                   onChange={(val) => setAppraisedBudget(val === null ? '' : val)}
-                  className="w-full bg-indigo-50/50 border border-indigo-200 rounded-lg px-2 py-1 text-xs font-bold text-indigo-950 focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-indigo-900/20 border border-indigo-500/40 rounded-lg px-2 py-1 text-xs font-bold text-indigo-950 focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-sm space-y-1">
+            <div className="bg-slate-900 p-4 rounded-2xl border border-gray-150 shadow-sm space-y-1">
               <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Earned Value to Date</span>
-              <div className="flex items-center space-x-1 text-emerald-700 font-bold font-lexend text-sm">
+              <div className="flex items-center space-x-1 text-emerald-400 font-bold font-lexend text-sm">
                 <span>$</span>
                 <NumberInput
                   value={earnedValue}
                   onChange={(val) => setEarnedValue(val || 0)}
-                  className="w-full bg-emerald-50/50 border border-emerald-200 rounded-lg px-2 py-1 text-xs font-bold text-emerald-950 focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-emerald-900/20/50 border border-emerald-200 rounded-lg px-2 py-1 text-xs font-bold text-emerald-100 focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-sm space-y-1">
+            <div className="bg-slate-900 p-4 rounded-2xl border border-gray-150 shadow-sm space-y-1">
               <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Remaining Balance</span>
               <p className="text-sm font-bold font-lexend text-dark-teal-900 pt-1">
                 {formatCurrency(remainingBalance)}
@@ -380,14 +380,14 @@ export default function BudgetExtractionPreviewModal({
           </div>
 
           {/* Visual Budget Progress Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-sm space-y-2">
+          <div className="bg-slate-900 p-4 rounded-2xl border border-gray-150 shadow-sm space-y-2">
             <div className="flex justify-between items-center text-xs font-bold font-lexend">
-              <span className="text-gray-700 flex items-center">
+              <span className="text-slate-300 flex items-center">
                 <TrendingUp className="w-4 h-4 mr-1.5 text-dark-teal-600" /> Contract Budget Consumption
               </span>
               <span className="text-dark-teal-900 font-extrabold">{percentUsed.toFixed(1)}% Used</span>
             </div>
-            <div className="w-full bg-gray-150 h-3 rounded-full overflow-hidden p-0.5 border border-gray-200">
+            <div className="w-full bg-gray-150 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700/50">
               <div
                 className="bg-gradient-to-r from-dark-teal-700 via-dark-teal-600 to-emerald-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${percentUsed}%` }}
@@ -396,11 +396,11 @@ export default function BudgetExtractionPreviewModal({
           </div>
 
           {/* Itemized Category Appraisals Table */}
-          <div className="bg-white rounded-2xl border border-gray-150 shadow-sm overflow-hidden space-y-3 p-5">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <div className="bg-slate-900 rounded-2xl border border-gray-150 shadow-sm overflow-hidden space-y-3 p-5">
+            <div className="flex items-center justify-between border-b border-slate-700/50 pb-3">
               <div>
-                <h3 className="text-xs font-bold font-lexend text-gray-900">Summary Category Breakdowns & Appraisals</h3>
-                <p className="text-[11px] text-gray-500">Cross-check section budgets extracted for this workbook.</p>
+                <h3 className="text-xs font-bold font-lexend text-white">Summary Category Breakdowns & Appraisals</h3>
+                <p className="text-[11px] text-slate-400">Cross-check section budgets extracted for this workbook.</p>
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -410,7 +410,7 @@ export default function BudgetExtractionPreviewModal({
                 >
                   <Layers className="w-3.5 h-3.5 mr-1" /> Add Category Row
                 </button>
-                <span className="px-2.5 py-1 bg-gray-100 rounded-lg text-[10px] font-bold text-gray-600">
+                <span className="px-2.5 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400">
                   {categories.length} Categories Found
                 </span>
               </div>
@@ -421,7 +421,7 @@ export default function BudgetExtractionPreviewModal({
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+                  <thead className="bg-slate-800/50 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="px-4 py-2.5 min-w-[320px]">Category Name</th>
                       <th className="px-4 py-2.5 text-right">Original Amount ($)</th>
@@ -439,20 +439,20 @@ export default function BudgetExtractionPreviewModal({
                       const isCatAppraised = appr !== orig;
 
                       return (
-                        <tr key={idx} className="hover:bg-gray-50/80 transition">
-                          <td className="px-4 py-3 font-bold text-gray-900 min-w-[320px]">
+                        <tr key={idx} className="hover:bg-slate-800/50/80 transition">
+                          <td className="px-4 py-3 font-bold text-white min-w-[320px]">
                             <input
                               type="text"
                               value={cat.category_name}
                               onChange={(e) => handleCategoryNameChange(idx, e.target.value)}
-                              className="w-full bg-transparent border-0 border-b border-transparent hover:border-gray-300 focus:border-dark-teal-500 focus:ring-0 px-0.5 py-0.5 font-bold text-xs text-gray-900 focus:outline-none"
+                              className="w-full bg-transparent border-0 border-b border-transparent hover:border-slate-600 focus:border-dark-teal-500 focus:ring-0 px-0.5 py-0.5 font-bold text-xs text-white focus:outline-none"
                             />
                           </td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-700">
+                          <td className="px-4 py-3 text-right font-semibold text-slate-300">
                             <NumberInput
                               value={cat.original_amount || 0}
                               onChange={(val) => handleCategoryChange(idx, 'original_amount', val || 0)}
-                              className="w-40 text-right bg-gray-50 border border-gray-200 rounded px-2 py-1 font-semibold text-xs focus:ring-2 focus:ring-dark-teal-500/20 focus:outline-none"
+                              className="w-40 text-right bg-slate-800/50 border border-slate-700/50 rounded px-2 py-1 font-semibold text-xs focus:ring-2 focus:ring-dark-teal-500/20 focus:outline-none"
                             />
                           </td>
                           <td className="px-4 py-3 text-right font-semibold">
@@ -460,14 +460,14 @@ export default function BudgetExtractionPreviewModal({
                               placeholder="Original"
                               value={cat.appraised_amount !== undefined && cat.appraised_amount !== null ? cat.appraised_amount : undefined}
                               onChange={(val) => handleCategoryChange(idx, 'appraised_amount', val)}
-                              className="w-40 text-right bg-indigo-50/50 border border-indigo-200 rounded px-2 py-1 font-bold text-xs text-indigo-950 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                              className="w-40 text-right bg-indigo-900/20 border border-indigo-500/40 rounded px-2 py-1 font-bold text-xs text-indigo-950 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                             />
                           </td>
                           <td className="px-4 py-3 text-right font-semibold">
                             <NumberInput
                               value={cat.earned_value_to_date || 0}
                               onChange={(val) => handleCategoryChange(idx, 'earned_value_to_date', val || 0)}
-                              className="w-40 text-right bg-emerald-50/50 border border-emerald-200 rounded px-2 py-1 font-bold text-xs text-emerald-950 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
+                              className="w-40 text-right bg-emerald-900/20/50 border border-emerald-200 rounded px-2 py-1 font-bold text-xs text-emerald-100 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
                             />
                           </td>
                           <td className="px-4 py-3 text-right font-bold">
@@ -501,15 +501,15 @@ export default function BudgetExtractionPreviewModal({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="p-5 bg-gray-50 border-t border-gray-100 flex items-center justify-between flex-shrink-0">
-          <p className="text-[11px] text-gray-500 font-medium">
+        <div className="p-5 bg-slate-800/50 border-t border-slate-700/50 flex items-center justify-between flex-shrink-0">
+          <p className="text-[11px] text-slate-400 font-medium">
             Confirming will add this workbook ({currentWorkbookIndex} of {expectedCount}) to the Master Bundle Matrix and run system reconciliation.
           </p>
           <div className="flex items-center space-x-3">
             <button
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 bg-gray-150 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+              className="px-4 py-2 bg-gray-150 hover:bg-gray-200 text-slate-300 rounded-xl text-xs font-bold transition"
             >
               Cancel
             </button>

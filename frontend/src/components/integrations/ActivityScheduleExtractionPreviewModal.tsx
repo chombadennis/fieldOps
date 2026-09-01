@@ -192,7 +192,7 @@ export default function ActivityScheduleExtractionPreviewModal({
 
   return (
     <div className="fixed inset-0 bg-dark-teal-950/60 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-5xl shadow-2xl border border-gray-150 flex flex-col max-h-[90vh] overflow-hidden">
+      <div className="bg-slate-900 rounded-3xl w-full max-w-5xl shadow-2xl border border-gray-150 flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header Banner */}
         <div className="bg-gradient-to-r from-dark-teal-950 via-dark-teal-900 to-indigo-950 p-6 text-white flex justify-between items-center flex-shrink-0">
           <div className="flex items-center space-x-3">
@@ -212,12 +212,12 @@ export default function ActivityScheduleExtractionPreviewModal({
         {/* Error Overlay */}
         {actionError && (
           <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in rounded-3xl">
-            <div className="bg-white border border-red-200 shadow-xl rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center">
+            <div className="bg-slate-900 border border-red-200 shadow-xl rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-5">
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Save Failed</h3>
-              <p className="text-sm text-gray-600 mb-8 leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-2">Save Failed</h3>
+              <p className="text-sm text-slate-400 mb-8 leading-relaxed">
                 {actionError}
               </p>
               <button
@@ -233,12 +233,12 @@ export default function ActivityScheduleExtractionPreviewModal({
         {/* Success Overlay */}
         {actionSuccess && (
           <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in rounded-3xl">
-            <div className="bg-white border border-emerald-200 shadow-xl rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center">
+            <div className="bg-slate-900 border border-emerald-200 shadow-xl rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center">
               <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-5">
                 <CheckCircle2 className="w-8 h-8 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Success!</h3>
-              <p className="text-sm text-gray-600 mb-8 leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-2">Success!</h3>
+              <p className="text-sm text-slate-400 mb-8 leading-relaxed">
                 {actionSuccess}
               </p>
               <button
@@ -255,7 +255,7 @@ export default function ActivityScheduleExtractionPreviewModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
           {/* Metadata Grid */}
-          <div className="bg-gray-50 border border-gray-150 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-800/50 border border-gray-150 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Title / Name</label>
               <input
@@ -263,7 +263,7 @@ export default function ActivityScheduleExtractionPreviewModal({
                 value={docTitle}
                 onChange={(e) => setDocTitle(e.target.value)}
                 placeholder="Enter document title..."
-                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-dark-teal-500/20 focus:border-dark-teal-500 transition shadow-xs"
+                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700/50 rounded-xl text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-dark-teal-500/20 focus:border-dark-teal-500 transition shadow-xs"
               />
             </div>
             <div className="space-y-1">
@@ -280,7 +280,7 @@ export default function ActivityScheduleExtractionPreviewModal({
                     <span>View Original Document</span>
                   </a>
                 ) : (
-                  <span className="text-xs font-medium text-gray-500 italic">No cloud link available</span>
+                  <span className="text-xs font-medium text-slate-400 italic">No cloud link available</span>
                 )}
               </div>
             </div>
@@ -303,21 +303,21 @@ export default function ActivityScheduleExtractionPreviewModal({
 
           {/* Metrics summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-150 space-y-1">
+            <div className="bg-slate-800/50/70 p-4 rounded-2xl border border-gray-150 space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Activities</span>
               <NumberInput
                 value={overrideMetrics.total_activities}
                 onChange={(val) => setOverrideMetrics(prev => ({ ...prev, total_activities: val }))}
-                className="w-full bg-transparent text-base font-bold font-lexend text-gray-900 focus:outline-none"
+                className="w-full bg-transparent text-base font-bold font-lexend text-white focus:outline-none"
               />
             </div>
-            <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-150 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Total Weight Percentage</span>
+            <div className="bg-emerald-900/20/40 p-4 rounded-2xl border border-emerald-150 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Total Weight Percentage</span>
               <div className="flex items-center">
                 <NumberInput
                   value={overrideMetrics.total_weight_percentage}
                   onChange={(val) => setOverrideMetrics(prev => ({ ...prev, total_weight_percentage: val }))}
-                  className="w-full bg-transparent text-base font-bold font-lexend text-emerald-950 focus:outline-none"
+                  className="w-full bg-transparent text-base font-bold font-lexend text-emerald-100 focus:outline-none"
                 />
                 <span className="text-emerald-900 font-bold ml-1">%</span>
               </div>
@@ -325,7 +325,7 @@ export default function ActivityScheduleExtractionPreviewModal({
             <div className="bg-indigo-50/40 p-4 rounded-2xl border border-indigo-150 space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Total Fixed Price</span>
               <div className="flex items-center">
-                <span className="text-indigo-900 font-bold mr-1">$</span>
+                <span className="text-indigo-200 font-bold mr-1">$</span>
                 <NumberInput
                   value={overrideMetrics.total_price}
                   onChange={(val) => setOverrideMetrics(prev => ({ ...prev, total_price: val }))}
@@ -336,11 +336,11 @@ export default function ActivityScheduleExtractionPreviewModal({
           </div>
 
           {/* Tabs */}
-          <div className="flex space-x-4 border-b border-gray-200">
+          <div className="flex space-x-4 border-b border-slate-700/50">
             <button
               onClick={() => setActiveTab('matrix')}
               className={`py-2 px-1 border-b-2 text-sm font-bold transition-colors ${
-                activeTab === 'matrix' ? 'border-dark-teal-600 text-dark-teal-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'matrix' ? 'border-dark-teal-600 text-dark-teal-900' : 'border-transparent text-slate-400 hover:text-slate-300'
               }`}
             >
               Extracted Activities Matrix
@@ -348,7 +348,7 @@ export default function ActivityScheduleExtractionPreviewModal({
             <button
               onClick={() => setActiveTab('json')}
               className={`py-2 px-1 border-b-2 text-sm font-bold transition-colors ${
-                activeTab === 'json' ? 'border-indigo-600 text-indigo-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'json' ? 'border-indigo-600 text-indigo-200' : 'border-transparent text-slate-400 hover:text-slate-300'
               }`}
             >
               AI Diagnostic Metadata
@@ -356,7 +356,7 @@ export default function ActivityScheduleExtractionPreviewModal({
             <button
               onClick={() => setActiveTab('dynamic_data')}
               className={`py-2 px-1 border-b-2 text-sm font-bold transition-colors ${
-                activeTab === 'dynamic_data' ? 'border-amber-600 text-amber-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'dynamic_data' ? 'border-amber-600 text-amber-900' : 'border-transparent text-slate-400 hover:text-slate-300'
               }`}
             >
               Additional Data Matrix
@@ -367,7 +367,7 @@ export default function ActivityScheduleExtractionPreviewModal({
           {activeTab === 'matrix' ? (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="text-xs font-bold font-lexend text-gray-800">Review & Edit Items</h4>
+                <h4 className="text-xs font-bold font-lexend text-slate-200">Review & Edit Items</h4>
                 <button
                   onClick={handleAddItem}
                   className="px-3 py-1.5 bg-dark-teal-50 border border-dark-teal-100 hover:bg-dark-teal-100 text-dark-teal-900 rounded-xl text-[11px] font-bold flex items-center gap-1 transition"
@@ -378,7 +378,7 @@ export default function ActivityScheduleExtractionPreviewModal({
 
               <div className="overflow-x-auto border border-gray-150 rounded-2xl">
                 <table className="w-full text-left text-xs min-w-[800px]">
-                  <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[9px] border-b border-gray-100">
+                  <thead className="bg-slate-800/50 text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-slate-700/50">
                     <tr>
                       <th className="px-4 py-3 w-[140px]">Activity ID</th>
                       <th className="px-4 py-3">Description</th>
@@ -387,15 +387,15 @@ export default function ActivityScheduleExtractionPreviewModal({
                       <th className="px-4 py-3 w-[80px] text-center">Actions</th>
                     </tr>
                   </thead>
-                <tbody className="divide-y divide-gray-150 text-gray-700 font-medium bg-white">
+                <tbody className="divide-y divide-gray-150 text-slate-300 font-medium bg-slate-900">
                   {items.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50/50 transition">
+                    <tr key={idx} className="hover:bg-slate-800/50/50 transition">
                       <td className="px-4 py-2">
                         <input
                           type="text"
                           value={item.activity_id}
                           onChange={(e) => handleItemChange(idx, 'activity_id', e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-900 focus:outline-none focus:border-dark-teal-500"
+                          className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-dark-teal-500"
                         />
                       </td>
                       <td className="px-4 py-2">
@@ -403,21 +403,21 @@ export default function ActivityScheduleExtractionPreviewModal({
                           type="text"
                           value={item.description}
                           onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-dark-teal-500"
+                          className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-semibold text-slate-200 focus:outline-none focus:border-dark-teal-500"
                         />
                       </td>
                       <td className="px-4 py-2 text-right">
                         <NumberInput
                           value={item.weight_percentage}
                           onChange={(val) => handleItemChange(idx, 'weight_percentage', val)}
-                          className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-right text-emerald-900 focus:outline-none focus:border-dark-teal-500"
+                          className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-bold text-right text-emerald-900 focus:outline-none focus:border-dark-teal-500"
                         />
                       </td>
                       <td className="px-4 py-2 text-right">
                         <NumberInput
                           value={item.fixed_price}
                           onChange={(val) => handleItemChange(idx, 'fixed_price', val)}
-                          className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-right text-indigo-900 focus:outline-none focus:border-dark-teal-500"
+                          className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-bold text-right text-indigo-200 focus:outline-none focus:border-dark-teal-500"
                         />
                       </td>
                       <td className="px-4 py-2 text-center">
@@ -443,29 +443,29 @@ export default function ActivityScheduleExtractionPreviewModal({
             </div>
           </div>
           ) : activeTab === 'json' ? (
-            <div className="bg-white border border-gray-150 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-slate-900 border border-gray-150 rounded-2xl overflow-hidden shadow-sm">
               <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 border-b border-gray-150 text-gray-500 font-bold uppercase tracking-wider text-[9px]">
+                <thead className="bg-slate-800/50 border-b border-gray-150 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
                   <tr>
                     <th className="px-6 py-3 w-1/3">Property / Metric</th>
                     <th className="px-6 py-3 w-2/3">Extracted Value</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">Document Type Identified</td>
+                <tbody className="divide-y divide-gray-100 font-medium text-slate-300">
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">Document Type Identified</td>
                     <td className="px-6 py-3">{extractedData?.identified_document_type || 'Unknown'}</td>
                   </tr>
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">Is Activity Schedule</td>
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">Is Activity Schedule</td>
                     <td className="px-6 py-3">
                       <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${extractedData?.is_activity_schedule_document ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
                         {extractedData?.is_activity_schedule_document ? 'TRUE' : 'FALSE'}
                       </span>
                     </td>
                   </tr>
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">AI Validation Status</td>
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">AI Validation Status</td>
                     <td className="px-6 py-3">
                       <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
                         extractedData?.validation_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 
@@ -475,19 +475,19 @@ export default function ActivityScheduleExtractionPreviewModal({
                       </span>
                     </td>
                   </tr>
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">AI Confidence Score</td>
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">AI Confidence Score</td>
                     <td className="px-6 py-3">
                       {extractedData?.validation_score ? `${(extractedData.validation_score * 100).toFixed(0)}%` : 'N/A'}
                     </td>
                   </tr>
-                  <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-gray-500 font-bold">Total Items Parsed</td>
+                  <tr className="hover:bg-slate-800/50/50">
+                    <td className="px-6 py-3 text-slate-400 font-bold">Total Items Parsed</td>
                     <td className="px-6 py-3">{extractedData?.items?.length || 0}</td>
                   </tr>
                   {extractedData?.validation_issues && extractedData.validation_issues.length > 0 && (
-                    <tr className="hover:bg-gray-50/50">
-                      <td className="px-6 py-3 text-gray-500 font-bold align-top">Diagnostic Issues</td>
+                    <tr className="hover:bg-slate-800/50/50">
+                      <td className="px-6 py-3 text-slate-400 font-bold align-top">Diagnostic Issues</td>
                       <td className="px-6 py-3">
                         <ul className="list-disc list-inside space-y-1 text-amber-700">
                           {extractedData.validation_issues.map((issue: string, idx: number) => (
@@ -503,7 +503,7 @@ export default function ActivityScheduleExtractionPreviewModal({
           ) : (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="text-xs font-bold font-lexend text-gray-800">Dynamic JSONB Columns</h4>
+                <h4 className="text-xs font-bold font-lexend text-slate-200">Dynamic JSONB Columns</h4>
               </div>
 
               <div className="overflow-x-auto border border-gray-150 rounded-2xl">
@@ -520,11 +520,11 @@ export default function ActivityScheduleExtractionPreviewModal({
                       )}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-150 text-gray-700 font-medium bg-white">
+                  <tbody className="divide-y divide-gray-150 text-slate-300 font-medium bg-slate-900">
                     {items.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/50 transition">
+                      <tr key={idx} className="hover:bg-slate-800/50/50 transition">
                         <td className="px-4 py-2 font-bold">{item.activity_id}</td>
-                        <td className="px-4 py-2 text-gray-500">{item.description}</td>
+                        <td className="px-4 py-2 text-slate-400">{item.description}</td>
                         {dynamicKeys.map(key => (
                           <td key={key} className="px-4 py-2">
                             <input
@@ -533,7 +533,7 @@ export default function ActivityScheduleExtractionPreviewModal({
                               onChange={(e) => {
                                 handleDynamicChange(idx, key, e.target.value);
                               }}
-                              className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-amber-500"
+                              className="w-full px-2.5 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500"
                             />
                           </td>
                         ))}
@@ -557,10 +557,10 @@ export default function ActivityScheduleExtractionPreviewModal({
         </div>
 
         {/* Footer controls */}
-        <div className="bg-gray-50 border-t border-gray-150 p-6 flex justify-between items-center flex-shrink-0">
+        <div className="bg-slate-800/50 border-t border-gray-150 p-6 flex justify-between items-center flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 border border-gray-200 bg-white hover:bg-gray-150 text-gray-700 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95"
+            className="px-5 py-2.5 border border-slate-700/50 bg-slate-900 hover:bg-gray-150 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95"
           >
             Cancel
           </button>

@@ -118,7 +118,7 @@ export default function MilestonesTab({
 
       {/* Main Table Breakdown List */}
       <div className="space-y-4">
-        <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+        <div className="flex justify-between items-center border-b border-slate-700/50 pb-2">
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 font-inter">Active Milestone Claims</h3>
           <span className="text-[10px] font-bold text-dark-teal-700 bg-dark-teal-50 px-2 py-0.5 rounded border border-dark-teal-100">
             {activeDocuments.length} Claim{activeDocuments.length !== 1 ? 's' : ''} Active
@@ -132,7 +132,7 @@ export default function MilestonesTab({
           </div>
         ) : activeDocuments.length === 0 ? (
           <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-12 border border-white/10 text-center shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-3">
-            <FileSpreadsheet className="w-12 h-12 text-gray-600 drop-shadow-sm mx-auto" />
+            <FileSpreadsheet className="w-12 h-12 text-slate-400 drop-shadow-sm mx-auto" />
             <div className="space-y-1">
               <h4 className="text-xs font-bold text-white">No Active Milestone Claims Found</h4>
               <p className="text-[11px] text-gray-400 max-w-md mx-auto">
@@ -146,7 +146,7 @@ export default function MilestonesTab({
               <div key={doc.id} className="bg-white/5 backdrop-blur-xl rounded-3xl p-5 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-xl hover:-translate-y-1 hover:border-white/20 transition-all duration-300 flex flex-col space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/20">
+                    <div className="p-3 bg-emerald-900/200/10 rounded-xl text-emerald-400 border border-emerald-500/20">
                       <FileSpreadsheet className="w-5 h-5" />
                     </div>
                     <div>
@@ -189,31 +189,31 @@ export default function MilestonesTab({
                 {/* Info grid */}
                 <div className="grid grid-cols-5 gap-4 pt-4 border-t border-white/10">
                   <div>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Claim No</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Claim No</p>
                     <p className="text-sm font-bold text-gray-200">{doc.claim_number || 'Pending'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Valuation Date</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Valuation Date</p>
                     <p className="text-sm font-bold text-gray-200">{doc.valuation_date ? new Date(doc.valuation_date).toLocaleDateString() : 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Status</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status</p>
                     <p className="text-sm font-bold text-gray-200">
-                      <span className={`px-2 py-1 rounded text-xs border ${doc.status === 'Certified' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : doc.status === 'Submitted' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-white/10 text-gray-300 border-white/10'}`}>
+                      <span className={`px-2 py-1 rounded text-xs border ${doc.status === 'Certified' ? 'bg-emerald-900/200/20 text-emerald-400 border-emerald-500/30' : doc.status === 'Submitted' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-white/10 text-gray-300 border-white/10'}`}>
                         {doc.status || 'Draft'}
                       </span>
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Payment</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payment</p>
                     <p className="text-sm font-bold text-gray-200">
-                      <span className={`px-2 py-1 rounded text-xs border ${doc.payment_status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : doc.payment_status === 'PARTIAL' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
+                      <span className={`px-2 py-1 rounded text-xs border ${doc.payment_status === 'PAID' ? 'bg-emerald-900/200/20 text-emerald-400 border-emerald-500/30' : doc.payment_status === 'PARTIAL' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
                         {doc.payment_status || 'UNPAID'}
                       </span>
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Net Due</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Net Due</p>
                     <p className="text-sm font-bold text-emerald-400">${(doc.net_amount_due || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                   </div>
                 </div>
@@ -245,23 +245,23 @@ export default function MilestonesTab({
         {/* Delete Confirmation Modal */}
         {claimToDelete && (
           <div className="fixed inset-0 z-[100] bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-fade-in-up">
+            <div className="bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-fade-in-up">
               <div className="p-6 sm:p-8">
                 <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-6">
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                 </div>
-                <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Delete Orphaned Claim</h3>
-                <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                <h3 className="text-xl font-bold font-lexend text-white mb-2">Delete Orphaned Claim</h3>
+                <p className="text-sm text-slate-400 mb-4 leading-relaxed">
                   This will permanently delete the orphaned milestone claim and all associated extracted data from the database. This action cannot be undone.
                 </p>
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-8">
-                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Document</p>
-                  <p className="text-sm font-bold text-gray-900">{claimToDelete.title}</p>
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 mb-8">
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Document</p>
+                  <p className="text-sm font-bold text-white">{claimToDelete.title}</p>
                 </div>
                 <div className="flex space-x-3">
                   <button
                     onClick={() => setClaimToDelete(null)}
-                    className="flex-1 px-4 py-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-sm font-bold transition"
+                    className="flex-1 px-4 py-3 bg-slate-900 hover:bg-slate-800/50 text-slate-300 border border-slate-700/50 rounded-xl text-sm font-bold transition"
                   >
                     Cancel
                   </button>
@@ -292,7 +292,7 @@ export default function MilestonesTab({
         
         {filteredNotes.length === 0 ? (
           <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-            <MessageSquare className="w-8 h-8 text-gray-600 drop-shadow-sm mx-auto mb-2" />
+            <MessageSquare className="w-8 h-8 text-slate-400 drop-shadow-sm mx-auto mb-2" />
             <p className="text-xs text-gray-400 font-medium">No notes recorded for this milestone claim yet.</p>
           </div>
         ) : (
@@ -307,7 +307,7 @@ export default function MilestonesTab({
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center space-x-2">
                     <span className="text-xs font-bold text-white font-lexend">{note.author_name || 'Team Member'}</span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-slate-400">
                       • {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
                     </span>
                   </div>

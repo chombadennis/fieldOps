@@ -656,16 +656,16 @@ export default function BudgetIntegrations({
       <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] space-y-6">
       {integrations.length === 0 ? (
         <div className="bg-black/20 rounded-2xl p-8 text-center border border-dashed border-white/10">
-          <FileSpreadsheet className="w-10 h-10 text-gray-600 drop-shadow-sm mx-auto mb-2" />
+          <FileSpreadsheet className="w-10 h-10 text-slate-400 drop-shadow-sm mx-auto mb-2" />
           <p className="text-xs font-bold text-gray-300">No cloud budget workbooks linked yet.</p>
-          <p className="text-[11px] text-gray-500 mt-1 max-w-sm mx-auto">
+          <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">
             Click one of the buttons above to link your master or trade budget spreadsheets from Google Sheets or OneDrive.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex justify-between items-center border-b border-white/10 pb-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 font-inter">Linked Workbooks</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-inter">Linked Workbooks</h4>
             <span className="text-[11px] font-bold text-neon-cyan bg-neon-cyan/20 px-2.5 py-0.5 rounded-full border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]">
               {integrations.length} {integrations.length > 1 ? 'workbooks' : 'workbook'}
             </span>
@@ -698,9 +698,9 @@ export default function BudgetIntegrations({
                           <span className="text-[10px] text-gray-400 font-medium capitalize">
                             Provider: {integration.provider.replace('_', ' ')} • Tab: {integration.sheet_name}
                           </span>
-                          <span className="text-gray-600 drop-shadow-sm hidden sm:inline">•</span>
+                          <span className="text-slate-400 drop-shadow-sm hidden sm:inline">•</span>
                           <div className="flex items-center space-x-1">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase">Tag:</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase">Tag:</span>
                             <select
                               value={integration.module === 'progress' ? 'progress' : 'budget'}
                               onChange={(e) => handleUpdateModule(integration.id, e.target.value)}
@@ -770,21 +770,21 @@ export default function BudgetIntegrations({
 
       {integrationToDelete && (
         <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+          <div className="bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-700/50 p-8 flex flex-col relative overflow-hidden text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
-            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Delete Workbook Permanently</h3>
-            <p className="text-sm text-gray-600 mb-6">
+            <h3 className="text-xl font-bold font-lexend text-white mb-2">Delete Workbook Permanently</h3>
+            <p className="text-sm text-slate-400 mb-6">
               This will permanently delete the workbook integration and all associated database records. The original spreadsheet file remains unchanged.
             </p>
-            <p className="text-xs text-gray-500 mb-4">
-              Workbook: <strong className="text-gray-900">{integrationToDelete?.boq_name || integrationToDelete?.sheet_name}</strong>
+            <p className="text-xs text-slate-400 mb-4">
+              Workbook: <strong className="text-white">{integrationToDelete?.boq_name || integrationToDelete?.sheet_name}</strong>
             </p>
             <div className="flex gap-2 justify-center">
               <button
                 onClick={() => setIntegrationToDelete(null)}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl transition"
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-slate-200 rounded-xl transition"
               >
                 Cancel
               </button>
@@ -808,14 +808,14 @@ export default function BudgetIntegrations({
       {/* Validation Rejection Modal */}
       {rejectedDocumentContext && (
         <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+          <div className="bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-700/50 p-8 flex flex-col relative overflow-hidden text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
 
-            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Document Validation Failed</h3>
+            <h3 className="text-xl font-bold font-lexend text-white mb-2">Document Validation Failed</h3>
 
-            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+            <p className="text-sm text-slate-400 mb-6 leading-relaxed">
               You attempted to link a Budget workbook, but our system scanned the contents and identified this document as an <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{rejectedDocumentContext}</strong>.
             </p>
 
@@ -844,14 +844,14 @@ export default function BudgetIntegrations({
       {/* Historical Rejection Modal — OK button only, no Proceed Anyway */}
       {warningFileContext && (
         <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 p-8 flex flex-col relative overflow-hidden text-center">
+          <div className="bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-700/50 p-8 flex flex-col relative overflow-hidden text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
 
-            <h3 className="text-xl font-bold font-lexend text-gray-900 mb-2">Document Rejected</h3>
+            <h3 className="text-xl font-bold font-lexend text-white mb-2">Document Rejected</h3>
 
-            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+            <p className="text-sm text-slate-400 mb-6 leading-relaxed">
               This document was previously flagged as a <strong className="text-dark-teal-900 font-bold bg-dark-teal-50 px-2 py-0.5 rounded">{warningFileContext.rejected_reason || 'Invalid Document'}</strong> and cannot be used as a Budget workbook.
             </p>
 
@@ -879,7 +879,7 @@ export default function BudgetIntegrations({
 
       {/* Action Success Banner */}
       {success && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-semibold flex items-center justify-between">
+        <div className="p-3 bg-emerald-900/20 border border-emerald-200 rounded-xl text-emerald-400 text-xs font-semibold flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <CheckCircle className="w-4 h-4 text-emerald-500" />
             <span>{success}</span>

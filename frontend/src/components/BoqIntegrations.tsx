@@ -822,7 +822,7 @@ export default function BoqIntegrations({
                         <span className="text-indigo-400 font-bold">Connect</span>
                         <span className="text-indigo-400 font-bold">Slice</span>
                         <span className="text-cyan-400 font-bold animate-pulse">Scan</span>
-                        <span className="text-gray-500">Sync</span>
+                        <span className="text-slate-400">Sync</span>
                       </div>
                     </div>
                   </>
@@ -868,11 +868,11 @@ export default function BoqIntegrations({
                 )}
               </div>
             )}
-            <h3 className="text-xl font-bold text-gray-800 mb-2 flex-shrink-0">
+            <h3 className="text-xl font-bold text-slate-200 mb-2 flex-shrink-0">
               Link Workbook
             </h3>
-            <p className="text-sm text-gray-500 mb-4 flex-shrink-0">
-              Successfully authenticated with <span className="font-semibold capitalize text-gray-700">{oauthProvider?.replace('_', ' ')}</span>. Configure the sheet file mapping details below:
+            <p className="text-sm text-slate-400 mb-4 flex-shrink-0">
+              Successfully authenticated with <span className="font-semibold capitalize text-slate-300">{oauthProvider?.replace('_', ' ')}</span>. Configure the sheet file mapping details below:
             </p>
 
             <form onSubmit={handleSaveConfig} className="flex-1 flex flex-col min-h-0">
@@ -886,18 +886,18 @@ export default function BoqIntegrations({
                 </div>
 
                 {refreshToken === 'existing' ? (
-                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3.5 flex items-center space-x-3 text-sm text-indigo-950">
+                  <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-3.5 flex items-center space-x-3 text-sm text-indigo-950">
                     <FileSpreadsheet className="w-6 h-6 text-indigo-600 flex-shrink-0" />
                     <div>
                       <span className="block font-semibold text-xs text-indigo-500 uppercase tracking-wide">Linked Cloud Workbook</span>
-                      <span className="font-bold text-gray-800">{boqName || 'Spreadsheet BOQ'}</span>
+                      <span className="font-bold text-slate-200">{boqName || 'Spreadsheet BOQ'}</span>
                       <span className="block text-[10px] text-gray-400 mt-0.5 font-mono">File ID: {spreadsheetId}</span>
                     </div>
                   </div>
                 ) : (
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-semibold text-gray-600 uppercase">Select Spreadsheet</label>
+                      <label className="block text-xs font-semibold text-slate-400 uppercase">Select Spreadsheet</label>
                       {navigationHistory.length > 0 && (
                         <button
                           type="button"
@@ -911,26 +911,26 @@ export default function BoqIntegrations({
                     </div>
 
                     {/* Breadcrumbs Path */}
-                    <div className="text-[11px] text-gray-400 truncate mb-2 bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                      <span className="font-semibold text-gray-600">Path:</span> Home
+                    <div className="text-[11px] text-gray-400 truncate mb-2 bg-slate-800/50 p-1.5 rounded-lg border border-slate-700/50">
+                      <span className="font-semibold text-slate-400">Path:</span> Home
                       {navigationHistory.map((folder) => (
                         <span key={folder.id}> / {folder.name}</span>
                       ))}
                     </div>
 
                     {oauthProvider === 'google_sheets' && (
-                      <div className="mb-2 bg-blue-50/80 border border-blue-200 rounded-lg p-2.5 text-xs text-blue-900 leading-relaxed">
+                      <div className="mb-2 bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-2.5 text-xs text-indigo-200 leading-relaxed">
                         <span className="font-bold">Google Drive Format:</span> Any Excel file (<code className="font-mono bg-blue-100 px-1 rounded text-[11px]">.xlsx</code>) you click will be automatically converted to native Google Sheets format so its worksheets can be loaded. If auto-conversion is restricted by Drive permissions, open the file in Google Drive and select <strong>File &gt; Save as Google Sheets</strong>.
                       </div>
                     )}
 
                     {fetchingFiles ? (
-                      <div className="w-full h-48 border border-gray-200 rounded-xl bg-gray-50/50 flex flex-col items-center justify-center text-gray-500 space-y-2">
+                      <div className="w-full h-48 border border-slate-700/50 rounded-xl bg-slate-800/50/50 flex flex-col items-center justify-center text-slate-400 space-y-2">
                         <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
                         <span className="text-xs font-medium">Scanning drive folder...</span>
                       </div>
                     ) : (
-                      <div className="w-full h-48 border border-gray-200 rounded-xl overflow-y-auto divide-y divide-gray-100 bg-white">
+                      <div className="w-full h-48 border border-slate-700/50 rounded-xl overflow-y-auto divide-y divide-gray-100 bg-slate-900">
                         {availableFiles.length === 0 ? (
                           <div className="h-full flex items-center justify-center text-xs text-gray-400">
                             No folders or spreadsheet files found in this directory.
@@ -943,8 +943,8 @@ export default function BoqIntegrations({
                               <div
                                 key={file.id}
                                 className={`flex items-center justify-between p-3 transition-all duration-150 ${isSelected
-                                  ? 'bg-emerald-50 text-emerald-950 font-bold border-l-4 border-emerald-500'
-                                  : 'hover:bg-gray-50 text-gray-700 font-medium'
+                                  ? 'bg-emerald-900/20 text-emerald-100 font-bold border-l-4 border-emerald-500'
+                                  : 'hover:bg-slate-800/50 text-slate-300 font-medium'
                                   }`}
                               >
                                 <div
@@ -984,7 +984,7 @@ export default function BoqIntegrations({
                       </div>
                     )}
                     {spreadsheetId && (
-                      <div className="mt-2 text-xs text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-100 flex items-center">
+                      <div className="mt-2 text-xs text-emerald-400 bg-emerald-900/20 p-2 rounded-lg border border-emerald-500/30 flex items-center">
                         <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" />
                         <span>Selected: {availableFiles.find((f) => f.id === spreadsheetId)?.name}</span>
                       </div>
@@ -993,34 +993,34 @@ export default function BoqIntegrations({
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">BOQ Document Name</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">BOQ Document Name</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Phase 1 BOQ"
                     value={boqName}
                     onChange={(e) => setBoqName(e.target.value)}
-                    className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-800"
+                    className="w-full p-2.5 border border-slate-700/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-200"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">
                     Select Worksheets to Link
                   </label>
                   {fetchingSheets ? (
-                    <div className="flex items-center space-x-2 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <div className="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
                       <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
                       <span>Loading worksheets...</span>
                     </div>
                   ) : sheetsList.length === 0 ? (
-                    <div className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <div className="text-xs text-gray-400 italic bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
                       Select a spreadsheet first to load its sheets.
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50/50">
+                    <div className="space-y-2 max-h-36 overflow-y-auto border border-slate-700/50 rounded-xl p-3 bg-slate-800/50/50">
                       {sheetsList.map((sheet) => (
-                        <label key={sheet.id} className="flex items-start space-x-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-gray-100/70 transition-colors">
+                        <label key={sheet.id} className="flex items-start space-x-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-slate-800/70 transition-colors">
                           <input
                             type="checkbox"
                             checked={!!selectedSheets[sheet.id]}
@@ -1030,10 +1030,10 @@ export default function BoqIntegrations({
                                 [sheet.id]: e.target.checked,
                               }))
                             }
-                            className="mt-0.5 w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                            className="mt-0.5 w-4 h-4 text-indigo-600 border-slate-600 rounded focus:ring-indigo-500"
                           />
                           <div className="flex-1 min-w-0">
-                            <span className="text-xs font-semibold text-gray-700 truncate block">{sheet.name}</span>
+                            <span className="text-xs font-semibold text-slate-300 truncate block">{sheet.name}</span>
                             {sheet.has_headers ? (
                               <span className="text-[10px] text-emerald-600 font-medium">✓ Valid BOQ headers found</span>
                             ) : (
@@ -1048,11 +1048,11 @@ export default function BoqIntegrations({
 
               </div>
 
-              <div className="flex space-x-3 pt-4 border-t border-gray-100 flex-shrink-0 bg-white">
+              <div className="flex space-x-3 pt-4 border-t border-slate-700/50 flex-shrink-0 bg-slate-900">
                 <button
                   type="button"
                   onClick={handleCloseConfig}
-                  className="flex-1 py-2.5 px-4 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="flex-1 py-2.5 px-4 border border-slate-700/50 rounded-lg text-sm text-slate-400 hover:bg-slate-800/50 transition-colors"
                 >
                   Cancel
                 </button>
@@ -1146,8 +1146,8 @@ export default function BoqIntegrations({
                             </span>
                           )}
                         </h4>
-                        <p className="text-xs text-gray-400 mt-1 truncate"><span className="font-bold text-gray-500">File ID:</span> {integration.spreadsheet_id}</p>
-                        <p className="text-xs text-gray-400 mt-0.5 truncate"><span className="font-bold text-gray-500">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
+                        <p className="text-xs text-gray-400 mt-1 truncate"><span className="font-bold text-slate-400">File ID:</span> {integration.spreadsheet_id}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate"><span className="font-bold text-slate-400">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
                         <p className="text-[10px] text-gray-400 mt-1">
                           {isSyncing ? (
                             <span className="text-neon-cyan font-bold animate-pulse flex items-center space-x-1 text-xs drop-shadow-[0_0_5px_rgba(0,243,255,0.5)]">
@@ -1157,9 +1157,9 @@ export default function BoqIntegrations({
                           ) : (
                             <>
                               Last Synced: {integration.last_synced_at ? new Date(integration.last_synced_at).toLocaleString() : 'Never'}
-                              <span className="text-gray-600 mx-1.5">•</span>
+                              <span className="text-slate-400 mx-1.5">•</span>
                               <span
-                                className="text-gray-500 font-medium cursor-help hover:text-neon-cyan transition-colors"
+                                className="text-slate-400 font-medium cursor-help hover:text-neon-cyan transition-colors"
                                 title={`Important: Ensure your web browser is signed in to the ${isGoogle ? 'Google' : 'Microsoft'} account containing this file, otherwise access will be denied.`}
                               >
                                 Click name to edit in cloud (Login required)
@@ -1211,7 +1211,7 @@ export default function BoqIntegrations({
                                     <button
                                       disabled={isLoading}
                                       onClick={() => handleDismissAlert(integration.id, newSheetsMap[integration.id] || [])}
-                                      className="text-[10px] bg-white border border-amber-200 hover:bg-amber-100 text-amber-900 font-semibold py-1 px-2.5 rounded transition-colors disabled:opacity-50"
+                                      className="text-[10px] bg-slate-900 border border-amber-200 hover:bg-amber-100 text-amber-900 font-semibold py-1 px-2.5 rounded transition-colors disabled:opacity-50"
                                     >
                                       Clear Alert
                                     </button>
@@ -1219,11 +1219,11 @@ export default function BoqIntegrations({
                                 </div>
                               </div>
                             ) : (
-                              <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs space-y-2">
-                                <span className="font-semibold text-gray-700 block">Available Worksheets (Not Imported):</span>
+                              <div className="mt-3 bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 text-xs space-y-2">
+                                <span className="font-semibold text-slate-300 block">Available Worksheets (Not Imported):</span>
                                 <div className="flex flex-wrap gap-2 pt-1">
                                   {newSheetsMap[integration.id].map((sheetName) => (
-                                    <div key={sheetName} className="flex items-center space-x-2 bg-white border border-gray-200 rounded-lg py-1 px-2.5 text-gray-700">
+                                    <div key={sheetName} className="flex items-center space-x-2 bg-slate-900 border border-slate-700/50 rounded-lg py-1 px-2.5 text-slate-300">
                                       <span className="font-mono text-xs">{sheetName}</span>
                                       <button
                                         disabled={isLoading}
@@ -1297,7 +1297,7 @@ export default function BoqIntegrations({
                       <p className="flex-1 text-xs font-semibold">{syncResultMap[integration.id]?.text}</p>
                       <button
                         onClick={() => setSyncResultMap(prev => ({ ...prev, [integration.id]: null }))}
-                        className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
+                        className="text-gray-400 hover:text-slate-400 flex-shrink-0 ml-2"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -1322,18 +1322,18 @@ export default function BoqIntegrations({
       {/* Cancel Import Warning Modal */}
       {showCancelWarning && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 animate-scale-up">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Cancel Import?</h3>
+                <h3 className="text-lg font-bold text-slate-200">Cancel Import?</h3>
                 <p className="text-xs text-gray-400">This action cannot be undone</p>
               </div>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed mb-3">If you cancel now, the following will happen:</p>
-            <ul className="text-sm text-gray-600 space-y-1.5 mb-6">
+            <p className="text-sm text-slate-400 leading-relaxed mb-3">If you cancel now, the following will happen:</p>
+            <ul className="text-sm text-slate-400 space-y-1.5 mb-6">
               <li className="flex items-start space-x-2"><span className="text-red-500 font-bold">•</span><span>The workbook will <strong>not</strong> be linked to this project.</span></li>
               <li className="flex items-start space-x-2"><span className="text-red-500 font-bold">•</span><span>Any data already fetched will be <strong>discarded</strong>.</span></li>
               <li className="flex items-start space-x-2"><span className="text-red-500 font-bold">•</span><span>You will need to start the linking process <strong>again</strong>.</span></li>
@@ -1341,7 +1341,7 @@ export default function BoqIntegrations({
             <div className="flex space-x-3">
               <button
                 onClick={() => setShowCancelWarning(false)}
-                className="flex-1 py-2.5 px-4 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 rounded-xl text-xs font-semibold text-indigo-700 active:scale-[0.98] transition-all duration-100"
+                className="flex-1 py-2.5 px-4 border border-indigo-500/40 bg-indigo-50 hover:bg-indigo-100 rounded-xl text-xs font-semibold text-indigo-700 active:scale-[0.98] transition-all duration-100"
               >
                 Continue Import
               </button>
@@ -1359,24 +1359,24 @@ export default function BoqIntegrations({
       {/* Import Sheet Confirmation Modal */}
       {importSheetWarning && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 animate-scale-up">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
                 <FileSpreadsheet className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Import Worksheet</h3>
+                <h3 className="text-lg font-bold text-slate-200">Import Worksheet</h3>
                 <p className="text-xs text-gray-400">Add to your linked workbook</p>
               </div>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed mb-6">
-              The worksheet <strong className="text-gray-800">&ldquo;{importSheetWarning.sheetName}&rdquo;</strong> has not been imported yet.
+            <p className="text-sm text-slate-400 leading-relaxed mb-6">
+              The worksheet <strong className="text-slate-200">&ldquo;{importSheetWarning.sheetName}&rdquo;</strong> has not been imported yet.
               Importing it will add it to your linked workbook and make it available for BoQ data extraction and syncing.
             </p>
             <div className="flex space-x-3">
               <button
                 onClick={() => setImportSheetWarning(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100"
+                className="flex-1 py-2.5 px-4 border border-slate-700/50 hover:bg-slate-800/50 rounded-xl text-xs font-semibold text-slate-300 active:scale-[0.98] transition-all duration-100"
               >
                 Not Now
               </button>
@@ -1394,10 +1394,10 @@ export default function BoqIntegrations({
       {/* Custom Disconnect Confirmation Modal */}
       {disconnectingId !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 flex flex-col relative animate-scale-up">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 flex flex-col relative animate-scale-up">
             <button
               onClick={() => setDisconnectingId(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+              className="absolute top-4 right-4 text-gray-400 hover:text-slate-400 active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1407,19 +1407,19 @@ export default function BoqIntegrations({
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Disconnect Spreadsheet</h3>
+                <h3 className="text-lg font-bold text-slate-200">Disconnect Spreadsheet</h3>
                 <p className="text-xs text-gray-400">Syncing will be disabled</p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 leading-relaxed mb-6">
+            <p className="text-sm text-slate-400 leading-relaxed mb-6">
               Are you sure you want to disconnect this spreadsheet? This will stop automatic syncing, but your imported items will remain in the database.
             </p>
 
             <div className="flex space-x-3">
               <button
                 onClick={() => setDisconnectingId(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100"
+                className="flex-1 py-2.5 px-4 border border-slate-700/50 hover:bg-slate-800/50 rounded-xl text-xs font-semibold text-slate-300 active:scale-[0.98] transition-all duration-100"
               >
                 Cancel
               </button>
@@ -1437,10 +1437,10 @@ export default function BoqIntegrations({
       {/* Custom Irreversible Deletion Warning Modal */}
       {integrationToDelete !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up relative">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 animate-scale-up relative">
             <button
               onClick={() => setIntegrationToDelete(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+              className="absolute top-4 right-4 text-gray-400 hover:text-slate-400 active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1450,14 +1450,14 @@ export default function BoqIntegrations({
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Irreversible Deletion Warning</h3>
+                <h3 className="text-lg font-bold text-white">Irreversible Deletion Warning</h3>
                 <p className="text-xs text-red-600 font-semibold">Permanent Database Purge</p>
               </div>
             </div>
 
-            <p className="text-xs text-gray-700 leading-relaxed mb-4">
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
               You are about to perform an irreversible deletion of the document data for{' '}
-              <strong className="text-gray-900 font-semibold">{integrationToDelete.boq_name || 'Spreadsheet BOQ'}</strong>{' '}
+              <strong className="text-white font-semibold">{integrationToDelete.boq_name || 'Spreadsheet BOQ'}</strong>{' '}
               from the database and all of its records will be deleted permanently. Do you wish to continue?
             </p>
 
@@ -1478,7 +1478,7 @@ export default function BoqIntegrations({
               <button
                 disabled={isLoading}
                 onClick={() => setIntegrationToDelete(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100 disabled:opacity-50"
+                className="flex-1 py-2.5 px-4 border border-slate-700/50 hover:bg-slate-800/50 rounded-xl text-xs font-semibold text-slate-300 active:scale-[0.98] transition-all duration-100 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1503,10 +1503,10 @@ export default function BoqIntegrations({
       {/* Structure Report Modal */}
       {activeAuditIntegration !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 flex flex-col relative animate-scale-up max-h-[90vh] overflow-hidden">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 flex flex-col relative animate-scale-up max-h-[90vh] overflow-hidden">
             <button
               onClick={() => setActiveAuditIntegration(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+              className="absolute top-4 right-4 text-gray-400 hover:text-slate-400 active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1516,7 +1516,7 @@ export default function BoqIntegrations({
                 <FileSpreadsheet className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Structure Report</h3>
+                <h3 className="text-lg font-bold text-slate-200">Structure Report</h3>
                 <p className="text-xs text-gray-400">Format Assessment</p>
               </div>
             </div>
@@ -1524,12 +1524,12 @@ export default function BoqIntegrations({
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto min-h-0 pr-1.5 mb-6 space-y-5">
               {/* Score Gauge */}
-              <div className="flex flex-col items-center justify-center py-5 bg-indigo-50/40 rounded-2xl border border-indigo-100/50">
-                <div className={`relative flex items-center justify-center w-24 h-24 rounded-full border-4 bg-white shadow-sm transition-colors ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'border-gray-200' :
+              <div className="flex flex-col items-center justify-center py-5 bg-indigo-50/40 rounded-2xl border border-indigo-500/30/50">
+                <div className={`relative flex items-center justify-center w-24 h-24 rounded-full border-4 bg-slate-900 shadow-sm transition-colors ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'border-slate-700/50' :
                   Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'border-emerald-500' :
                     Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'border-amber-500' : 'border-red-500'
                   }`}>
-                  <span className={`text-2xl font-extrabold ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'text-gray-600' :
+                  <span className={`text-2xl font-extrabold ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'text-slate-400' :
                     Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'text-emerald-600' :
                       Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'text-amber-600' : 'text-red-650'
                     }`}>
@@ -1548,14 +1548,14 @@ export default function BoqIntegrations({
               {/* Detailed Breakdown */}
               <div className="space-y-4 text-xs text-gray-650 leading-relaxed">
                 <div>
-                  <span className="font-bold text-gray-800 block mb-1">Workbook Source:</span>
-                  <span className="font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded inline-block truncate max-w-full font-mono">
+                  <span className="font-bold text-slate-200 block mb-1">Workbook Source:</span>
+                  <span className="font-medium text-slate-400 bg-slate-800/50 px-2 py-1 rounded inline-block truncate max-w-full font-mono">
                     {activeAuditIntegration.boq_name || 'Spreadsheet BOQ'}
                   </span>
                 </div>
 
                 <div>
-                  <span className="font-bold text-gray-800 block mb-1">Structure Scan Summary:</span>
+                  <span className="font-bold text-slate-200 block mb-1">Structure Scan Summary:</span>
                   <p className="text-gray-650">
                     {activeAuditIntegration.validation_summary || (!activeAuditIntegration.preview_only ? (
                       "The system successfully scanned the spreadsheet contents. It confirmed that the row structure represents a valid Bill of Quantities (material descriptions, pricing rates, unit measures, and total amounts) with a high coverage of construction items."
@@ -1567,10 +1567,10 @@ export default function BoqIntegrations({
 
                 {activeAuditIntegration.validation_issues && activeAuditIntegration.validation_issues.length > 0 ? (
                   <div>
-                    <span className="font-bold text-gray-800 block mb-1.5">Discovered Issues & Observations:</span>
+                    <span className="font-bold text-slate-200 block mb-1.5">Discovered Issues & Observations:</span>
                     <ul className="space-y-1.5 pl-1.5">
                       {activeAuditIntegration.validation_issues.map((issue: string, idx: number) => (
-                        <li key={idx} className="flex items-start space-x-2 text-gray-700">
+                        <li key={idx} className="flex items-start space-x-2 text-slate-300">
                           <span className="text-amber-500 font-extrabold select-none">•</span>
                           <span>{issue}</span>
                         </li>
@@ -1579,7 +1579,7 @@ export default function BoqIntegrations({
                   </div>
                 ) : (
                   <div>
-                    <span className="font-bold text-gray-800 block mb-1">Observations:</span>
+                    <span className="font-bold text-slate-200 block mb-1">Observations:</span>
                     <span className="text-green-700 font-semibold flex items-center space-x-1">
                       <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />

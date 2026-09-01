@@ -1167,8 +1167,8 @@ export default function DocumentIntegrations({
 
       {/* Active Integrations list */}
       {showList && visibleIntegrations.length > 0 && (
-        <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-100 transition-all duration-300">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
+        <div className="bg-slate-900 shadow-xl rounded-2xl p-6 border border-slate-700/50 transition-all duration-300">
+          <h2 className="text-xl font-bold text-slate-200 mb-4 flex items-center space-x-2">
             <span>Linked Workbooks</span>
             <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full">
               {visibleIntegrations.length} Active
@@ -1184,18 +1184,18 @@ export default function DocumentIntegrations({
 
               // Compute premium styles dynamically
               const cardClass = isSyncing
-                ? "bg-gradient-to-r from-indigo-50/30 via-white to-indigo-50/10 border-indigo-200 shadow-sm animate-pulse"
+                ? "bg-gradient-to-r from-indigo-50/30 via-white to-indigo-50/10 border-indigo-500/40 shadow-sm animate-pulse"
                 : isPreviewOnly
                   ? "bg-gradient-to-br from-amber-50/10 to-white border-amber-100 hover:shadow-md"
-                  : "bg-gradient-to-br from-emerald-50/5 to-white border-emerald-100/70 hover:shadow-md";
+                  : "bg-gradient-to-br from-emerald-50/5 to-white border-emerald-500/30/70 hover:shadow-md";
 
               const iconClass = isSyncing
                 ? "bg-indigo-100 text-indigo-600 animate-spin"
                 : isPreviewOnly
                   ? "bg-amber-50 text-amber-600 border border-amber-100"
                   : isGoogle
-                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                    : "bg-indigo-50 text-indigo-600 border border-indigo-100";
+                    ? "bg-emerald-900/20 text-emerald-600 border border-emerald-500/30"
+                    : "bg-indigo-50 text-indigo-600 border border-indigo-500/30";
 
               return (
                 <div key={integration.id} className="space-y-2">
@@ -1215,7 +1215,7 @@ export default function DocumentIntegrations({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-gray-800 text-sm truncate flex items-center space-x-2 flex-wrap gap-y-1">
+                        <h4 className="font-bold text-slate-200 text-sm truncate flex items-center space-x-2 flex-wrap gap-y-1">
                           <a
                             href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/integrations/${integration.id}/open`}
                             target="_blank"
@@ -1241,8 +1241,8 @@ export default function DocumentIntegrations({
                             </span>
                           )}
                         </h4>
-                        <p className="text-xs text-gray-500 mt-1 truncate"><span className="font-semibold text-gray-600">File ID:</span> {integration.spreadsheet_id}</p>
-                        <p className="text-xs text-gray-500 mt-0.5 truncate"><span className="font-semibold text-gray-600">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
+                        <p className="text-xs text-slate-400 mt-1 truncate"><span className="font-semibold text-slate-400">File ID:</span> {integration.spreadsheet_id}</p>
+                        <p className="text-xs text-slate-400 mt-0.5 truncate"><span className="font-semibold text-slate-400">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
                         <p className="text-[10px] text-gray-400 mt-1">
                           {isSyncing ? (
                             <span className="text-indigo-650 font-bold animate-pulse flex items-center space-x-1 text-xs">
@@ -1254,7 +1254,7 @@ export default function DocumentIntegrations({
                               Last Synced: {integration.last_synced_at ? new Date(integration.last_synced_at).toLocaleString() : 'Never'}
                               <span className="text-slate-200 drop-shadow-sm mx-1.5">•</span>
                               <span
-                                className="text-gray-500 font-medium cursor-help hover:text-indigo-600 transition-colors"
+                                className="text-slate-400 font-medium cursor-help hover:text-indigo-600 transition-colors"
                                 title={`Important: Ensure your web browser is signed in to the ${isGoogle ? 'Google' : 'Microsoft'} account containing this file, otherwise access will be denied.`}
                               >
                                 Click name to edit in cloud (Login required)
@@ -1306,7 +1306,7 @@ export default function DocumentIntegrations({
                                     <button
                                       disabled={isLoading}
                                       onClick={() => handleDismissAlert(integration.id, newSheetsMap[integration.id] || [])}
-                                      className="text-[10px] bg-white border border-amber-200 hover:bg-amber-100 text-amber-900 font-semibold py-1 px-2.5 rounded transition-colors disabled:opacity-50"
+                                      className="text-[10px] bg-slate-900 border border-amber-200 hover:bg-amber-100 text-amber-900 font-semibold py-1 px-2.5 rounded transition-colors disabled:opacity-50"
                                     >
                                       Clear Alert
                                     </button>
@@ -1314,11 +1314,11 @@ export default function DocumentIntegrations({
                                 </div>
                               </div>
                             ) : (
-                              <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs space-y-2">
-                                <span className="font-semibold text-gray-700 block">Available Worksheets (Not Imported):</span>
+                              <div className="mt-3 bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 text-xs space-y-2">
+                                <span className="font-semibold text-slate-300 block">Available Worksheets (Not Imported):</span>
                                 <div className="flex flex-wrap gap-2 pt-1">
                                   {newSheetsMap[integration.id].map((sheetName) => (
-                                    <div key={sheetName} className="flex items-center space-x-2 bg-white border border-gray-200 rounded-lg py-1 px-2.5 text-gray-700">
+                                    <div key={sheetName} className="flex items-center space-x-2 bg-slate-900 border border-slate-700/50 rounded-lg py-1 px-2.5 text-slate-300">
                                       <span className="font-mono text-xs">{sheetName}</span>
                                       <button
                                         disabled={isLoading}
@@ -1337,13 +1337,13 @@ export default function DocumentIntegrations({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
+                    <div className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/50 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
                         className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
                           ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'hover:bg-white text-gray-600 hover:text-gray-900'
+                          : 'hover:bg-slate-900 text-slate-400 hover:text-white'
                           }`}
                         title={activeEditorId === integration.id ? 'Hide inline preview' : 'Open inline preview'}
                       >
@@ -1367,7 +1367,7 @@ export default function DocumentIntegrations({
                         ) : (
                           <div
                             title="Workbook is up to date with cloud file. Re-extraction activates automatically when cloud edits are detected."
-                            className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-[11px] font-bold flex items-center space-x-1.5 opacity-80 cursor-not-allowed select-none"
+                            className="px-3 py-1.5 bg-emerald-900/20 border border-emerald-200 text-emerald-400 rounded-xl text-[11px] font-bold flex items-center space-x-1.5 opacity-80 cursor-not-allowed select-none"
                           >
                             <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -1380,16 +1380,16 @@ export default function DocumentIntegrations({
                           disabled={isLoading || syncingId !== null || deletingId !== null}
                           onClick={() => handleManualSync(integration.id)}
                           title={syncingId === integration.id ? `Syncing worksheets: ${syncingName}` : "Sync workbook data"}
-                          className="p-2 hover:bg-white text-indigo-750 hover:text-indigo-905 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                          className="p-2 hover:bg-slate-900 text-indigo-750 hover:text-indigo-905 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
                         >
-                          <RefreshCw className={`w-4 h-4 ${syncingId === integration.id ? 'animate-spin text-indigo-900' : ''}`} />
+                          <RefreshCw className={`w-4 h-4 ${syncingId === integration.id ? 'animate-spin text-indigo-200' : ''}`} />
                         </button>
                       )}
 
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
                         onClick={() => setIntegrationToDelete(integration)}
-                        className="p-2 hover:bg-white text-red-600 hover:text-red-700 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
+                        className="p-2 hover:bg-slate-900 text-red-600 hover:text-red-700 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
                         title="Delete workbook data permanently from database"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1412,7 +1412,7 @@ export default function DocumentIntegrations({
                       <p className="flex-1 text-xs font-semibold">{syncResultMap[integration.id]?.text}</p>
                       <button
                         onClick={() => setSyncResultMap(prev => ({ ...prev, [integration.id]: null }))}
-                        className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
+                        className="text-gray-400 hover:text-slate-400 flex-shrink-0 ml-2"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -1473,18 +1473,18 @@ export default function DocumentIntegrations({
       {/* Cancel Import Warning Modal */}
       {showCancelWarning && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 animate-scale-up">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Cancel Import?</h3>
+                <h3 className="text-lg font-bold text-slate-200">Cancel Import?</h3>
                 <p className="text-xs text-gray-400">This action cannot be undone</p>
               </div>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed mb-3">If you cancel now, the following will happen:</p>
-            <ul className="text-sm text-gray-600 space-y-1.5 mb-6">
+            <p className="text-sm text-slate-400 leading-relaxed mb-3">If you cancel now, the following will happen:</p>
+            <ul className="text-sm text-slate-400 space-y-1.5 mb-6">
               <li className="flex items-start space-x-2"><span className="text-red-500 font-bold">•</span><span>The workbook will <strong>not</strong> be linked to this project.</span></li>
               <li className="flex items-start space-x-2"><span className="text-red-500 font-bold">•</span><span>Any data already fetched will be <strong>discarded</strong>.</span></li>
               <li className="flex items-start space-x-2"><span className="text-red-500 font-bold">•</span><span>You will need to start the linking process <strong>again</strong>.</span></li>
@@ -1492,7 +1492,7 @@ export default function DocumentIntegrations({
             <div className="flex space-x-3">
               <button
                 onClick={() => setShowCancelWarning(false)}
-                className="flex-1 py-2.5 px-4 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 rounded-xl text-xs font-semibold text-indigo-700 active:scale-[0.98] transition-all duration-100"
+                className="flex-1 py-2.5 px-4 border border-indigo-500/40 bg-indigo-50 hover:bg-indigo-100 rounded-xl text-xs font-semibold text-indigo-700 active:scale-[0.98] transition-all duration-100"
               >
                 Continue Import
               </button>
@@ -1509,23 +1509,23 @@ export default function DocumentIntegrations({
       {/* Pre-Scan Warning Modal */}
       {preScanWarning && preScanWarning.show && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 animate-scale-up">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Legacy Data Detected</h3>
+                <h3 className="text-lg font-bold text-slate-200">Legacy Data Detected</h3>
                 <p className="text-xs text-gray-400">Database conflict</p>
               </div>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed mb-6">
+            <p className="text-sm text-slate-400 leading-relaxed mb-6">
               This document already exists and has data in the database {preScanWarning.certificateNumber ? `with IPC number ${preScanWarning.certificateNumber}` : 'as an IPC'}. Do you want to overwrite it?
             </p>
             <div className="flex space-x-3">
               <button
                 onClick={() => setPreScanWarning(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100"
+                className="flex-1 py-2.5 px-4 border border-slate-700/50 hover:bg-slate-800/50 rounded-xl text-xs font-semibold text-slate-300 active:scale-[0.98] transition-all duration-100"
               >
                 Cancel
               </button>
@@ -1543,24 +1543,24 @@ export default function DocumentIntegrations({
       {/* Import Sheet Confirmation Modal */}
       {importSheetWarning && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 animate-scale-up">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
                 <FileSpreadsheet className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Import Worksheet</h3>
+                <h3 className="text-lg font-bold text-slate-200">Import Worksheet</h3>
                 <p className="text-xs text-gray-400">Add to your linked workbook</p>
               </div>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed mb-6">
-              The worksheet <strong className="text-gray-800">&ldquo;{importSheetWarning.sheetName}&rdquo;</strong> has not been imported yet.
+            <p className="text-sm text-slate-400 leading-relaxed mb-6">
+              The worksheet <strong className="text-slate-200">&ldquo;{importSheetWarning.sheetName}&rdquo;</strong> has not been imported yet.
               Importing it will add it to your linked workbook and make it available for BoQ data extraction and syncing.
             </p>
             <div className="flex space-x-3">
               <button
                 onClick={() => setImportSheetWarning(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100"
+                className="flex-1 py-2.5 px-4 border border-slate-700/50 hover:bg-slate-800/50 rounded-xl text-xs font-semibold text-slate-300 active:scale-[0.98] transition-all duration-100"
               >
                 Not Now
               </button>
@@ -1578,10 +1578,10 @@ export default function DocumentIntegrations({
       {/* Custom Disconnect Confirmation Modal */}
       {disconnectingId !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 flex flex-col relative animate-scale-up">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 flex flex-col relative animate-scale-up">
             <button
               onClick={() => setDisconnectingId(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+              className="absolute top-4 right-4 text-gray-400 hover:text-slate-400 active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1591,19 +1591,19 @@ export default function DocumentIntegrations({
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Disconnect Spreadsheet</h3>
+                <h3 className="text-lg font-bold text-slate-200">Disconnect Spreadsheet</h3>
                 <p className="text-xs text-gray-400">Syncing will be disabled</p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 leading-relaxed mb-6">
+            <p className="text-sm text-slate-400 leading-relaxed mb-6">
               Are you sure you want to disconnect this spreadsheet? This will stop automatic syncing, but your imported items will remain in the database.
             </p>
 
             <div className="flex space-x-3">
               <button
                 onClick={() => setDisconnectingId(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100"
+                className="flex-1 py-2.5 px-4 border border-slate-700/50 hover:bg-slate-800/50 rounded-xl text-xs font-semibold text-slate-300 active:scale-[0.98] transition-all duration-100"
               >
                 Cancel
               </button>
@@ -1621,10 +1621,10 @@ export default function DocumentIntegrations({
       {/* Custom Irreversible Deletion Warning Modal */}
       {integrationToDelete !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up relative">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 animate-scale-up relative">
             <button
               onClick={() => setIntegrationToDelete(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+              className="absolute top-4 right-4 text-gray-400 hover:text-slate-400 active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1634,14 +1634,14 @@ export default function DocumentIntegrations({
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Irreversible Deletion Warning</h3>
+                <h3 className="text-lg font-bold text-white">Irreversible Deletion Warning</h3>
                 <p className="text-xs text-red-600 font-semibold">Permanent Database Purge</p>
               </div>
             </div>
 
-            <p className="text-xs text-gray-700 leading-relaxed mb-4">
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
               You are about to perform an irreversible deletion of the document data for{' '}
-              <strong className="text-gray-900 font-semibold">{integrationToDelete.boq_name || 'Spreadsheet BOQ'}</strong>{' '}
+              <strong className="text-white font-semibold">{integrationToDelete.boq_name || 'Spreadsheet BOQ'}</strong>{' '}
               from the database and all of its records will be deleted permanently. Do you wish to continue?
             </p>
 
@@ -1662,7 +1662,7 @@ export default function DocumentIntegrations({
               <button
                 disabled={isLoading}
                 onClick={() => setIntegrationToDelete(null)}
-                className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100 disabled:opacity-50"
+                className="flex-1 py-2.5 px-4 border border-slate-700/50 hover:bg-slate-800/50 rounded-xl text-xs font-semibold text-slate-300 active:scale-[0.98] transition-all duration-100 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1693,10 +1693,10 @@ export default function DocumentIntegrations({
 
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scale-up relative">
+            <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 animate-scale-up relative">
               <button
                 onClick={() => setIpcReExtractModalIntegration(null)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+                className="absolute top-4 right-4 text-gray-400 hover:text-slate-400 active:scale-95 transition-all duration-100"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1706,7 +1706,7 @@ export default function DocumentIntegrations({
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">
+                  <h3 className="text-lg font-bold text-white">
                     {remainingCount > 0 ? 'AI Re-Extraction Guidelines' : 'Daily Re-Extraction Limit Reached'}
                   </h3>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
@@ -1719,7 +1719,7 @@ export default function DocumentIntegrations({
 
               {remainingCount > 0 ? (
                 <>
-                  <div className="space-y-3 mb-6 text-xs leading-relaxed text-gray-700">
+                  <div className="space-y-3 mb-6 text-xs leading-relaxed text-slate-300">
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900">
                       <p className="font-semibold mb-1">Before proceeding:</p>
                       <p>
@@ -1727,7 +1727,7 @@ export default function DocumentIntegrations({
                       </p>
                     </div>
 
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-blue-900">
+                    <div className="bg-blue-50 border border-indigo-500/30 rounded-xl p-3 text-indigo-200">
                       <p className="font-semibold mb-1">Usage Policy:</p>
                       <p>
                         IPC AI re-extraction is limited to a maximum of <strong>2 times per 24 hours</strong> for this document to maintain system stability and performance.
@@ -1738,7 +1738,7 @@ export default function DocumentIntegrations({
                   <div className="flex space-x-3">
                     <button
                       onClick={() => setIpcReExtractModalIntegration(null)}
-                      className="flex-1 py-2.5 px-4 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-semibold text-gray-700 active:scale-[0.98] transition-all duration-100"
+                      className="flex-1 py-2.5 px-4 border border-slate-700/50 hover:bg-slate-800/50 rounded-xl text-xs font-semibold text-slate-300 active:scale-[0.98] transition-all duration-100"
                     >
                       Cancel & Finish Editing
                     </button>
@@ -1778,10 +1778,10 @@ export default function DocumentIntegrations({
       {/* Structure Report Modal */}
       {activeAuditIntegration !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 flex flex-col relative animate-scale-up max-h-[90vh] overflow-hidden">
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 flex flex-col relative animate-scale-up max-h-[90vh] overflow-hidden">
             <button
               onClick={() => setActiveAuditIntegration(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 active:scale-95 transition-all duration-100"
+              className="absolute top-4 right-4 text-gray-400 hover:text-slate-400 active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1791,7 +1791,7 @@ export default function DocumentIntegrations({
                 <FileSpreadsheet className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Structure Report</h3>
+                <h3 className="text-lg font-bold text-slate-200">Structure Report</h3>
                 <p className="text-xs text-gray-400">Format Assessment</p>
               </div>
             </div>
@@ -1799,12 +1799,12 @@ export default function DocumentIntegrations({
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto min-h-0 pr-1.5 mb-6 space-y-5">
               {/* Score Gauge */}
-              <div className="flex flex-col items-center justify-center py-5 bg-indigo-50/40 rounded-2xl border border-indigo-100/50">
-                <div className={`relative flex items-center justify-center w-24 h-24 rounded-full border-4 bg-white shadow-sm transition-colors ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'border-gray-200' :
+              <div className="flex flex-col items-center justify-center py-5 bg-indigo-50/40 rounded-2xl border border-indigo-500/30/50">
+                <div className={`relative flex items-center justify-center w-24 h-24 rounded-full border-4 bg-slate-900 shadow-sm transition-colors ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'border-slate-700/50' :
                   Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'border-emerald-500' :
                     Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'border-amber-500' : 'border-red-500'
                   }`}>
-                  <span className={`text-2xl font-extrabold ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'text-gray-600' :
+                  <span className={`text-2xl font-extrabold ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'text-slate-400' :
                     Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'text-emerald-600' :
                       Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'text-amber-600' : 'text-red-650'
                     }`}>
@@ -1823,14 +1823,14 @@ export default function DocumentIntegrations({
               {/* Detailed Breakdown */}
               <div className="space-y-4 text-xs text-gray-650 leading-relaxed">
                 <div>
-                  <span className="font-bold text-gray-800 block mb-1">Workbook Source:</span>
-                  <span className="font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded inline-block truncate max-w-full font-mono">
+                  <span className="font-bold text-slate-200 block mb-1">Workbook Source:</span>
+                  <span className="font-medium text-slate-400 bg-slate-800/50 px-2 py-1 rounded inline-block truncate max-w-full font-mono">
                     {activeAuditIntegration.boq_name || 'Spreadsheet BOQ'}
                   </span>
                 </div>
 
                 <div>
-                  <span className="font-bold text-gray-800 block mb-1">Structure Scan Summary:</span>
+                  <span className="font-bold text-slate-200 block mb-1">Structure Scan Summary:</span>
                   <p className="text-gray-650">
                     {activeAuditIntegration.validation_summary || (!activeAuditIntegration.preview_only ? (
                       "The system successfully scanned the spreadsheet contents. It confirmed that the row structure represents a valid Bill of Quantities (material descriptions, pricing rates, unit measures, and total amounts) with a high coverage of construction items."
@@ -1842,10 +1842,10 @@ export default function DocumentIntegrations({
 
                 {activeAuditIntegration.validation_issues && activeAuditIntegration.validation_issues.length > 0 ? (
                   <div>
-                    <span className="font-bold text-gray-800 block mb-1.5">Discovered Issues & Observations:</span>
+                    <span className="font-bold text-slate-200 block mb-1.5">Discovered Issues & Observations:</span>
                     <ul className="space-y-1.5 pl-1.5">
                       {activeAuditIntegration.validation_issues.map((issue: string, idx: number) => (
-                        <li key={idx} className="flex items-start space-x-2 text-gray-700">
+                        <li key={idx} className="flex items-start space-x-2 text-slate-300">
                           <span className="text-amber-500 font-extrabold select-none">•</span>
                           <span>{issue}</span>
                         </li>
@@ -1854,7 +1854,7 @@ export default function DocumentIntegrations({
                   </div>
                 ) : (
                   <div>
-                    <span className="font-bold text-gray-800 block mb-1">Observations:</span>
+                    <span className="font-bold text-slate-200 block mb-1">Observations:</span>
                     <span className="text-green-700 font-semibold flex items-center space-x-1">
                       <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
