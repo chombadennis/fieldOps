@@ -43,6 +43,8 @@ interface Document {
   department?: string;
   created_at?: string;
   integration_id?: number;
+  uploaded_by?: number;
+  cloud_email?: string;
 }
 
 interface IpcsTabProps {

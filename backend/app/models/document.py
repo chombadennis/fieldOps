@@ -21,6 +21,8 @@ class Document(Base, CustomBase):
     # Link to the OAuth integration that provided this document (for embed URL generation)
     integration_id = Column(Integer, ForeignKey('project_integrations.id', ondelete="SET NULL"), nullable=True)
     
+    uploaded_by = Column(Integer, ForeignKey('users.id', ondelete="SET NULL"), nullable=True)
+    
     is_linked = Column(Boolean, default=True, nullable=False)
     linked_at = Column(DateTime, default=func.now(), nullable=True)
     unlinked_at = Column(DateTime, nullable=True)
@@ -32,6 +34,14 @@ class Document(Base, CustomBase):
     project = relationship("Project", back_populates="documents")
     contract = relationship("Contract", back_populates="documents")
     note = relationship("Note", back_populates="documents")
+    uploader = relationship("User")
+    integration = relationship("ProjectIntegration")
+
+    @property
+    def cloud_email(self):
+        if self.integration and self.integration.meta_data:
+            return self.integration.meta_data.get('cloud_email')
+        return None
 
     @property
     def title(self):

@@ -38,6 +38,8 @@ def run_migrations():
             conn.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS values_map JSONB;"))
             conn.execute(text("ALTER TABLE notes ADD COLUMN IF NOT EXISTS is_issue BOOLEAN DEFAULT FALSE;"))
             conn.execute(text("ALTER TABLE notes ADD COLUMN IF NOT EXISTS priority VARCHAR DEFAULT 'Normal';"))
+            conn.execute(text("ALTER TABLE project_integrations ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;"))
+            conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL;"))
             conn.execute(text("ALTER TABLE milestone_claim_documents ADD COLUMN IF NOT EXISTS claim_number VARCHAR;"))
             conn.execute(text("ALTER TABLE milestone_claim_documents ADD COLUMN IF NOT EXISTS valuation_date VARCHAR;"))
             conn.execute(text("""

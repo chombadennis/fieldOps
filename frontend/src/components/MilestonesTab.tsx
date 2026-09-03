@@ -5,7 +5,7 @@ import MilestoneClaimsIntegrations from '@/components/MilestoneClaimsIntegration
 import MilestoneClaimSheet from '@/components/MilestoneClaimSheet';
 import DiscussionNoteInput from '@/components/DiscussionNoteInput';
 import { renderSafeHtml } from '@/lib/sanitize';
-import { getDecoupledDocuments, updateProjectMilestoneClaim, deleteDecoupledDocument } from '@/services/api';
+import { getDecoupledDocuments, updateProjectMilestoneClaim, deleteDecoupledDocument, getCurrentUser } from '@/services/api';
 
 interface Note {
   id: number;
@@ -32,6 +32,8 @@ interface Document {
   net_amount_due?: number;
   gross_amount_claimed?: number;
   values_map?: any;
+  uploaded_by?: number;
+  cloud_email?: string;
 }
 
 interface MilestonesTabProps {
@@ -63,6 +65,13 @@ export default function MilestonesTab({
   const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [claimToDelete, setClaimToDelete] = useState<any | null>(null);
+
+  // State for current user to enforce smart conditional previews
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    getCurrentUser().then(user => setCurrentUser(user)).catch(console.error);
+  }, []);
 
   const handleDelete = async () => {
     if (!claimToDelete) return;
@@ -156,6 +165,11 @@ export default function MilestonesTab({
                       <p className="text-xs text-gray-400 mt-0.5">
                         {doc.file_type || 'Cloud Document'} • {doc.integration_id ? 'Linked' : 'Uploaded'} {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recently'}
                       </p>
+                      {currentUser && doc.uploaded_by === currentUser.id && doc.cloud_email && (
+                        <p className="text-[10px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20 mt-1 inline-flex items-center gap-1 w-fit">
+                          <span className="opacity-70">Source:</span> {doc.cloud_email}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -169,11 +183,16 @@ export default function MilestonesTab({
                       href={doc.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => {
+                        if (currentUser && doc.uploaded_by !== currentUser.id) {
+                          alert("You are opening a document linked by another user. If you do not have permission, Google/Microsoft will prompt you to request access.");
+                        }
+                      }}
                       className="px-4 py-2 bg-gradient-to-b from-white/10 to-white/5 hover:from-white/15 hover:to-white/10 text-gray-300 border border-white/10 rounded-xl text-xs font-extrabold shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex items-center"
                     >
                       View Source
                     </a>
-                    {!doc.integration_id && (
+                    {!doc.integration_id && (!currentUser || doc.uploaded_by === currentUser.id) && (
                       <button
                         onClick={() => setClaimToDelete(doc)}
                         disabled={deletingId === doc.id}

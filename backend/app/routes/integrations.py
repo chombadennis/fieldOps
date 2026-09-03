@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.sql import func
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
@@ -13,7 +14,9 @@ from ..db.database import get_db
 from ..models.project_integration import ProjectIntegration
 from ..models.project import Project
 from ..models.ipc import IPC
+from ..models.user import User
 from ..utils.security import encrypt_token, decrypt_token
+from .users import get_current_user
 from ..services.integrations import (
     get_google_auth_url,
     exchange_google_code_for_tokens,
@@ -87,23 +90,34 @@ class BudgetCommitRequest(BaseModel):
 def get_global_integration_token(
     project_id: int, 
     provider: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Checks if there's any existing valid refresh token for this project and provider, regardless of module.
+    Checks if there's any existing valid refresh token for this project and provider, for the current user.
     """
-    integration = db.query(ProjectIntegration).filter(
+    integrations = db.query(ProjectIntegration).filter(
         ProjectIntegration.project_id == project_id,
         ProjectIntegration.provider == provider,
+        ProjectIntegration.user_id == current_user.id,
+        ProjectIntegration.spreadsheet_id == "AUTH_ONLY",
         ProjectIntegration.refresh_token.isnot(None)
-    ).first()
+    ).all()
     
-    if integration:
-        return {"has_auth": True, "refresh_token": integration.refresh_token}
-    return {"has_auth": False}
+    if integrations:
+        accounts = []
+        for ind in integrations:
+            cloud_email = ind.meta_data.get("cloud_email", "Unknown Account") if ind.meta_data else "Unknown Account"
+            accounts.append({
+                "email": cloud_email,
+                "refresh_token": ind.refresh_token,
+                "provider": provider
+            })
+        return {"has_auth": True, "accounts": accounts}
+    return {"has_auth": False, "accounts": []}
 
 @router.get("/integrations/google/auth-url")
-def google_auth_url(project_id: int, active_tab: Optional[str] = None, pmo_sub_tab: Optional[str] = None):
+def google_auth_url(project_id: int, active_tab: Optional[str] = None, pmo_sub_tab: Optional[str] = None, current_user: User = Depends(get_current_user)):
     """
     Returns the Google Sheets OAuth consent URL for a specific project, encoding tab context in state.
     """
@@ -112,11 +126,12 @@ def google_auth_url(project_id: int, active_tab: Optional[str] = None, pmo_sub_t
         state_str += f":{active_tab}"
         if pmo_sub_tab:
             state_str += f":{pmo_sub_tab}"
+    state_str += f":user_{current_user.id}"
     url = get_google_auth_url(project_id, state_str)
     return {"url": url}
 
 @router.get("/integrations/onedrive/auth-url")
-def onedrive_auth_url(project_id: int, active_tab: Optional[str] = None, pmo_sub_tab: Optional[str] = None):
+def onedrive_auth_url(project_id: int, active_tab: Optional[str] = None, pmo_sub_tab: Optional[str] = None, current_user: User = Depends(get_current_user)):
     """
     Returns the Microsoft Graph OAuth consent URL for a specific project, encoding tab context in state.
     """
@@ -125,6 +140,7 @@ def onedrive_auth_url(project_id: int, active_tab: Optional[str] = None, pmo_sub
         state_str += f":{active_tab}"
         if pmo_sub_tab:
             state_str += f":{pmo_sub_tab}"
+    state_str += f":user_{current_user.id}"
     url = get_onedrive_auth_url(project_id, state_str)
     return {"url": url}
 
@@ -145,49 +161,77 @@ async def google_callback(
     except (ValueError, IndexError):
         raise HTTPException(status_code=400, detail="Invalid project_id state parameter.")
         
-    active_tab = parts[1] if len(parts) > 1 else None
-    pmo_sub_tab = parts[2] if len(parts) > 2 else None
+    active_tab = None
+    pmo_sub_tab = None
+    user_id = None
+    
+    for part in parts[1:]:
+        if part.startswith("user_"):
+            user_id = int(part.replace("user_", ""))
+        elif not active_tab:
+            active_tab = part
+        elif not pmo_sub_tab:
+            pmo_sub_tab = part
 
     try:
         tokens = await exchange_google_code_for_tokens(code)
         refresh_token = tokens.get("refresh_token")
+        cloud_email = tokens.get("email")
+        
         if not refresh_token:
+            if not cloud_email:
+                raise HTTPException(status_code=400, detail="No refresh token or email returned. Please revoke access in Google and try again.")
+                
             existing = db.query(ProjectIntegration).filter(
                 ProjectIntegration.project_id == project_id,
                 ProjectIntegration.provider == "google_sheets",
+                ProjectIntegration.spreadsheet_id == "AUTH_ONLY",
+                ProjectIntegration.user_id == user_id,
+                func.jsonb_extract_path_text(ProjectIntegration.meta_data, 'cloud_email') == cloud_email,
                 ProjectIntegration.refresh_token.isnot(None)
             ).first()
+            
             if existing:
                 refresh_token = existing.refresh_token
             else:
                 raise HTTPException(
                     status_code=400,
-                    detail="No refresh token returned. Go to your Google account security settings and revoke access to this application, then try again."
+                    detail="No refresh token returned for this account. Go to your Google account security settings and revoke access to this application, then try again."
                 )
         else:
             refresh_token = encrypt_token(refresh_token)
-            # Update ALL existing integrations for this provider in this project with the fresh token
-            db.query(ProjectIntegration).filter(
-                ProjectIntegration.project_id == project_id,
-                ProjectIntegration.provider == "google_sheets"
-            ).update({"refresh_token": refresh_token})
             
-            # Create a global AUTH_ONLY integration if it doesn't exist
             existing_auth = db.query(ProjectIntegration).filter(
                 ProjectIntegration.project_id == project_id,
                 ProjectIntegration.provider == "google_sheets",
-                ProjectIntegration.spreadsheet_id == "AUTH_ONLY"
+                ProjectIntegration.spreadsheet_id == "AUTH_ONLY",
+                ProjectIntegration.user_id == user_id,
+                func.jsonb_extract_path_text(ProjectIntegration.meta_data, 'cloud_email') == cloud_email
             ).first()
+            
             if not existing_auth:
                 auth_integration = ProjectIntegration(
                     project_id=project_id,
+                    user_id=user_id,
                     provider="google_sheets",
                     spreadsheet_id="AUTH_ONLY",
                     sheet_name="AUTH_ONLY",
                     refresh_token=refresh_token,
-                    module="auth"
+                    module="auth",
+                    meta_data={"cloud_email": cloud_email} if cloud_email else {}
                 )
                 db.add(auth_integration)
+            else:
+                existing_auth.refresh_token = refresh_token
+                
+            if cloud_email:
+                db.query(ProjectIntegration).filter(
+                    ProjectIntegration.provider == "google_sheets",
+                    ProjectIntegration.user_id == user_id,
+                    func.jsonb_extract_path_text(ProjectIntegration.meta_data, 'cloud_email') == cloud_email,
+                    ProjectIntegration.spreadsheet_id != "AUTH_ONLY"
+                ).update({"refresh_token": refresh_token}, synchronize_session=False)
+
             db.commit()
             
         frontend_url = f"{settings.FRONTEND_URL}/dashboard/{project_id}?oauth_provider=google_sheets&refresh_token={refresh_token}"
@@ -220,46 +264,74 @@ async def onedrive_callback(
     except (ValueError, IndexError):
         raise HTTPException(status_code=400, detail="Invalid project_id state parameter.")
         
-    active_tab = parts[1] if len(parts) > 1 else None
-    pmo_sub_tab = parts[2] if len(parts) > 2 else None
+    active_tab = None
+    pmo_sub_tab = None
+    user_id = None
+    
+    for part in parts[1:]:
+        if part.startswith("user_"):
+            user_id = int(part.replace("user_", ""))
+        elif not active_tab:
+            active_tab = part
+        elif not pmo_sub_tab:
+            pmo_sub_tab = part
 
     try:
         tokens = await exchange_onedrive_code_for_tokens(code)
         refresh_token = tokens.get("refresh_token")
+        cloud_email = tokens.get("email")
+        
         if not refresh_token:
+            if not cloud_email:
+                raise HTTPException(status_code=400, detail="No refresh token or email returned. Please revoke access in Microsoft and try again.")
+                
             existing = db.query(ProjectIntegration).filter(
                 ProjectIntegration.project_id == project_id,
                 ProjectIntegration.provider == "onedrive",
+                ProjectIntegration.spreadsheet_id == "AUTH_ONLY",
+                ProjectIntegration.user_id == user_id,
+                func.jsonb_extract_path_text(ProjectIntegration.meta_data, 'cloud_email') == cloud_email,
                 ProjectIntegration.refresh_token.isnot(None)
             ).first()
+            
             if existing:
                 refresh_token = existing.refresh_token
             else:
                 raise HTTPException(status_code=400, detail="No refresh token returned by Microsoft Graph OAuth API.")
         else:
             refresh_token = encrypt_token(refresh_token)
-            # Update ALL existing integrations for this provider in this project with the fresh token
-            db.query(ProjectIntegration).filter(
-                ProjectIntegration.project_id == project_id,
-                ProjectIntegration.provider == "onedrive"
-            ).update({"refresh_token": refresh_token})
             
-            # Create a global AUTH_ONLY integration if it doesn't exist
             existing_auth = db.query(ProjectIntegration).filter(
                 ProjectIntegration.project_id == project_id,
                 ProjectIntegration.provider == "onedrive",
-                ProjectIntegration.spreadsheet_id == "AUTH_ONLY"
+                ProjectIntegration.spreadsheet_id == "AUTH_ONLY",
+                ProjectIntegration.user_id == user_id,
+                func.jsonb_extract_path_text(ProjectIntegration.meta_data, 'cloud_email') == cloud_email
             ).first()
+            
             if not existing_auth:
                 auth_integration = ProjectIntegration(
                     project_id=project_id,
+                    user_id=user_id,
                     provider="onedrive",
                     spreadsheet_id="AUTH_ONLY",
                     sheet_name="AUTH_ONLY",
                     refresh_token=refresh_token,
-                    module="auth"
+                    module="auth",
+                    meta_data={"cloud_email": cloud_email} if cloud_email else {}
                 )
                 db.add(auth_integration)
+            else:
+                existing_auth.refresh_token = refresh_token
+                
+            if cloud_email:
+                db.query(ProjectIntegration).filter(
+                    ProjectIntegration.provider == "onedrive",
+                    ProjectIntegration.user_id == user_id,
+                    func.jsonb_extract_path_text(ProjectIntegration.meta_data, 'cloud_email') == cloud_email,
+                    ProjectIntegration.spreadsheet_id != "AUTH_ONLY"
+                ).update({"refresh_token": refresh_token}, synchronize_session=False)
+
             db.commit()
             
         frontend_url = f"{settings.FRONTEND_URL}/dashboard/{project_id}?oauth_provider=onedrive&refresh_token={refresh_token}"
@@ -587,7 +659,8 @@ def save_integration(
     module: Optional[str] = Query("boq"),
     trade_label: Optional[str] = Query(None),
     tracking_mode: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Saves or updates a ProjectIntegration record.
@@ -635,9 +708,25 @@ def save_integration(
     if tracking_mode is not None:
         meta_data["tracking_mode"] = tracking_mode
 
+    # Inject cloud_email from the user's AUTH_ONLY record so it's durably stored on the integration
+    auth_record = db.query(ProjectIntegration).filter(
+        ProjectIntegration.project_id == project_id,
+        ProjectIntegration.user_id == current_user.id,
+        ProjectIntegration.provider == provider,
+        ProjectIntegration.spreadsheet_id == "AUTH_ONLY"
+    ).first()
+    if auth_record and auth_record.meta_data:
+        cloud_email = auth_record.meta_data.get("cloud_email")
+        if cloud_email:
+            meta_data["cloud_email"] = cloud_email
+
     if existing:
         existing.spreadsheet_id = spreadsheet_id
         existing.sheet_name = sheet_name
+        # Note: If it already exists, we could either update the user_id or leave it as the original linker.
+        # It's safest to leave the original linker's user_id, or if it was None (legacy), set it.
+        if not existing.user_id:
+            existing.user_id = current_user.id
         if boq_name is not None:
             existing.boq_name = boq_name
         if refresh_token:
@@ -650,6 +739,7 @@ def save_integration(
     else:
         db_integration = ProjectIntegration(
             project_id=project_id,
+            user_id=current_user.id,
             contract_id=contract_id,
             provider=provider,
             spreadsheet_id=spreadsheet_id,

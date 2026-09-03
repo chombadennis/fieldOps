@@ -16,7 +16,7 @@ def get_onedrive_auth_url(project_id: int, state: Optional[str] = None) -> str:
         "client_id": settings.MICROSOFT_CLIENT_ID,
         "redirect_uri": settings.MICROSOFT_REDIRECT_URI,
         "response_type": "code",
-        "scope": "files.readwrite offline_access",
+        "scope": "files.readwrite offline_access user.read",
         "response_mode": "query",
         "state": state if state else str(project_id)
     }
@@ -41,7 +41,21 @@ async def exchange_onedrive_code_for_tokens(code: str) -> Dict[str, Any]:
         if response.status_code != 200:
             logger.error(f"Failed to exchange OneDrive OAuth code: {response.text}")
             raise Exception(f"OneDrive Token Exchange Error: {response.text}")
-        return response.json()
+            
+        token_data = response.json()
+        
+        # Fetch user's email
+        access_token = token_data.get("access_token")
+        if access_token:
+            userinfo_response = await client.get(
+                "https://graph.microsoft.com/v1.0/me",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            if userinfo_response.status_code == 200:
+                userinfo = userinfo_response.json()
+                token_data["email"] = userinfo.get("mail") or userinfo.get("userPrincipalName")
+                
+        return token_data
 
 async def refresh_onedrive_access_token(refresh_token: str) -> str:
     """

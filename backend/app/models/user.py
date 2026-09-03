@@ -16,3 +16,4 @@ class User(Base, CustomBase):
     # Relationships
     company = relationship("Company", back_populates="users")
     notes = relationship("Note", back_populates="author", cascade="all, delete-orphan")
+    integrations = relationship("ProjectIntegration", back_populates="user", cascade="all, delete-orphan")

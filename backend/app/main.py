@@ -120,3 +120,18 @@ app.include_router(financials.router, prefix="/api", tags=["Financials"])
 @app.get("/")
 async def root():
     return {"message": f'{settings.PROJECT_NAME} backend is running! Env: {settings.APP_ENV}'}
+
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from app.db.database import get_db
+from fastapi import Depends
+
+from app.models.document import Document
+from app.models.project_integration import ProjectIntegration
+from sqlalchemy.orm.attributes import flag_modified
+from datetime import datetime
+
+
+
+
+

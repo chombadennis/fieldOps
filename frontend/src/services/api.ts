@@ -264,8 +264,18 @@ export const getProjectNotes = async (projectId: string | number, department?: s
   return response.data;
 };
 
-export const createProjectNote = async (projectId: string | number, note: { content: string; department: string; is_issue?: boolean; priority?: string }) => {
+export const createProjectNote = async (projectId: string | number, note: { content: string; department: string; is_issue?: boolean; priority?: string; values_map?: any; document_ids?: number[] }) => {
   const response = await apiClient.post(`/projects/${projectId}/notes`, note);
+  return response.data;
+};
+
+export const updateProjectNote = async (projectId: string | number, noteId: string | number, noteUpdate: { content?: string; department?: string; is_issue?: boolean; priority?: string; values_map?: any; document_ids?: number[] }) => {
+  const response = await apiClient.patch(`/projects/${projectId}/notes/${noteId}`, noteUpdate);
+  return response.data;
+};
+
+export const deleteProjectNote = async (projectId: string | number, noteId: string | number) => {
+  const response = await apiClient.delete(`/projects/${projectId}/notes/${noteId}`);
   return response.data;
 };
 
@@ -492,5 +502,10 @@ export const commitMilestoneClaimExtraction = async (projectId: string | number,
   items?: any[];
 }) => {
   const response = await apiClient.post(`/projects/${projectId}/milestone_claims/commit`, data);
+  return response.data;
+};
+
+export const getAllProjectDocuments = async (projectId: string) => {
+  const response = await apiClient.get(`/projects/${projectId}/documents/all`);
   return response.data;
 };

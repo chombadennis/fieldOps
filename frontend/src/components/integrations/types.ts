@@ -13,6 +13,7 @@ export interface Integration {
   module?: string;
   refresh_token?: string;
   meta_data?: any;
+  user_id?: number;
 }
 
 export interface DocumentIntegrationsProps {

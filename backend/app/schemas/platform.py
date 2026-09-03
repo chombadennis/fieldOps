@@ -127,6 +127,7 @@ class Document(DocumentBase):
     linked_at: Optional[datetime] = None
     unlinked_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    cloud_email: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -137,9 +138,21 @@ class NoteBase(BaseModel):
     department: str = "Tech"  # Tech, Field Operations, HR, Legal, General
     is_issue: Optional[bool] = False
     priority: Optional[str] = "Normal"  # Low, Normal, High, Urgent
+    follow_up_date: Optional[str] = None # Date string
+    values_map: Optional[dict] = None
 
 class NoteCreate(NoteBase):
     contract_id: Optional[int] = None
+    document_ids: Optional[List[int]] = []
+
+class NoteUpdate(BaseModel):
+    content: Optional[str] = None
+    department: Optional[str] = None
+    is_issue: Optional[bool] = None
+    priority: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    values_map: Optional[dict] = None
+    document_ids: Optional[List[int]] = None
 
 class Note(NoteBase):
     id: int

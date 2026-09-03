@@ -1,10 +1,11 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 
 # --- Integration Schema ---
 class ProjectIntegration(BaseModel):
     id: int
+    user_id: Optional[int] = None
     provider: str
     spreadsheet_id: str
     sheet_name: str
@@ -17,6 +18,7 @@ class ProjectIntegration(BaseModel):
     validation_issues: Optional[List[str]] = None
     validation_summary: Optional[str] = None
     reextract_logs: Optional[List[str]] = []
+    meta_data: Optional[Dict[str, Any]] = None  # Carries cloud_email and other metadata
 
     class Config:
         from_attributes = True

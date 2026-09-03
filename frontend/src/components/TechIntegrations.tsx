@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { listCloudSheets, saveIntegration, triggerSyncImport, previewIpcExtraction, getGoogleAuthUrl, getOneDriveAuthUrl, createProjectDocument, createDecoupledDocument, convertGoogleCloudFile, listCloudFiles, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, checkIpcExists, getGlobalAuthToken } from '@/services/api';
+import { listCloudSheets, saveIntegration, triggerSyncImport, previewIpcExtraction, getGoogleAuthUrl, getOneDriveAuthUrl, createProjectDocument, createDecoupledDocument, convertGoogleCloudFile, listCloudFiles, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, checkIpcExists, getGlobalAuthToken, getCurrentUser } from '@/services/api';
 import IpcExtractionPreviewModal from './integrations/IpcExtractionPreviewModal';
 import { Folder, FileSpreadsheet, FileText, ChevronRight, ArrowLeft, Loader2, Trash2, AlertTriangle, ExternalLink, X, Unlink, Eye, Sparkles, Paperclip, RefreshCw, Link2, Layers, Lock } from 'lucide-react';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
@@ -10,7 +10,8 @@ import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 import { Integration, DocumentIntegrationsProps } from './integrations/types';
 import ActiveIntegrationsList from './integrations/ActiveIntegrationsList';
 import CloudConnectionCards from './integrations/CloudConnectionCards';
-import CloudConfigModal from './integrations/CloudConfigModal';
+import TechCloudConfigModal from './integrations/TechCloudConfigModal';
+import TechManualEntryModal from './integrations/TechManualEntryModal';
 import ManualEntryModal from './integrations/ManualEntryModal';
 
 
@@ -39,8 +40,15 @@ export default function TechIntegrations({
   const [dismissedNewSheets, setDismissedNewSheets] = useState<{ [id: number]: boolean }>({});
   const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
   const [activeAuditIntegration, setActiveAuditIntegration] = useState<Integration | null>(null);
-  const [showManualEntryModal, setShowManualEntryModal] = useState(false);
+  const [availableAccounts, setAvailableAccounts] = useState<any[]>([]);
+  const [showAccountSelector, setShowAccountSelector] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [pendingProvider, setPendingProvider] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
+  useEffect(() => {
+    getCurrentUser().then(setCurrentUser).catch(console.error);
+  }, []);
 
   // Form states for linking spreadsheet after OAuth redirect callback
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -55,13 +63,11 @@ export default function TechIntegrations({
   const [fetchingSheets, setFetchingSheets] = useState(false);
   const [availableFiles, setAvailableFiles] = useState<{ id: string; name: string; type: 'folder' | 'file'; web_url?: string; is_google_sheet?: boolean; mime_type?: string }[]>([]);
   const [fetchingFiles, setFetchingFiles] = useState(false);
-  const [preScanWarning, setPreScanWarning] = useState<{
-    show: boolean;
-    certificateNumber: string | null;
-    selectedFile: any;
-    sheetsNames: string;
-    isSpreadsheet: boolean;
-  } | null>(null);
+  const [preScanWarning, setPreScanWarning] = useState<any>({ show: false, certificateNumber: null, selectedFile: null, sheetsNames: '', isSpreadsheet: false });
+
+  // Manual entry modal states
+  const [showManualEntryModal, setShowManualEntryModal] = useState(false);
+  const [pendingManualDocDetails, setPendingManualDocDetails] = useState<any>(null);
 
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -83,7 +89,7 @@ export default function TechIntegrations({
     if (pmoSubTab === 'scheduling') return ['.xlsx', '.xls', '.csv', '.pdf', '.mpp'];
 
     const lowerDept = (departmentName || '').toLowerCase();
-    if (lowerDept.includes('tech') || lowerDept.includes('engineering')) return ['.pdf', '.dwg', '.jpg', '.png', '.jpeg'];
+    if (lowerDept.includes('tech') || lowerDept.includes('engineering')) return ['.xlsx', '.xls', '.csv', '.pdf', '.dwg', '.rvt', '.ifc', '.docx', '.doc', '.zip', '.jpg', '.png', '.jpeg'];
     if (lowerDept.includes('field')) return ['.pdf', '.doc', '.docx', '.jpg', '.png', '.jpeg'];
     if (lowerDept.includes('hr') || lowerDept.includes('legal')) return ['.pdf', '.doc', '.docx', '.xlsx', '.xls'];
 
@@ -137,8 +143,15 @@ export default function TechIntegrations({
         setError(null);
         try {
           const filterType = moduleContext === 'ipc' ? 'spreadsheets' : 'all';
-          const files = await listCloudFiles(oauthProvider, refreshToken, currentFolderId || undefined, filterType);
-          setAvailableFiles(files);
+          const files = await listCloudFiles(
+            oauthProvider, 
+            refreshToken, 
+            currentFolderId || undefined, 
+            filterType, 
+            projectId, 
+            moduleContext === 'department' ? departmentName?.toLowerCase() : moduleContext
+          );
+          setAvailableFiles(files || []);
         } catch (err) {
           setError('Failed to fetch files from drive.');
           console.error(err);
@@ -228,54 +241,23 @@ export default function TechIntegrations({
     };
   }, [loading, globalLoading, syncingId, moduleContext, ipcCertificateNumber]);
 
-  // Fetch sheet names when a spreadsheet is selected
+  // Removed Fetch sheet names effect for Engineering tab since we just link documents
   useEffect(() => {
-    const loadSheets = async () => {
+    const loadFileMetadata = async () => {
       const selectedFile = availableFiles.find(f => f.id === spreadsheetId);
-      const isSpreadsheet = selectedFile && (
-        selectedFile.is_google_sheet ||
-        /\.(xlsx|xls|csv|ods|gsheet)$/i.test(selectedFile.name)
-      );
-
-      if (spreadsheetId && oauthProvider && refreshToken && isSpreadsheet) {
-        setFetchingSheets(true);
-        setError(null);
-        try {
-          const sheets = await listCloudSheets({
-            provider: oauthProvider,
-            refresh_token: refreshToken,
-            spreadsheet_id: spreadsheetId,
-            check_headers: false,
-          });
-          setSheetsList(sheets);
-          const initialSelection: { [id: string]: boolean } = {};
-          sheets.forEach((s: any) => {
-            initialSelection[s.id] = true;
-          });
-          setSelectedSheets(initialSelection);
-
-          // Auto-populate BOQ Name if blank
-          if (!boqName && selectedFile) {
-            const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
-            setBoqName(nameWithoutExt);
-          }
-        } catch (err: any) {
-          console.error(err);
-          setError(err.response?.data?.detail || 'Failed to fetch worksheets from the selected file.');
-        } finally {
-          setFetchingSheets(false);
+      if (spreadsheetId && oauthProvider && refreshToken) {
+        if (selectedFile && !boqName) {
+          const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
+          setBoqName(nameWithoutExt);
         }
       } else {
-        setSheetsList([]);
-        setSelectedSheets({});
-        setFetchingSheets(false);
         if (selectedFile && !boqName) {
           const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
           setBoqName(nameWithoutExt);
         }
       }
     };
-    loadSheets();
+    loadFileMetadata();
   }, [spreadsheetId, oauthProvider, refreshToken, availableFiles]);
 
   const handleSelectFile = async (file: any) => {
@@ -286,44 +268,11 @@ export default function TechIntegrations({
 
     let targetId = file.id;
     let targetName = file.name;
-    let conversionFailed = false;
 
-    // Reject CSVs immediately for OneDrive as Microsoft Graph doesn't support them
-    if (oauthProvider === 'onedrive' && file.name.toLowerCase().endsWith('.csv')) {
-      setError("Microsoft OneDrive integration can only read native Excel Workbooks (.xlsx). The file you selected (CSV) is not supported. Please open the file in OneDrive, save it as an Excel Workbook (.xlsx), and then select the new file.");
-      setSheetsList([]);
-      setSpreadsheetId('');
-      return;
-    }
-
-    // Auto-convert Google Drive Excel (.xlsx) and CSV (.csv) files immediately on click before fetching worksheets
-    if (oauthProvider === 'google_sheets' && (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.csv'))) {
-      setFetchingSheets(true);
-      setError(null);
-      try {
-        const converted = await convertGoogleCloudFile(oauthProvider, refreshToken || '', file.id);
-        if (converted && converted.id) {
-          targetId = converted.id;
-          targetName = converted.name || file.name;
-          setAvailableFiles(prev => prev.map(f => f.id === file.id ? { ...f, id: converted.id, name: targetName, is_google_sheet: true } : f));
-        } else {
-          conversionFailed = true;
-        }
-      } catch (convErr: any) {
-        console.error('Google Sheets auto-conversion error:', convErr);
-        conversionFailed = true;
-        setError('Auto-conversion requires Google Drive file permissions. Please reconnect Google Drive or open Google Drive and select File > Save as Google Sheets.');
-      } finally {
-        setFetchingSheets(false);
-      }
-    }
-
-    if (!conversionFailed) {
-      setSpreadsheetId(targetId);
-      if (!boqName) {
-        const nameWithoutExt = targetName.replace(/\.[^/.]+$/, "");
-        setBoqName(nameWithoutExt);
-      }
+    setSpreadsheetId(targetId);
+    if (!boqName) {
+      const nameWithoutExt = targetName.replace(/\.[^/.]+$/, "");
+      setBoqName(nameWithoutExt);
     }
   };
 
@@ -395,7 +344,7 @@ export default function TechIntegrations({
     const handleOAuthMessage = (event: MessageEvent) => {
       // For window.postMessage, verify origin. BroadcastChannel doesn't have event.origin in the same way, 
       // but it's restricted to same-origin by the browser automatically.
-      if (event.origin && event.origin !== window.location.origin) return;
+      if (event.origin && event.origin !== window.location.origin && event.origin !== '') return;
       
       if (event.data?.type === 'OAUTH_CALLBACK') {
         const { provider, token } = event.data;
@@ -491,10 +440,25 @@ export default function TechIntegrations({
   };
 
   const handleOAuthInitiate = async (provider: 'google' | 'onedrive') => {
+    setPendingProvider(provider);
     const dbProvider = provider === 'google' ? 'google_sheets' : 'onedrive';
 
     setLoading(true);
+    setLoadingProvider(provider);
     setError(null);
+
+    try {
+      const authCheck = await getGlobalAuthToken(projectId, dbProvider);
+      if (authCheck && authCheck.has_auth) {
+        if (authCheck.accounts && authCheck.accounts.length > 0) {
+          setAvailableAccounts(authCheck.accounts);
+          setShowAccountSelector(true);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Global auth check failed:", err);
+    }
     
     const width = 600;
     const height = 650;
@@ -519,53 +483,22 @@ export default function TechIntegrations({
           </head>
           <body>
             <div class="spinner"></div>
-            <div id="status-msg">Checking existing connection...</div>
+            <div id="status-msg">Connecting to ${provider === 'google' ? 'Google' : 'Microsoft'}...</div>
           </body>
         </html>
       `);
     }
 
-
-
-    try {
-      const authCheck = await getGlobalAuthToken(projectId, dbProvider);
-      if (authCheck && authCheck.has_auth) {
-        try {
-          const filterType = moduleContext === 'ipc' ? 'spreadsheets' : 'all';
-          await listCloudFiles(dbProvider, authCheck.refresh_token, undefined, filterType, projectId, moduleContext);
-          setOauthProvider(dbProvider);
-          setRefreshToken(authCheck.refresh_token);
-          setShowConfigModal(true);
-          setLoading(false);
-
-          if (popup) popup.close();
-          return;
-        } catch (tokenErr) {
-          console.warn(`Cached ${provider} token is expired, proceeding to re-authenticate...`);
-        }
-      }
-    } catch (err) {
-      console.error("Global auth check failed:", err);
-    }
-
-    if (popup) {
-      try {
-        const msgEl = popup.document.getElementById('status-msg');
-        if (msgEl) {
-          msgEl.innerText = `Connecting to ${provider === 'google' ? 'Google' : 'Microsoft'}...`;
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-
     try {
       let url = '';
+      const currentActiveTab = activeTab || (moduleContext === 'department' ? 'tech' : moduleContext === 'budget' ? 'financials' : 'pmo');
+      const currentSubTab = pmoSubTab || (moduleContext === 'department' ? departmentKey : moduleContext === 'budget' ? 'budget' : moduleContext === 'ipc' ? 'ipcs' : moduleContext === 'boq' ? 'boq' : moduleContext === 'activity_schedule' ? 'activity_schedule' : 'milestone_payments');
+      
       if (provider === 'google') {
-        const res = await getGoogleAuthUrl(projectId, activeTab, pmoSubTab);
+        const res = await getGoogleAuthUrl(projectId, currentActiveTab, currentSubTab);
         url = res.url;
       } else {
-        const res = await getOneDriveAuthUrl(projectId, activeTab, pmoSubTab);
+        const res = await getOneDriveAuthUrl(projectId, currentActiveTab, currentSubTab);
         url = res.url;
       }
 
@@ -635,36 +568,15 @@ export default function TechIntegrations({
       return;
     }
 
-    const isSpreadsheet = selectedFile.is_google_sheet || /\.(xlsx|xls|csv|ods|gsheet)$/i.test(selectedFile.name);
-    const checkedSheets = sheetsList.filter(s => selectedSheets[s.id]);
+    const isSpreadsheet = false; // Always treat as a standard document for Engineering / Tech
 
-    if (isSpreadsheet && checkedSheets.length === 0) {
-      setModalMessage({ type: 'error', text: 'Please select at least one worksheet.' });
-      return;
-    }
-
-    const sheetsNames = isSpreadsheet ? (checkedSheets.map(s => s.name).join(', ') || selectedFile.name) : selectedFile.name;
+    const sheetsNames = selectedFile.name;
     setSyncingName(sheetsNames);
     setLoading(true);
     setGlobalLoading(true);
-    setModalMessage({ type: 'info', text: isSpreadsheet ? 'Linking spreadsheet…' : 'Linking document…' });
+    setModalMessage({ type: 'info', text: 'Linking document…' });
     try {
-      if (oauthProvider === 'google_sheets' && isSpreadsheet && (selectedFile.name.toLowerCase().endsWith('.xlsx') || selectedFile.name.toLowerCase().endsWith('.xls'))) {
-        setModalMessage({ type: 'info', text: 'Converting Excel file to native Google Sheets format...' });
-        try {
-          const converted = await convertGoogleCloudFile(oauthProvider, refreshToken || '', selectedFile.id);
-          if (converted && converted.id) {
-            selectedFile = {
-              id: converted.id,
-              name: converted.name || selectedFile.name,
-              type: 'file',
-              web_url: converted.web_url || selectedFile.web_url
-            };
-          }
-        } catch (convErr: any) {
-          console.error('Google Sheets auto-conversion fallback:', convErr);
-        }
-      }
+      // Normal flow continues here for linking documents
 
       // If this is an IPC module, intercept here to preview the extraction
       if (moduleContext === 'ipc') {
@@ -699,6 +611,20 @@ export default function TechIntegrations({
         return; // Halt here until they confirm in the modal
       }
 
+      // If it's the Tech tab, we want to capture metadata first
+      if (departmentKey === 'tech') {
+        setShowConfigModal(false);
+        setPendingManualDocDetails({
+          selectedFile,
+          sheetsNames,
+          isSpreadsheet
+        });
+        setShowManualEntryModal(true);
+        setLoading(false);
+        setGlobalLoading(false);
+        return;
+      }
+
       // Normal flow continues here for BoQ and other documents
       await finalizeDocumentSave(selectedFile, sheetsNames, isSpreadsheet, null);
 
@@ -721,6 +647,21 @@ export default function TechIntegrations({
         pendingIpcFileDetails.sheetsNames,
         pendingIpcFileDetails.isSpreadsheet,
         finalData
+      );
+    }
+  };
+
+  const handleManualEntrySubmit = async (metadata: any) => {
+    setShowManualEntryModal(false);
+    setLoading(true);
+    setGlobalLoading(true);
+    setModalMessage({ type: 'info', text: 'Saving engineering document...' });
+    if (pendingManualDocDetails) {
+      await finalizeDocumentSave(
+        pendingManualDocDetails.selectedFile,
+        pendingManualDocDetails.sheetsNames,
+        pendingManualDocDetails.isSpreadsheet,
+        metadata
       );
     }
   };
@@ -1241,7 +1182,9 @@ export default function TechIntegrations({
                             </span>
                           )}
                         </h4>
-                        <p className="text-xs text-slate-400 mt-1 truncate"><span className="font-semibold text-slate-400">File ID:</span> {integration.spreadsheet_id}</p>
+                        {currentUser && integration.user_id === currentUser.id && integration.meta_data?.cloud_email && (
+                          <p className="text-xs text-slate-400 mt-1 truncate"><span className="font-semibold text-slate-400">Source:</span> {integration.meta_data.cloud_email}</p>
+                        )}
                         <p className="text-xs text-slate-400 mt-0.5 truncate"><span className="font-semibold text-slate-400">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
                         <p className="text-[10px] text-gray-400 mt-1">
                           {isSyncing ? (
@@ -1340,7 +1283,13 @@ export default function TechIntegrations({
                     <div className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/50 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
-                        onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
+                        onClick={() => {
+                          if (currentUser && integration.user_id !== currentUser.id) {
+                            alert("You cannot inline preview because you are not the owner, but you can open the document in a new tab and request viewing access from the owner.");
+                          } else {
+                            setActiveEditorId(activeEditorId === integration.id ? null : integration.id);
+                          }
+                        }}
                         className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
                           ? 'bg-indigo-600 text-white shadow-sm'
                           : 'hover:bg-slate-900 text-slate-400 hover:text-white'
@@ -1436,7 +1385,7 @@ export default function TechIntegrations({
       )}
 
 
-        <CloudConfigModal
+        <TechCloudConfigModal
           moduleContext={moduleContext}
           trackingMode={trackingMode}
           setTrackingMode={setTrackingMode}
@@ -1693,7 +1642,121 @@ export default function TechIntegrations({
         departmentKey={departmentKey || departmentName}
         departmentName={departmentName}
       />
-    </div>
+        <TechManualEntryModal
+          show={showManualEntryModal}
+          onClose={() => setShowManualEntryModal(false)}
+          onSubmit={handleManualEntrySubmit}
+          initialData={{
+            url: pendingManualDocDetails?.selectedFile?.web_url || '',
+            title: boqName || pendingManualDocDetails?.selectedFile?.name || ''
+          }}
+          isSubmitting={loading}
+        />
+    
+      {/* Account Selector Modal */}
+      {showAccountSelector && (
+        <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
+          <div className="bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-700/50 p-6 flex flex-col relative overflow-hidden text-center">
+            <h3 className="text-xl font-bold font-lexend text-white mb-4">Select Account</h3>
+            <p className="text-sm text-slate-400 mb-6">You have multiple accounts connected. Which one would you like to browse?</p>
+            
+            <div className="space-y-3 mb-6 max-h-[300px] overflow-y-auto custom-scrollbar">
+              {availableAccounts.map((acc, idx) => (
+                <button
+                  key={idx}
+                  onClick={async () => {
+                    setShowAccountSelector(false);
+                    const authProv = acc.provider === 'google_sheets' ? 'google' : 'onedrive';
+                    setLoadingProvider(authProv);
+                    setLoading(true);
+                    try {
+                      const dbProvider = acc.provider;
+                      const filterType = moduleContext === 'ipc' ? 'spreadsheets' : 'all';
+                      await listCloudFiles(dbProvider, acc.refresh_token, undefined, filterType, projectId, moduleContext === 'department' ? departmentName?.toLowerCase() : moduleContext);
+                      
+                      setOauthProvider(dbProvider);
+                      setRefreshToken(acc.refresh_token);
+                      setShowConfigModal(true);
+                    } catch(err) {
+                      console.error(err);
+                      setError(`Failed to authenticate and fetch files for ${acc.email}.`);
+                    } finally {
+                      setLoadingProvider(null);
+                      setLoading(false);
+                    }
+                  }}
+                  className="w-full flex items-center p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center mr-4 shrink-0">
+                    {acc.provider === 'google_sheets' ? (
+                       <svg className="w-5 h-5 text-neon-cyan" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10H7v-2h10v2m0-4H7V7h10v2m0 8H7v-2h10v2z" /></svg>
+                    ) : (
+                       <svg className="w-5 h-5 text-neon-purple" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" /></svg>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="text-white font-bold truncate">{acc.email}</div>
+                    <div className="text-xs text-gray-400 capitalize">{acc.provider.replace('_', ' ')}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                setShowAccountSelector(false);
+                // Trigger oauth flow
+                if (pendingProvider) {
+                   const popup = window.open('about:blank', 'OAuthPopup', 'width=600,height=650,status=no,resizable=yes,scrollbars=yes');
+                   if (popup) popup.document.write('<html><body><div style="font-family:sans-serif; text-align:center; padding-top: 50px;">Redirecting to Auth...</div></body></html>');
+                   // Call the backend to get URL and redirect popup
+                   (async () => {
+                     try {
+                       let url = '';
+                       // This requires access to getGoogleAuthUrl etc. The files have them imported.
+                       if (pendingProvider === 'google') {
+                         const res = await getGoogleAuthUrl(projectId, 'pmo');
+                         url = res.url;
+                       } else {
+                         const res = await getOneDriveAuthUrl(projectId, 'pmo');
+                         url = res.url;
+                       }
+                       if (popup) {
+                         popup.location.href = url;
+                         const checkClosed = setInterval(() => {
+                           try {
+                             if (popup.closed) {
+                               clearInterval(checkClosed);
+                               // Refresh token state or reload
+                               window.location.reload();
+                             }
+                           } catch (e) {}
+                         }, 500);
+                       }
+                     } catch(err) {
+                       if (popup) popup.close();
+                     }
+                   })();
+                }
+              }}
+              className="w-full py-3 bg-white/5 hover:bg-white/10 text-white border border-white/20 rounded-xl text-sm font-bold shadow-md transition active:scale-95 mb-3"
+            >
+              + Link a different account
+            </button>
+            <button
+              onClick={() => {
+                setShowAccountSelector(false);
+                setLoadingProvider(null);
+                setLoading(false);
+              }}
+              className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-xl text-sm font-bold shadow-md transition active:scale-95"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+</div>
   );
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getCurrentUser } from '@/services/api';
 import { FileText, Calendar, Eye, Trash2, AlertTriangle, X, Loader2, FileWarning, Info } from 'lucide-react';
 
 
@@ -15,6 +16,8 @@ interface BoqDocument {
   validation_status?: string | null;
   validation_score?: number | null;
   validation_issues?: string[] | null;
+  uploaded_by?: number;
+  cloud_email?: string;
 }
 
 interface BoqDocumentListProps {
@@ -28,6 +31,13 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
   const [docToDelete, setDocToDelete] = useState<BoqDocument | null>(null);
   const [docBlockedToDelete, setDocBlockedToDelete] = useState<BoqDocument | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // State for current user to enforce smart conditional previews
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    getCurrentUser().then(user => setCurrentUser(user)).catch(console.error);
+  }, []);
 
   const handleDeleteClick = (doc: BoqDocument) => {
     setDocToDelete(doc);
@@ -119,6 +129,11 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
                     </h4>
                     {getDocBadge(doc.origin)}
                   </div>
+                  {currentUser && doc.uploaded_by === currentUser.id && doc.cloud_email && (
+                    <p className="text-[10px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20 mt-1 inline-flex items-center gap-1 w-fit">
+                      <span className="opacity-70">Source:</span> {doc.cloud_email}
+                    </p>
+                  )}
                   <div className="flex items-center text-xs sm:text-sm text-gray-400 mt-1 space-x-3.5">
                     <span className="flex items-center font-medium">
                       <Calendar className="w-4 h-4 mr-1 text-gray-500" />
@@ -132,14 +147,28 @@ export default function BoqDocumentList({ documents, onViewItems, onDeleteDocume
               </div>
 
               <div className="self-end sm:self-center flex items-center space-x-2 flex-shrink-0">
-                <button
-                  onClick={() => onViewItems(doc.id, doc.name)}
-                  className="flex items-center justify-center space-x-2 bg-white/5 border border-white/10 hover:border-neon-cyan/50 text-gray-300 hover:text-neon-cyan hover:bg-neon-cyan/10 font-bold py-2.5 px-4 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.2)] hover:shadow-[0_0_15px_rgba(0,243,255,0.15)] active:scale-[0.98] transition-all duration-100 text-sm"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>View Items</span>
-                </button>
-                {onDeleteDocument && (
+                {(!currentUser || doc.uploaded_by === currentUser.id) ? (
+                  <button
+                    onClick={() => onViewItems(doc.id, doc.name)}
+                    className="flex items-center justify-center space-x-2 bg-white/5 border border-white/10 hover:border-neon-cyan/50 text-gray-300 hover:text-neon-cyan hover:bg-neon-cyan/10 font-bold py-2.5 px-4 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.2)] hover:shadow-[0_0_15px_rgba(0,243,255,0.15)] active:scale-[0.98] transition-all duration-100 text-sm"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>View Items</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      alert("You are viewing a BOQ document linked by another user. If you do not have permission, Google/Microsoft will prompt you to request access.");
+                      onViewItems(doc.id, doc.name);
+                    }}
+                    className="flex items-center justify-center space-x-2 bg-white/5 border border-amber-500/30 hover:border-amber-500/50 text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 font-bold py-2.5 px-4 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.2)] hover:shadow-[0_0_15px_rgba(245,158,11,0.15)] active:scale-[0.98] transition-all duration-100 text-sm"
+                    title="This document was linked by another user"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>View Items</span>
+                  </button>
+                )}
+                {onDeleteDocument && (!currentUser || doc.uploaded_by === currentUser.id) && (
                   <button
                     onClick={() => handleDeleteClick(doc)}
                     className="p-2.5 border border-red-500/30 rounded-xl text-red-400 hover:bg-red-500/20 hover:border-red-500/50 active:scale-90 transition-all duration-100 shadow-[0_0_10px_rgba(0,0,0,0.2)]"

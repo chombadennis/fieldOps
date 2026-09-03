@@ -3,7 +3,7 @@ import {
   FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Lock
 } from 'lucide-react';
 import {
-  getGoogleAuthUrl, getOneDriveAuthUrl, deleteIntegration, previewActivityScheduleExtraction, commitActivityScheduleExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateActivitySchedule
+  getGoogleAuthUrl, getOneDriveAuthUrl, deleteIntegration, previewActivityScheduleExtraction, commitActivityScheduleExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateActivitySchedule, getCurrentUser
 } from '@/services/api';
 import ActivityScheduleExtractionPreviewModal from './integrations/ActivityScheduleExtractionPreviewModal';
 import CloudConfigModal from './integrations/CloudConfigModal';
@@ -19,6 +19,7 @@ interface Integration {
   last_synced_at: string | null;
   meta_data?: any;
   module?: string;
+  user_id?: number;
 }
 
 interface ActivityScheduleIntegrationsProps {
@@ -40,6 +41,11 @@ export default function ActivityScheduleIntegrations({
 }: ActivityScheduleIntegrationsProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [pendingProvider, setPendingProvider] = useState<'google' | 'onedrive' | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    getCurrentUser().then(setCurrentUser).catch(console.error);
+  }, []);
 
   const [oauthProvider, setOauthProvider] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
@@ -72,6 +78,10 @@ export default function ActivityScheduleIntegrations({
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const [showAccountSelector, setShowAccountSelector] = useState(false);
+  const [availableAccounts, setAvailableAccounts] = useState<any[]>([]);
+
   const [success, setSuccess] = useState<string | null>(null);
   const [modalSuccess, setModalSuccess] = useState<string | null>(null);
   const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
@@ -83,11 +93,24 @@ export default function ActivityScheduleIntegrations({
 
   // ─── OAuth Setup (matches Budget flow) ───────────────────────────
   const handleOpenSetup = async (provider: 'google' | 'onedrive') => {
+    setPendingProvider(provider);
     const dbProvider = provider === 'google' ? 'google_sheets' : 'onedrive';
 
     setLoadingProvider(provider);
     setActionError(null);
-    setPendingProvider(provider);
+
+    try {
+      const authCheck = await getGlobalAuthToken(projectId, dbProvider);
+      if (authCheck && authCheck.has_auth) {
+        if (authCheck.accounts && authCheck.accounts.length > 0) {
+          setAvailableAccounts(authCheck.accounts);
+          setShowAccountSelector(true);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Global auth check failed:", err);
+    }
 
     const width = 600;
     const height = 650;
@@ -112,42 +135,10 @@ export default function ActivityScheduleIntegrations({
           </head>
           <body>
             <div class="spinner"></div>
-            <div id="status-msg">Checking existing connection...</div>
+            <div id="status-msg">Connecting to ${provider === 'google' ? 'Google' : 'Microsoft'}...</div>
           </body>
         </html>
       `);
-    }
-
-
-
-    try {
-      const authCheck = await getGlobalAuthToken(projectId, dbProvider);
-      if (authCheck && authCheck.has_auth) {
-        try {
-          await listCloudFiles(dbProvider, authCheck.refresh_token, undefined, 'all', projectId, 'activity_schedule');
-          setOauthProvider(dbProvider);
-          setRefreshToken(authCheck.refresh_token);
-          setShowConfigModal(true);
-          setLoadingProvider(null);
-
-          if (popup) popup.close();
-          return;
-        } catch (tokenErr) {
-          console.warn(`Cached ${provider} token is expired, proceeding to re-authenticate...`);
-        }
-      }
-    } catch (err) {
-      console.error("Global auth check failed:", err);
-    }
-
-    if (popup) {
-      try {
-        const msgEl = popup.document.getElementById('status-msg');
-        if (msgEl) {
-          msgEl.innerText = "Connecting to " + (provider === 'google' ? 'Google' : 'Microsoft') + "...";
-        }
-      } catch (e) {
-      }
     }
 
     try {
@@ -654,6 +645,9 @@ export default function ActivityScheduleIntegrations({
                             </>
                           )}
                         </div>
+                        {currentUser && integration.user_id === currentUser.id && integration.meta_data?.cloud_email && (
+                          <p className="text-xs text-gray-400 mt-1 truncate"><span className="font-semibold text-slate-400">Source:</span> {integration.meta_data.cloud_email}</p>
+                        )}
                       </div>
                     </div>
 
@@ -661,7 +655,13 @@ export default function ActivityScheduleIntegrations({
                     <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={globalLoading || deletingId !== null}
-                        onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
+                        onClick={() => {
+                          if (currentUser && integration.user_id !== currentUser.id) {
+                            alert("You cannot inline preview because you are not the owner, but you can open the document in a new tab and request viewing access from the owner.");
+                          } else {
+                            setActiveEditorId(activeEditorId === integration.id ? null : integration.id);
+                          }
+                        }}
                         className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
                           ? 'bg-neon-purple text-white shadow-[0_0_10px_rgba(188,19,254,0.4)]'
                           : 'hover:bg-neon-purple hover:text-white text-gray-400 hover:shadow-[0_0_10px_rgba(188,19,254,0.4)]'
@@ -940,6 +940,106 @@ export default function ActivityScheduleIntegrations({
         fetchingSheets={fetchingSheets}
         savingConfig={savingConfig}
       />
-    </div>
+    
+      {/* Account Selector Modal */}
+      {showAccountSelector && (
+        <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
+          <div className="bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-700/50 p-6 flex flex-col relative overflow-hidden text-center">
+            <h3 className="text-xl font-bold font-lexend text-white mb-4">Select Account</h3>
+            <p className="text-sm text-slate-400 mb-6">You have multiple accounts connected. Which one would you like to browse?</p>
+            
+            <div className="space-y-3 mb-6 max-h-[300px] overflow-y-auto custom-scrollbar">
+              {availableAccounts.map((acc, idx) => (
+                <button
+                  key={idx}
+                  onClick={async () => {
+                    setShowAccountSelector(false);
+                    const authProv = acc.provider === 'google_sheets' ? 'google' : 'onedrive';
+                    setLoadingProvider(authProv);
+                    try {
+                      const dbProvider = acc.provider;
+                      await listCloudFiles(dbProvider, acc.refresh_token, undefined, 'all', projectId, 'activity_schedule');
+                      
+                      setOauthProvider(dbProvider);
+                      setRefreshToken(acc.refresh_token);
+                      setShowConfigModal(true);
+                    } catch(err) {
+                      console.error(err);
+                      setActionError(`Failed to authenticate and fetch files for ${acc.email}.`);
+                    } finally {
+                      setLoadingProvider(null);
+                    }
+                  }}
+                  className="w-full flex items-center p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center mr-4 shrink-0">
+                    {acc.provider === 'google_sheets' ? (
+                       <svg className="w-5 h-5 text-neon-cyan" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10H7v-2h10v2m0-4H7V7h10v2m0 8H7v-2h10v2z" /></svg>
+                    ) : (
+                       <svg className="w-5 h-5 text-neon-purple" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" /></svg>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="text-white font-bold truncate">{acc.email}</div>
+                    <div className="text-xs text-gray-400 capitalize">{acc.provider.replace('_', ' ')}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                setShowAccountSelector(false);
+                // Trigger oauth flow
+                if (pendingProvider) {
+                   const popup = window.open('about:blank', 'OAuthPopup', 'width=600,height=650,status=no,resizable=yes,scrollbars=yes');
+                   if (popup) popup.document.write('<html><body><div style="font-family:sans-serif; text-align:center; padding-top: 50px;">Redirecting to Auth...</div></body></html>');
+                   // Call the backend to get URL and redirect popup
+                   (async () => {
+                     try {
+                       let url = '';
+                       // This requires access to getGoogleAuthUrl etc. The files have them imported.
+                       if (pendingProvider === 'google') {
+                         const res = await getGoogleAuthUrl(projectId, 'pmo');
+                         url = res.url;
+                       } else {
+                         const res = await getOneDriveAuthUrl(projectId, 'pmo');
+                         url = res.url;
+                       }
+                       if (popup) {
+                         popup.location.href = url;
+                         const checkClosed = setInterval(() => {
+                           try {
+                             if (popup.closed) {
+                               clearInterval(checkClosed);
+                               // Refresh token state or reload
+                               window.location.reload();
+                             }
+                           } catch (e) {}
+                         }, 500);
+                       }
+                     } catch(err) {
+                       if (popup) popup.close();
+                     }
+                   })();
+                }
+              }}
+              className="w-full py-3 bg-white/5 hover:bg-white/10 text-white border border-white/20 rounded-xl text-sm font-bold shadow-md transition active:scale-95 mb-3"
+            >
+              + Link a different account
+            </button>
+            <button
+              onClick={() => {
+                setShowAccountSelector(false);
+                setLoadingProvider(null);
+              }}
+              className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-xl text-sm font-bold shadow-md transition active:scale-95"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+</div>
   );
 }

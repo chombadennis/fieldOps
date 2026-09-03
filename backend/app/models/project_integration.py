@@ -10,6 +10,7 @@ class ProjectIntegration(Base, CustomBase):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete="SET NULL"), nullable=True, index=True)
     contract_id = Column(Integer, ForeignKey('contracts.id', ondelete="CASCADE"), nullable=True, index=True)
     provider = Column(String, nullable=False)  # 'google_sheets' or 'onedrive'
     spreadsheet_id = Column(String, nullable=False)
@@ -24,6 +25,7 @@ class ProjectIntegration(Base, CustomBase):
 
     # Relationships
     project = relationship("Project", back_populates="integrations")
+    user = relationship("User", back_populates="integrations")
     boq_documents = relationship("BoqDocument", foreign_keys="BoqDocument.integration_id", backref="integration", lazy="selectin")
 
     # Computed properties read from the linked BoqDocument (most recent one)

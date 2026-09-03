@@ -23,10 +23,8 @@ def get_current_user(role: str = "admin", db: Session = Depends(get_db)):
     if not user:
         user = User(
             email="demo@fieldops.co",
-            full_name="Dennis Chomba",
+            name="Dennis Chomba",
             role=role,
-            department="Engineering",
-            avatar_url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
             firebase_uid="mock_firebase_uid_123"
         )
         db.add(user)

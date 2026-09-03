@@ -28,7 +28,33 @@ export default function CloudConnectionCards({
   const isGeneralDrive = ['department', 'activity_schedule', 'milestone_payments'].includes(moduleContext);
 
   return (
-    <div className="bg-white/5 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl p-5 border border-white/10 transition-all duration-300">
+    <div className="relative bg-white/5 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl p-5 border border-white/10 transition-all duration-300 overflow-hidden">
+      {isLoading && (
+        <div className="absolute inset-0 z-20 bg-[#030305]/80 backdrop-blur-xl flex flex-col items-center justify-center">
+          <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
+            {/* Pulsing expanding rings */}
+            <div className="absolute w-full h-full bg-neon-cyan/20 rounded-full animate-ping" style={{ animationDuration: '2.5s' }}></div>
+            <div className="absolute w-12 h-12 bg-neon-purple/30 rounded-full animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }}></div>
+            <div className="absolute w-16 h-16 border border-white/10 rounded-full animate-pulse"></div>
+            
+            {/* Core glowing orb */}
+            <div className="relative z-10 w-8 h-8 bg-gradient-to-tr from-neon-cyan to-neon-purple rounded-full shadow-[0_0_30px_rgba(0,243,255,0.8)] animate-pulse"></div>
+            
+            {/* Orbiting particles */}
+            <div className="absolute w-full h-full animate-spin" style={{ animationDuration: '3s' }}>
+              <div className="absolute -top-1 left-1/2 w-2 h-2 bg-neon-cyan rounded-full shadow-[0_0_10px_#00f3ff]"></div>
+            </div>
+            <div className="absolute w-full h-full animate-spin" style={{ animationDuration: '4s', animationDirection: 'reverse' }}>
+              <div className="absolute -bottom-1 left-1/2 w-2 h-2 bg-neon-purple rounded-full shadow-[0_0_10px_#bc13fe]"></div>
+            </div>
+          </div>
+          <p className="text-sm font-bold font-lexend text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple animate-pulse">
+            Establishing Secure Connection...
+          </p>
+          <p className="text-[10px] text-gray-400 mt-2">Checking database for accounts and syncing cloud metadata</p>
+        </div>
+      )}
+
       <div className="mb-4">
         <h2 className="text-lg font-bold font-lexend text-white drop-shadow-md">Cloud Integrations</h2>
         <p className="text-xs text-gray-400 mt-1">Connect your project database with live spreadsheets for bi-directional updates.</p>

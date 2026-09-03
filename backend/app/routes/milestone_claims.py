@@ -44,63 +44,45 @@ def get_milestone_claims_documents(
 
     docs = query.order_by(MilestoneClaimDocument.created_at.desc()).all()
     
-    # Pre-fetch items for all docs
-    doc_ids = [d.id for d in docs]
-    items_by_doc = {}
-    if doc_ids:
-        all_items = db.query(MilestoneClaimItem).filter(MilestoneClaimItem.document_id.in_(doc_ids)).all()
-        for item in all_items:
-            items_by_doc.setdefault(item.document_id, []).append({
-                "activity_id": getattr(item, 'activity_id', None),
-                "description": getattr(item, 'description', None),
-                "percentage_complete_this_period": getattr(item, 'percentage_complete_this_period', 0.0),
-                "amount_claimed_this_period": getattr(item, 'amount_claimed_this_period', 0.0),
-                "values_map": getattr(item, 'values_map', {})
-            })
+    integration_ids = [d.integration_id for d in docs if d.integration_id]
+    integrations_dict = {}
+    if integration_ids:
+        from ..models.project_integration import ProjectIntegration
+        integrations = db.query(ProjectIntegration).filter(ProjectIntegration.id.in_(integration_ids)).all()
+        integrations_dict = {i.id: i for i in integrations}
 
     result = []
     for d in docs:
-        raw_map = getattr(d, 'values_map', {}) or {}
-        
-        # Extract the pure AI metrics, ignoring nested state like 'valuation' or a recursive 'extraction'
-        if "extraction" in raw_map and "metrics" in raw_map["extraction"]:
-            clean_metrics = raw_map["extraction"]["metrics"].get("values_map", {})
-        else:
-            clean_metrics = {k: v for k, v in raw_map.items() if k not in ["valuation", "extraction"]}
+        uploaded_by = None
+        cloud_email = None
+        if d.integration_id and d.integration_id in integrations_dict:
+            integration = integrations_dict[d.integration_id]
+            uploaded_by = integration.user_id
+            if integration.meta_data:
+                cloud_email = integration.meta_data.get('cloud_email')
 
-        result.append({
-            "id": d.id,
-            "project_id": getattr(d, 'project_id', project_id),
-            "contract_id": getattr(d, 'contract_id', None),
-            "title": d.name,
-            "file_url": d.file_url or "",
-            "file_type": d.file_type or "unknown",
-            "department": "milestone_claims",
-            "file_size": getattr(d, 'file_size', 0),
-            "cloud_file_id": getattr(d, 'cloud_file_id', None),
-            "origin": d.origin or "file_upload",
-            "integration_id": d.integration_id,
-            "is_linked": getattr(d, 'is_linked', True),
-            "linked_at": getattr(d, 'linked_at', None),
-            "unlinked_at": getattr(d, 'unlinked_at', None),
-            "created_at": getattr(d, 'created_at', None),
-            "claim_number": getattr(d, 'claim_number', None),
-            "valuation_date": getattr(d, 'valuation_date', None),
-            "status": getattr(d, 'status', 'Draft'),
-            "payment_status": getattr(d, 'payment_status', 'UNPAID'),
-            "gross_amount_claimed": getattr(d, 'gross_amount_claimed', 0.0),
-            "retention_deducted": getattr(d, 'retention_deducted', 0.0),
-            "net_amount_due": getattr(d, 'net_amount_due', 0.0),
-            "values_map": {
-                **raw_map,
-                "extraction": {
-                    "metrics": {
-                        "values_map": clean_metrics
-                    },
-                    "items": items_by_doc.get(d.id, [])
-                }
-            }
-        })
+        result.append(
+            platform_schemas.Document(
+                id=d.id,
+                project_id=getattr(d, 'project_id', project_id),
+                contract_id=getattr(d, 'contract_id', None),
+                title=d.name,
+                file_url=d.file_url or "",
+                file_type=d.file_type or "unknown",
+                department="milestone_claims",
+                file_size=getattr(d, 'file_size', 0),
+                cloud_file_id=getattr(d, 'cloud_file_id', None),
+                origin=d.origin or "file_upload",
+                integration_id=d.integration_id,
+                is_linked=getattr(d, 'is_linked', True),
+                linked_at=getattr(d, 'linked_at', None),
+                unlinked_at=getattr(d, 'unlinked_at', None),
+                uploaded_by=uploaded_by,
+                cloud_email=cloud_email,
+                extracted_data=getattr(d, 'extracted_data', None),
+                created_at=getattr(d, 'created_at', None)
+            )
+        )
     return result
 
 @router.post("", response_model=platform_schemas.Document)

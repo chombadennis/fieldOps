@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { listCloudSheets, saveIntegration, triggerSyncImport, previewIpcExtraction, getGoogleAuthUrl, getOneDriveAuthUrl, createProjectDocument, createDecoupledDocument, convertGoogleCloudFile, listCloudFiles, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, checkIpcExists, getGlobalAuthToken } from '@/services/api';
+import { listCloudSheets, saveIntegration, triggerSyncImport, previewIpcExtraction, getGoogleAuthUrl, getOneDriveAuthUrl, createProjectDocument, createDecoupledDocument, convertGoogleCloudFile, listCloudFiles, deleteIntegration, checkIntegrationUpdate, listActiveIntegrationSheets, dismissIntegrationSheets, checkIpcExists, getGlobalAuthToken, getCurrentUser } from '@/services/api';
 import IpcExtractionPreviewModal from './integrations/IpcExtractionPreviewModal';
 import { Folder, FileSpreadsheet, FileText, ChevronRight, ArrowLeft, Loader2, Trash2, AlertTriangle, ExternalLink, X, Unlink, Eye, Sparkles, Paperclip, RefreshCw, Link2, Layers, Lock } from 'lucide-react';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
@@ -39,7 +39,16 @@ export default function HrIntegrations({
   const [dismissedNewSheets, setDismissedNewSheets] = useState<{ [id: number]: boolean }>({});
   const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
   const [activeAuditIntegration, setActiveAuditIntegration] = useState<Integration | null>(null);
+  const [availableAccounts, setAvailableAccounts] = useState<any[]>([]);
+  const [showAccountSelector, setShowAccountSelector] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [pendingProvider, setPendingProvider] = useState<string | null>(null);
   const [showManualEntryModal, setShowManualEntryModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    getCurrentUser().then(setCurrentUser).catch(console.error);
+  }, []);
 
 
   // Form states for linking spreadsheet after OAuth redirect callback
@@ -348,10 +357,10 @@ export default function HrIntegrations({
             // ignore
           }
         }
-        
+
         // Attempt to close the popup
         window.close();
-        
+
         // If window.close() failed (often happens if browser blocks script close),
         // fallback to just showing the error in the current window.
         setTimeout(() => {
@@ -373,10 +382,10 @@ export default function HrIntegrations({
             // ignore
           }
         }
-        
+
         // Attempt to close the popup
         window.close();
-        
+
         // If window.close() failed, render the dashboard here as fallback
         setTimeout(() => {
           if (!window.closed) {
@@ -396,7 +405,7 @@ export default function HrIntegrations({
       // For window.postMessage, verify origin. BroadcastChannel doesn't have event.origin in the same way, 
       // but it's restricted to same-origin by the browser automatically.
       if (event.origin && event.origin !== window.location.origin) return;
-      
+
       if (event.data?.type === 'OAUTH_CALLBACK') {
         const { provider, token } = event.data;
         setOauthProvider(provider);
@@ -408,9 +417,9 @@ export default function HrIntegrations({
         setLoading(false);
       }
     };
-    
+
     window.addEventListener('message', handleOAuthMessage);
-    
+
     let bc: BroadcastChannel | null = null;
     try {
       bc = new BroadcastChannel('oauth_channel');
@@ -418,7 +427,7 @@ export default function HrIntegrations({
     } catch (e) {
       // ignore
     }
-    
+
     return () => {
       window.removeEventListener('message', handleOAuthMessage);
       if (bc) bc.close();
@@ -491,11 +500,26 @@ export default function HrIntegrations({
   };
 
   const handleOAuthInitiate = async (provider: 'google' | 'onedrive') => {
+    setPendingProvider(provider);
     const dbProvider = provider === 'google' ? 'google_sheets' : 'onedrive';
 
     setLoading(true);
+    setLoadingProvider(provider);
     setError(null);
-    
+
+    try {
+      const authCheck = await getGlobalAuthToken(projectId, dbProvider);
+      if (authCheck && authCheck.has_auth) {
+        if (authCheck.accounts && authCheck.accounts.length > 0) {
+          setAvailableAccounts(authCheck.accounts);
+          setShowAccountSelector(true);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Global auth check failed:", err);
+    }
+
     const width = 600;
     const height = 650;
     const left = window.screen.width / 2 - width / 2;
@@ -519,44 +543,10 @@ export default function HrIntegrations({
           </head>
           <body>
             <div class="spinner"></div>
-            <div id="status-msg">Checking existing connection...</div>
+            <div id="status-msg">Connecting to ${provider === 'google' ? 'Google' : 'Microsoft'}...</div>
           </body>
         </html>
       `);
-    }
-
-
-
-    try {
-      const authCheck = await getGlobalAuthToken(projectId, dbProvider);
-      if (authCheck && authCheck.has_auth) {
-        try {
-          const filterType = moduleContext === 'ipc' ? 'spreadsheets' : 'all';
-          await listCloudFiles(dbProvider, authCheck.refresh_token, undefined, filterType, projectId, moduleContext);
-          setOauthProvider(dbProvider);
-          setRefreshToken(authCheck.refresh_token);
-          setShowConfigModal(true);
-          setLoading(false);
-
-          if (popup) popup.close();
-          return;
-        } catch (tokenErr) {
-          console.warn(`Cached ${provider} token is expired, proceeding to re-authenticate...`);
-        }
-      }
-    } catch (err) {
-      console.error("Global auth check failed:", err);
-    }
-
-    if (popup) {
-      try {
-        const msgEl = popup.document.getElementById('status-msg');
-        if (msgEl) {
-          msgEl.innerText = `Connecting to ${provider === 'google' ? 'Google' : 'Microsoft'}...`;
-        }
-      } catch (e) {
-        // ignore
-      }
     }
 
     try {
@@ -598,32 +588,32 @@ export default function HrIntegrations({
     setPreScanWarning(null);
     setModalMessage({ type: 'info', text: 'Scanning and classifying document... If confirmed as an IPC, data will be extracted for preview' });
     try {
-        const previewResult = await previewIpcExtraction({
-          project_id: typeof projectId === 'string' ? parseInt(projectId) : projectId,
-          provider: oauthProvider as string,
-          spreadsheet_id: selectedFile.id,
-          refresh_token: refreshToken || undefined,
-          ipc_certificate_number: ipcCertificateNumber
-        });
+      const previewResult = await previewIpcExtraction({
+        project_id: typeof projectId === 'string' ? parseInt(projectId) : projectId,
+        provider: oauthProvider as string,
+        spreadsheet_id: selectedFile.id,
+        refresh_token: refreshToken || undefined,
+        ipc_certificate_number: ipcCertificateNumber
+      });
 
-        setPendingIpcFileDetails({
-          selectedFile,
-          sheetsNames,
-          isSpreadsheet
-        });
-        setIpcExtractionData({
-          ...previewResult.extracted_data,
-          legacy_exists: previewResult.legacy_exists
-        });
-        setShowIpcPreviewModal(true);
-        setModalMessage(null);
-        setLoading(false);
-        setGlobalLoading(false);
+      setPendingIpcFileDetails({
+        selectedFile,
+        sheetsNames,
+        isSpreadsheet
+      });
+      setIpcExtractionData({
+        ...previewResult.extracted_data,
+        legacy_exists: previewResult.legacy_exists
+      });
+      setShowIpcPreviewModal(true);
+      setModalMessage(null);
+      setLoading(false);
+      setGlobalLoading(false);
     } catch (err: any) {
-        console.error(err);
-        setModalMessage({ type: 'error', text: err?.response?.data?.detail || err.message || 'Failed to extract IPC data.' });
-        setLoading(false);
-        setGlobalLoading(false);
+      console.error(err);
+      setModalMessage({ type: 'error', text: err?.response?.data?.detail || err.message || 'Failed to extract IPC data.' });
+      setLoading(false);
+      setGlobalLoading(false);
     }
   };
 
@@ -777,7 +767,7 @@ export default function HrIntegrations({
         successMsg = 'IPC data saved and document linked successfully!';
       }
       setModalMessage({ type: 'success', text: successMsg });
-      
+
       onRefresh();
       setTimeout(() => {
         setShowConfigModal(false);
@@ -1241,7 +1231,9 @@ export default function HrIntegrations({
                             </span>
                           )}
                         </h4>
-                        <p className="text-xs text-slate-400 mt-1 truncate"><span className="font-semibold text-slate-400">File ID:</span> {integration.spreadsheet_id}</p>
+                        {currentUser && integration.user_id === currentUser.id && integration.meta_data?.cloud_email && (
+                          <p className="text-xs text-slate-400 mt-1 truncate"><span className="font-semibold text-slate-400">Source:</span> {integration.meta_data.cloud_email}</p>
+                        )}
                         <p className="text-xs text-slate-400 mt-0.5 truncate"><span className="font-semibold text-slate-400">Worksheets:</span> {renderSheetNames(integration.sheet_name)}</p>
                         <p className="text-[10px] text-gray-400 mt-1">
                           {isSyncing ? (
@@ -1340,7 +1332,13 @@ export default function HrIntegrations({
                     <div className="flex items-center gap-1.5 bg-slate-800/50 border border-slate-700/50 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
-                        onClick={() => setActiveEditorId(activeEditorId === integration.id ? null : integration.id)}
+                        onClick={() => {
+                          if (currentUser && integration.user_id !== currentUser.id) {
+                            alert("You cannot inline preview because you are not the owner, but you can open the document in a new tab and request viewing access from the owner.");
+                          } else {
+                            setActiveEditorId(activeEditorId === integration.id ? null : integration.id);
+                          }
+                        }}
                         className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
                           ? 'bg-indigo-600 text-white shadow-sm'
                           : 'hover:bg-slate-900 text-slate-400 hover:text-white'
@@ -1436,40 +1434,40 @@ export default function HrIntegrations({
       )}
 
 
-        <CloudConfigModal
-          moduleContext={moduleContext}
-          trackingMode={trackingMode}
-          setTrackingMode={setTrackingMode}
-          showConfigModal={showConfigModal}
-          modalMessage={modalMessage}
-          oauthProvider={oauthProvider}
-          availableFiles={availableFiles}
-          spreadsheetId={spreadsheetId}
-          boqName={boqName}
-          setBoqName={setBoqName}
-          refreshToken={refreshToken}
-          navigationHistory={navigationHistory}
-          fetchingFiles={fetchingFiles}
-          formatGuidelines={formatGuidelines}
-          isFileAllowed={isFileAllowed}
-          handleSaveConfig={handleSaveConfig}
-          handleNavigateBack={handleNavigateBack}
-          handleFolderClick={handleFolderClick}
-          handleSelectFile={handleSelectFile}
-          resetConfigModal={resetConfigModal}
-          handleCloseConfig={handleCloseConfig}
-          sheetsList={sheetsList}
-          selectedSheets={selectedSheets}
-          setSelectedSheets={setSelectedSheets}
-          fetchingSheets={fetchingSheets}
-          savingConfig={loading}
-          ipcCertificateNumber={ipcCertificateNumber}
-          setIpcCertificateNumber={setIpcCertificateNumber}
-          onClose={() => {
-            setShowConfigModal(false);
-            setModalMessage(null);
-          }}
-        />
+      <CloudConfigModal
+        moduleContext={moduleContext}
+        trackingMode={trackingMode}
+        setTrackingMode={setTrackingMode}
+        showConfigModal={showConfigModal}
+        modalMessage={modalMessage}
+        oauthProvider={oauthProvider}
+        availableFiles={availableFiles}
+        spreadsheetId={spreadsheetId}
+        boqName={boqName}
+        setBoqName={setBoqName}
+        refreshToken={refreshToken}
+        navigationHistory={navigationHistory}
+        fetchingFiles={fetchingFiles}
+        formatGuidelines={formatGuidelines}
+        isFileAllowed={isFileAllowed}
+        handleSaveConfig={handleSaveConfig}
+        handleNavigateBack={handleNavigateBack}
+        handleFolderClick={handleFolderClick}
+        handleSelectFile={handleSelectFile}
+        resetConfigModal={resetConfigModal}
+        handleCloseConfig={handleCloseConfig}
+        sheetsList={sheetsList}
+        selectedSheets={selectedSheets}
+        setSelectedSheets={setSelectedSheets}
+        fetchingSheets={fetchingSheets}
+        savingConfig={loading}
+        ipcCertificateNumber={ipcCertificateNumber}
+        setIpcCertificateNumber={setIpcCertificateNumber}
+        onClose={() => {
+          setShowConfigModal(false);
+          setModalMessage(null);
+        }}
+      />
       {/* Cancel Import Warning Modal */}
       {showCancelWarning && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60] animate-fade-in">
@@ -1693,6 +1691,110 @@ export default function HrIntegrations({
         departmentKey={departmentKey || departmentName}
         departmentName={departmentName}
       />
+
+      {/* Account Selector Modal */}
+      {showAccountSelector && (
+        <div className="fixed inset-0 bg-dark-teal-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
+          <div className="bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-700/50 p-6 flex flex-col relative overflow-hidden text-center">
+            <h3 className="text-xl font-bold font-lexend text-white mb-4">Select Account</h3>
+            <p className="text-sm text-slate-400 mb-6">You have multiple accounts connected. Which one would you like to browse?</p>
+
+            <div className="space-y-3 mb-6 max-h-[300px] overflow-y-auto custom-scrollbar">
+              {availableAccounts.map((acc, idx) => (
+                <button
+                  key={idx}
+                  onClick={async () => {
+                    setShowAccountSelector(false);
+                    const authProv = acc.provider === 'google_sheets' ? 'google' : 'onedrive';
+                    setLoadingProvider(authProv);
+                    setLoading(true);
+                    try {
+                      const dbProvider = acc.provider;
+                      const filterType = moduleContext === 'ipc' ? 'spreadsheets' : 'all';
+                      await listCloudFiles(dbProvider, acc.refresh_token, undefined, filterType, projectId, moduleContext);
+                      
+                      setOauthProvider(dbProvider);
+                      setRefreshToken(acc.refresh_token);
+                      setShowConfigModal(true);
+                    } catch(err) {
+                      console.error(err);
+                      setError(`Failed to authenticate and fetch files for ${acc.email}.`);
+                    } finally {
+                      setLoadingProvider(null);
+                      setLoading(false);
+                    }
+                  }}
+                  className="w-full flex items-center p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center mr-4 shrink-0">
+                    {acc.provider === 'google_sheets' ? (
+                      <svg className="w-5 h-5 text-neon-cyan" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10H7v-2h10v2m0-4H7V7h10v2m0 8H7v-2h10v2z" /></svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-neon-purple" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" /></svg>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="text-white font-bold truncate">{acc.email}</div>
+                    <div className="text-xs text-gray-400 capitalize">{acc.provider.replace('_', ' ')}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                setShowAccountSelector(false);
+                // Trigger oauth flow
+                if (pendingProvider) {
+                  const popup = window.open('about:blank', 'OAuthPopup', 'width=600,height=650,status=no,resizable=yes,scrollbars=yes');
+                  if (popup) popup.document.write('<html><body><div style="font-family:sans-serif; text-align:center; padding-top: 50px;">Redirecting to Auth...</div></body></html>');
+                  // Call the backend to get URL and redirect popup
+                  (async () => {
+                    try {
+                      let url = '';
+                      // This requires access to getGoogleAuthUrl etc. The files have them imported.
+                      if (pendingProvider === 'google') {
+                        const res = await getGoogleAuthUrl(projectId, 'pmo');
+                        url = res.url;
+                      } else {
+                        const res = await getOneDriveAuthUrl(projectId, 'pmo');
+                        url = res.url;
+                      }
+                      if (popup) {
+                        popup.location.href = url;
+                        const checkClosed = setInterval(() => {
+                          try {
+                            if (popup.closed) {
+                              clearInterval(checkClosed);
+                              // Refresh token state or reload
+                              window.location.reload();
+                            }
+                          } catch (e) { }
+                        }, 500);
+                      }
+                    } catch (err) {
+                      if (popup) popup.close();
+                    }
+                  })();
+                }
+              }}
+              className="w-full py-3 bg-white/5 hover:bg-white/10 text-white border border-white/20 rounded-xl text-sm font-bold shadow-md transition active:scale-95 mb-3"
+            >
+              + Link a different account
+            </button>
+            <button
+              onClick={() => {
+                setShowAccountSelector(false);
+                setLoadingProvider(null);
+                setLoading(false);
+              }}
+              className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-xl text-sm font-bold shadow-md transition active:scale-95"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

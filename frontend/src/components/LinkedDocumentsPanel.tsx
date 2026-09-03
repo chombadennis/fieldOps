@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getDocumentEmbedUrl, getDocumentStreamUrl } from '@/services/api';
+import { getDocumentEmbedUrl, getDocumentStreamUrl, getCurrentUser } from '@/services/api';
 import {
   Folder,
   FileSpreadsheet,
@@ -25,6 +25,8 @@ interface Document {
   department?: string;
   integration_id?: number;
   extracted_data?: any;
+  uploaded_by?: number;
+  cloud_email?: string;
 }
 
 interface LinkedDocumentsPanelProps {
@@ -56,6 +58,13 @@ export default function LinkedDocumentsPanel({
   const [previewKey, setPreviewKey] = useState(0);
   const [fetchedEmbedUrl, setFetchedEmbedUrl] = useState<string | null>(null);
   const [loadingEmbedUrl, setLoadingEmbedUrl] = useState<boolean>(false);
+
+  // State for current user to enforce smart conditional previews
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    getCurrentUser().then(user => setCurrentUser(user)).catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (!activeDocPreview) {
@@ -258,6 +267,11 @@ export default function LinkedDocumentsPanel({
                           rel="noopener noreferrer"
                           className="hover:underline text-white hover:text-neon-cyan transition-colors inline-flex items-center space-x-1 drop-shadow-md"
                           title="Open document in cloud workspace (Login required)"
+                          onClick={(e) => {
+                            if (currentUser && doc.uploaded_by !== currentUser.id) {
+                              alert("You are opening a document linked by another user. If you do not have permission, Google/Microsoft will prompt you to request access.");
+                            }
+                          }}
                         >
                           <span className="truncate max-w-[150px] md:max-w-[200px] lg:max-w-[400px]">{doc.title}</span>
                           <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
@@ -274,6 +288,11 @@ export default function LinkedDocumentsPanel({
                       <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold">
                         {doc.file_type || 'PDF Document'}
                       </p>
+                      {currentUser && doc.uploaded_by === currentUser.id && doc.cloud_email && (
+                        <p className="text-[10px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20 mt-1 inline-flex items-center gap-1 w-fit">
+                          <span className="opacity-70">Source:</span> {doc.cloud_email}
+                        </p>
+                      )}
                       <p className="text-[10px] text-gray-400 hover:text-dark-teal-800 mt-0.5 font-medium transition-colors cursor-help" title="To modify contents, open file directly in cloud workspace.">
                         Click name to edit in cloud (Login required)
                       </p>
@@ -304,34 +323,38 @@ export default function LinkedDocumentsPanel({
                   </div>
 
                   <div className="flex items-center justify-end space-x-2 border-t lg:border-t-0 border-white/10 pt-3 lg:pt-0 w-full lg:w-auto">
-                    <button
-                      disabled={isUnlinking || isDeletingThis}
-                      onClick={() => setActiveDocPreview(isPreviewActive ? null : doc)}
-                      className={`py-1.5 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 disabled:opacity-50 ${isPreviewActive
-                          ? 'bg-neon-cyan border-neon-cyan text-black hover:bg-white shadow-[0_0_10px_rgba(0,243,255,0.5)]'
-                          : 'border-white/20 hover:border-neon-cyan/50 text-gray-300 bg-black/40 hover:bg-neon-cyan/10 hover:text-neon-cyan'
-                        }`}
-                      title={isPreviewActive ? 'Hide inline preview' : 'Open inline preview'}
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>{isPreviewActive ? 'Hide Preview' : 'Inline Preview'}</span>
-                    </button>
+                    {(!currentUser || doc.uploaded_by === currentUser.id) && (
+                      <button
+                        disabled={isUnlinking || isDeletingThis}
+                        onClick={() => setActiveDocPreview(isPreviewActive ? null : doc)}
+                        className={`py-1.5 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 disabled:opacity-50 ${isPreviewActive
+                            ? 'bg-neon-cyan border-neon-cyan text-black hover:bg-white shadow-[0_0_10px_rgba(0,243,255,0.5)]'
+                            : 'border-white/20 hover:border-neon-cyan/50 text-gray-300 bg-black/40 hover:bg-neon-cyan/10 hover:text-neon-cyan'
+                          }`}
+                        title={isPreviewActive ? 'Hide inline preview' : 'Open inline preview'}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{isPreviewActive ? 'Hide Preview' : 'Inline Preview'}</span>
+                      </button>
+                    )}
 
 
 
                     {/* Delete Button */}
-                    <button
-                      disabled={isUnlinking || isDeletingThis}
-                      onClick={() => setDocToDelete(doc)}
-                      className="p-1.5 border border-red-500/50 hover:border-red-400 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 bg-black/40 shadow-[0_0_8px_rgba(239,68,68,0.15)]"
-                      title="Delete document data permanently from database"
-                    >
-                      {isDeletingThis ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-red-400" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </button>
+                    {(!currentUser || doc.uploaded_by === currentUser.id) && (
+                      <button
+                        disabled={isUnlinking || isDeletingThis}
+                        onClick={() => setDocToDelete(doc)}
+                        className="p-1.5 border border-red-500/50 hover:border-red-400 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 bg-black/40 shadow-[0_0_8px_rgba(239,68,68,0.15)]"
+                        title="Delete document data permanently from database"
+                      >
+                        {isDeletingThis ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-red-400" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -414,7 +437,14 @@ export default function LinkedDocumentsPanel({
               </div>
               <div>
                 <h4 className="text-sm font-bold text-white font-lexend drop-shadow-md">{activeDocPreview.title}</h4>
-                <p className="text-[10px] text-gray-400 font-bold uppercase">{activeDocPreview.file_type || 'Document'}</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">{activeDocPreview.file_type || 'Document'}</p>
+                  {activeDocPreview.cloud_email && (
+                    <p className="text-[10px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">
+                      Linked via: {activeDocPreview.cloud_email}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 

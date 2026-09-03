@@ -5,7 +5,7 @@ import FieldOpsIntegrations from '@/components/FieldOpsIntegrations';
 import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
 import DiscussionNoteInput from '@/components/DiscussionNoteInput';
 import ManualEntryModal from '@/components/integrations/ManualEntryModal';
-import { unlinkProjectDocument, unlinkDecoupledDocument, deleteProjectDocument, deleteDecoupledDocument, updateProjectDocument } from '@/services/api';
+import { unlinkProjectDocument, unlinkDecoupledDocument, deleteProjectDocument, deleteDecoupledDocument, updateProjectDocument, getCurrentUser, deleteProjectNote } from '@/services/api';
 import { renderSafeHtml } from '@/lib/sanitize';
 
 interface Note {
@@ -15,8 +15,10 @@ interface Note {
   is_issue?: boolean;
   priority?: string;
   author_name?: string;
+  author_id?: number;
   created_at?: string;
   documents?: any[];
+  values_map?: any;
 }
 
 interface Document {
@@ -27,6 +29,8 @@ interface Document {
   department?: string;
   created_at?: string;
   integration_id?: number;
+  uploaded_by?: number;
+  cloud_email?: string;
 }
 
 interface DepartmentTabProps {
@@ -67,8 +71,14 @@ export default function FieldOpsTab({
   const [unlinkingId, setUnlinkingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [updatingDocument, setUpdatingDocument] = useState<Document | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isDeletingNote, setIsDeletingNote] = useState<number | null>(null);
   
   const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    getCurrentUser().then(setCurrentUser).catch(console.error);
+  }, []);
 
   const handleUnlinkDocument = async (documentId: number) => {
     if (!onRefresh) return;
@@ -124,8 +134,27 @@ export default function FieldOpsTab({
     }
   };
 
+  const handleDeleteNote = async (noteId: number) => {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    setIsDeletingNote(noteId);
+    try {
+      await deleteProjectNote(projectId, noteId);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete item.');
+    } finally {
+      setIsDeletingNote(null);
+    }
+  };
+
   // Filter notes and docs for this department
   const filteredNotes = notes.filter((n) => n.department?.toLowerCase() === departmentKey.toLowerCase() || departmentKey === 'all');
+  
+  // Grouping discussion feed: Issues vs General
+  const issueNotes = filteredNotes.filter(n => n.is_issue && !n.values_map?.type);
+  const generalNotes = filteredNotes.filter(n => !n.is_issue && !n.values_map?.type);
+
   const filteredDocs = documents.filter((d) => d.department?.toLowerCase() === departmentKey.toLowerCase() || departmentKey === 'all');
 
   const handleUpdateDocumentData = async (title: string, payload: any) => {
@@ -203,43 +232,74 @@ export default function FieldOpsTab({
         placeholder={`Share an update or report an issue regarding ${departmentName}...`}
       />
 
-      <div className="space-y-4">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 font-inter">Discussion Feed</h4>
-        {filteredNotes.length === 0 ? (
-          <div className="bg-white/5 backdrop-blur-md rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-sm">
-            <MessageSquare className="w-8 h-8 text-gray-600 drop-shadow-sm mx-auto mb-2" />
-            <p className="text-xs text-gray-500 font-medium">No notes recorded for this department yet.</p>
-          </div>
-        ) : (
+      <div className="space-y-6">
+        {/* Issues Feed */}
+        {issueNotes.length > 0 && (
           <div className="space-y-4">
-            {filteredNotes.map((note) => (
-              <div
-                key={note.id}
-                className={`bg-white/5 backdrop-blur-md rounded-3xl p-6 border shadow-[0_4px_15px_rgba(0,0,0,0.2)] transition ${
-                  note.is_issue ? 'border-neon-pink/50 bg-neon-pink/5' : 'border-white/10'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold font-lexend text-white drop-shadow-sm">{note.author_name || 'Team Member'}</span>
-                    <span className="text-xs text-gray-500">• {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}</span>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-neon-pink/80 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" /> Active Issues
+            </h4>
+            <div className="space-y-4">
+              {issueNotes.map((note) => (
+                <div key={note.id} className="bg-neon-pink/5 backdrop-blur-md rounded-3xl p-6 border border-neon-pink/50 shadow-[0_4px_15px_rgba(255,0,127,0.1)] transition relative group">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-bold font-lexend text-white drop-shadow-sm">{note.author_name || 'Team Member'}</span>
+                      <span className="text-xs text-gray-500">• {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-neon-pink/20 text-neon-pink border border-neon-pink/50">
+                        <AlertTriangle className="w-3 h-3 mr-1" /> {note.priority || 'High'} Issue
+                      </span>
+                      {currentUser?.id === note.author_id && (
+                        <div className="hidden group-hover:flex items-center gap-1 ml-2">
+                          <button onClick={() => handleDeleteNote(note.id)} disabled={isDeletingNote === note.id} className="p-1 hover:bg-white/10 rounded-full text-gray-400 hover:text-red-400 transition-colors">
+                            <span className="text-xs">🗑️</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  {note.is_issue && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-neon-pink/20 text-neon-pink border border-neon-pink/50 shadow-[0_0_10px_rgba(255,0,127,0.3)]">
-                      <AlertTriangle className="w-3 h-3 mr-1" /> {note.priority || 'High'} Issue
-                    </span>
-                  )}
+                  <div className="text-xs text-gray-300 leading-relaxed font-medium note-content-html" dangerouslySetInnerHTML={{ __html: renderSafeHtml(note.content) }} />
                 </div>
-
-                <div 
-                  className="text-xs text-gray-300 leading-relaxed font-medium note-content-html"
-                  dangerouslySetInnerHTML={{ __html: renderSafeHtml(note.content) }}
-                />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
+
+        {/* General Discussion Feed */}
+        <div className="space-y-4">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 font-inter">Discussion Feed</h4>
+          {generalNotes.length === 0 ? (
+            <div className="bg-white/5 backdrop-blur-md rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-sm">
+              <MessageSquare className="w-8 h-8 text-gray-600 drop-shadow-sm mx-auto mb-2" />
+              <p className="text-xs text-gray-500 font-medium">No notes recorded for this department yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {generalNotes.map((note) => (
+                <div key={note.id} className="bg-white/5 backdrop-blur-md rounded-3xl p-6 border border-white/10 shadow-[0_4px_15px_rgba(0,0,0,0.2)] transition relative group">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-bold font-lexend text-white drop-shadow-sm">{note.author_name || 'Team Member'}</span>
+                      <span className="text-xs text-gray-500">• {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}</span>
+                    </div>
+
+                    {currentUser?.id === note.author_id && (
+                      <div className="hidden group-hover:flex items-center gap-1">
+                        <button onClick={() => handleDeleteNote(note.id)} disabled={isDeletingNote === note.id} className="p-1 hover:bg-white/10 rounded-full text-gray-400 hover:text-red-400 transition-colors">
+                          <span className="text-xs">🗑️</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-300 leading-relaxed font-medium note-content-html" dangerouslySetInnerHTML={{ __html: renderSafeHtml(note.content) }} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <ManualEntryModal

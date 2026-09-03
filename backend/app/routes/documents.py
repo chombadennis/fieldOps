@@ -7,8 +7,10 @@ from typing import List, Optional
 from ..db import database
 from ..models.document import Document
 from ..models.project import Project
+from ..models.contract import Contract
 from ..models.project_integration import ProjectIntegration
 from ..schemas import platform as platform_schemas
+from .users import get_current_user
 
 router = APIRouter()
 
@@ -49,13 +51,15 @@ def get_project_documents(
     if department and department != "All":
         query = query.filter(Document.department == department)
 
-    return query.order_by(Document.created_at.desc()).all()
+    docs = query.order_by(Document.created_at.desc()).all()
+    return docs
 
 @router.post("/projects/{project_id}/documents", response_model=platform_schemas.Document)
 def create_project_document(
     project_id: int,
     doc_in: platform_schemas.DocumentCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -101,6 +105,7 @@ def create_project_document(
         existing_doc.file_size = doc_in.file_size
         if doc_in.integration_id:
             existing_doc.integration_id = doc_in.integration_id
+        existing_doc.uploaded_by = current_user.id
         existing_doc.is_linked = True
         existing_doc.linked_at = func.now()
         existing_doc.unlinked_at = None
@@ -120,6 +125,7 @@ def create_project_document(
         cloud_file_id=doc_in.cloud_file_id,
         origin=doc_in.origin or "file_upload",
         integration_id=doc_in.integration_id,
+        uploaded_by=current_user.id,
         is_linked=True,
         linked_at=func.now()
     )
@@ -461,3 +467,123 @@ def update_project_document(
     db.commit()
     db.refresh(doc)
     return doc
+
+
+@router.get("/projects/{project_id}/documents/all", response_model=List[platform_schemas.Document])
+def get_all_project_documents(
+    project_id: int,
+    db: Session = Depends(get_db)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    from ..models.project_integration import ProjectIntegration
+    
+    # Pre-fetch integrations to avoid N+1 and get emails
+    integrations = db.query(ProjectIntegration).filter(ProjectIntegration.project_id == project_id).all()
+    integration_map = {i.id: i for i in integrations}
+    
+    def process_docs(docs, dept=None):
+        result = []
+        for d in docs:
+            uploaded_by = None
+            cloud_email = None
+            if d.integration_id and d.integration_id in integration_map:
+                integration = integration_map[d.integration_id]
+                uploaded_by = integration.user_id
+                if integration.meta_data:
+                    cloud_email = integration.meta_data.get('cloud_email')
+            
+            # Use getattr for department just in case
+            doc_dept = getattr(d, 'department', dept)
+            
+            result.append(
+                platform_schemas.Document(
+                    id=d.id,
+                    project_id=d.project_id,
+                    contract_id=d.contract_id,
+                    title=d.name,
+                    file_url=d.file_url or "",
+                    file_type=d.file_type or "pdf",
+                    department=doc_dept,
+                    file_size=d.file_size or 0,
+                    cloud_file_id=d.cloud_file_id,
+                    origin=d.origin or "file_upload",
+                    integration_id=d.integration_id,
+                    extracted_data=getattr(d, 'metadata_map', None) or getattr(d, 'extracted_data', None),
+                    is_linked=d.is_linked,
+                    linked_at=d.linked_at,
+                    unlinked_at=d.unlinked_at,
+                    created_at=getattr(d, 'created_at', None),
+                    uploaded_by=getattr(d, 'uploaded_by', uploaded_by),
+                    cloud_email=cloud_email
+                )
+            )
+        return result
+
+    all_docs = []
+
+    # 1. Standard Documents
+    query_docs = db.query(Document).filter(Document.project_id == project_id, Document.is_linked == True).order_by(Document.created_at.desc()).all()
+    all_docs.extend(process_docs(query_docs))
+
+    # 2. Tech
+    try:
+        from ..models.tech import TechDocument
+        tech_docs = db.query(TechDocument).filter(TechDocument.project_id == project_id).all()
+        all_docs.extend(process_docs(tech_docs, 'Tech'))
+    except ImportError: pass
+
+    # 3. Field Ops
+    try:
+        from ..models.field_ops import FieldOpsDocument
+        fo_docs = db.query(FieldOpsDocument).filter(FieldOpsDocument.project_id == project_id).all()
+        all_docs.extend(process_docs(fo_docs, 'Field Operations'))
+    except ImportError: pass
+
+    # 4. Activity Schedule
+    try:
+        from ..models.activity_schedule import ActivityScheduleDocument
+        as_docs = db.query(ActivityScheduleDocument).filter(ActivityScheduleDocument.project_id == project_id).all()
+        all_docs.extend(process_docs(as_docs, 'Activity Schedule'))
+    except ImportError: pass
+
+    # 5. Milestone Claims
+    try:
+        from ..models.milestone_claims import MilestoneClaimDocument
+        mc_docs = db.query(MilestoneClaimDocument).filter(MilestoneClaimDocument.project_id == project_id).all()
+        all_docs.extend(process_docs(mc_docs, 'Milestone Claims'))
+    except ImportError: pass
+
+    # 6. Rate Schedule
+    try:
+        from ..models.rate_schedule import RateScheduleDocument
+        rs_docs = db.query(RateScheduleDocument).filter(RateScheduleDocument.project_id == project_id).all()
+        all_docs.extend(process_docs(rs_docs, 'Rate Schedule'))
+    except ImportError: pass
+
+    # 7. Reimbursable Claims
+    try:
+        from ..models.reimbursable_claims import ReimbursableClaimDocument
+        rc_docs = db.query(ReimbursableClaimDocument).filter(ReimbursableClaimDocument.project_id == project_id).all()
+        all_docs.extend(process_docs(rc_docs, 'Reimbursable Claims'))
+    except ImportError: pass
+
+    # 8. Program of Works
+    try:
+        from ..models.program_of_works import ProgramOfWorksDocument
+        pow_docs = db.query(ProgramOfWorksDocument).filter(ProgramOfWorksDocument.project_id == project_id).all()
+        all_docs.extend(process_docs(pow_docs, 'Program of Works'))
+    except ImportError: pass
+
+    # 9. IPC
+    try:
+        from ..models.ipc_document import IpcDocument
+        ipc_docs = db.query(IpcDocument).filter(IpcDocument.project_id == project_id).all()
+        all_docs.extend(process_docs(ipc_docs, 'IPC'))
+    except ImportError: pass
+
+    # Sort all dynamically gathered docs by created_at descending, putting missing ones at the end
+    all_docs.sort(key=lambda d: d.created_at.timestamp() if getattr(d, 'created_at', None) else 0, reverse=True)
+    return all_docs

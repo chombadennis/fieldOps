@@ -16,7 +16,7 @@ def get_google_auth_url(project_id: int, state: Optional[str] = None) -> str:
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": settings.GOOGLE_REDIRECT_URI,
         "response_type": "code",
-        "scope": "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
+        "scope": "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
         "access_type": "offline",
         "prompt": "consent",
         "state": state if state else str(project_id)
@@ -42,7 +42,21 @@ async def exchange_google_code_for_tokens(code: str) -> Dict[str, Any]:
         if response.status_code != 200:
             logger.error(f"Failed to exchange Google OAuth code: {response.text}")
             raise Exception(f"Google Token Exchange Error: {response.text}")
-        return response.json()
+            
+        token_data = response.json()
+        
+        # Fetch user's email
+        access_token = token_data.get("access_token")
+        if access_token:
+            userinfo_response = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            if userinfo_response.status_code == 200:
+                userinfo = userinfo_response.json()
+                token_data["email"] = userinfo.get("email")
+                
+        return token_data
 
 async def refresh_google_access_token(refresh_token: str) -> str:
     """

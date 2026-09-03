@@ -48,25 +48,25 @@ export default function LandingPage() {
             </div>
             <div className="grid md:grid-cols-3 gap-8">
               <div className="group p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl hover:border-neon-cyan/50 hover:bg-white/10 transition-all duration-500 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(0,243,255,0.2)]">
-                  <div className="w-16 h-16 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center mb-6 animate-float shadow-inner group-hover:border-neon-cyan/50 transition-colors">
-                    <Image src="/file.svg" alt="Bidding" width={32} height={32} className="opacity-80 group-hover:opacity-100 invert" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-4 text-white group-hover:text-neon-cyan transition-colors font-lexend">Everything In One Place</h3>
-                  <p className="text-gray-400 leading-relaxed text-sm">Project data lives everywhere. Whether it is in the cloud, on local drives or across different teams, FieldOps pulls the key metrics into one single location.</p>
+                <div className="w-16 h-16 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center mb-6 animate-float shadow-inner group-hover:border-neon-cyan/50 transition-colors">
+                  <Image src="/file.svg" alt="Bidding" width={32} height={32} className="opacity-80 group-hover:opacity-100 invert" />
+                </div>
+                <h3 className="text-xl font-bold mb-4 text-white group-hover:text-neon-cyan transition-colors font-lexend">Everything In One Place</h3>
+                <p className="text-gray-400 leading-relaxed text-sm">Project data lives everywhere. Whether it is in the cloud, on local drives or across different teams, FieldOps pulls the key metrics into one single location.</p>
               </div>
               <div className="group p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl hover:border-neon-purple/50 hover:bg-white/10 transition-all duration-500 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(157,0,255,0.2)]">
-                  <div className="w-16 h-16 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center mb-6 animate-float shadow-inner group-hover:border-neon-purple/50 transition-colors" style={{ animationDelay: '0.5s' }}>
-                    <Image src="/window.svg" alt="Project Management" width={32} height={32} className="opacity-80 group-hover:opacity-100 invert" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-4 text-white group-hover:text-neon-purple transition-colors font-lexend">Historical Footprint</h3>
-                  <p className="text-gray-400 leading-relaxed text-sm">Create a living record of discussions, agreements, issues and progress. Learn from past successes and mistakes by reinforcing your team's experience.</p>
+                <div className="w-16 h-16 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center mb-6 animate-float shadow-inner group-hover:border-neon-purple/50 transition-colors" style={{ animationDelay: '0.5s' }}>
+                  <Image src="/window.svg" alt="Project Management" width={32} height={32} className="opacity-80 group-hover:opacity-100 invert" />
+                </div>
+                <h3 className="text-xl font-bold mb-4 text-white group-hover:text-neon-purple transition-colors font-lexend">Historical Footprint</h3>
+                <p className="text-gray-400 leading-relaxed text-sm">Create a living record of discussions, agreements, issues and progress. Learn from past successes and mistakes by reinforcing your team's experience.</p>
               </div>
               <div className="group p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl hover:border-neon-pink/50 hover:bg-white/10 transition-all duration-500 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(255,0,127,0.2)]">
-                  <div className="w-16 h-16 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center mb-6 animate-float shadow-inner group-hover:border-neon-pink/50 transition-colors" style={{ animationDelay: '1s' }}>
-                    <Image src="/globe.svg" alt="Real-time Analytics" width={32} height={32} className="opacity-80 group-hover:opacity-100 invert" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-4 text-white group-hover:text-neon-pink transition-colors font-lexend">Keep Teams Connected</h3>
-                  <p className="text-gray-400 leading-relaxed text-sm">Keep everyone aligned with built-in chats, notes and escalations. Control exactly who sees what with strict role-based access to your project data.</p>
+                <div className="w-16 h-16 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center mb-6 animate-float shadow-inner group-hover:border-neon-pink/50 transition-colors" style={{ animationDelay: '1s' }}>
+                  <Image src="/globe.svg" alt="Real-time Analytics" width={32} height={32} className="opacity-80 group-hover:opacity-100 invert" />
+                </div>
+                <h3 className="text-xl font-bold mb-4 text-white group-hover:text-neon-pink transition-colors font-lexend">Keep Teams Connected</h3>
+                <p className="text-gray-400 leading-relaxed text-sm">Keep everyone aligned with built-in chats, notes and escalations. Control exactly who sees what with strict role-based access to your project data.</p>
               </div>
             </div>
           </div>
@@ -114,7 +114,7 @@ export default function LandingPage() {
                       <div className="h-4 w-32 bg-white/5 rounded-full border border-white/10"></div>
                     </div>
                   </div>
-                  
+
                   {/* Mock App Body */}
                   <div className="flex flex-1 p-3 gap-3 overflow-hidden bg-black/40">
                     {/* Mock Sidebar */}
@@ -124,7 +124,7 @@ export default function LandingPage() {
                       <div className="w-5 h-5 rounded-md bg-white/10"></div>
                       <div className="w-5 h-5 rounded-md bg-white/10"></div>
                     </div>
-                    
+
                     {/* Mock Main Content */}
                     <div className="flex-1 flex flex-col gap-3">
                       {/* Mock Header Cards */}
@@ -144,7 +144,7 @@ export default function LandingPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Mock Table/List */}
                       <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 flex-1 p-3 flex flex-col overflow-hidden">
                         <span className="text-xs text-white font-bold mb-3 border-b border-white/10 pb-2">Recent Activity</span>
@@ -153,7 +153,7 @@ export default function LandingPage() {
                           <div className="flex justify-between items-center p-2 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                             <div className="flex flex-col">
                               <span className="text-[11px] text-white font-medium">Site Alpha - Foundation Pour</span>
-                              <span className="text-[9px] text-gray-500">Updated by Sarah Jenkins • 2h ago</span>
+                              <span className="text-[9px] text-gray-500">Updated by Achol Malual • 2h ago</span>
                             </div>
                             <span className="text-[9px] font-bold text-neon-cyan bg-neon-cyan/10 border border-neon-cyan/50 px-2 py-0.5 rounded-full">In Progress</span>
                           </div>
@@ -161,7 +161,7 @@ export default function LandingPage() {
                           <div className="flex justify-between items-center p-2 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                             <div className="flex flex-col">
                               <span className="text-[11px] text-white font-medium">Blueprint Revision v4.2</span>
-                              <span className="text-[9px] text-gray-500">Uploaded by Mike Ross • 5h ago</span>
+                              <span className="text-[9px] text-gray-500">Uploaded by Claxton Okudupe • 5h ago</span>
                             </div>
                             <span className="text-[9px] font-bold text-neon-purple bg-neon-purple/10 border border-neon-purple/50 px-2 py-0.5 rounded-full">Under Review</span>
                           </div>
@@ -169,7 +169,7 @@ export default function LandingPage() {
                           <div className="flex justify-between items-center p-2 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                             <div className="flex flex-col">
                               <span className="text-[11px] text-white font-medium">Safety Inspection - Block B</span>
-                              <span className="text-[9px] text-gray-500">Completed by David Chen • 1d ago</span>
+                              <span className="text-[9px] text-gray-500">Completed by Emma Michaelson • 1d ago</span>
                             </div>
                             <span className="text-[9px] font-bold text-green-400 bg-green-400/10 border border-green-400/50 px-2 py-0.5 rounded-full">Completed</span>
                           </div>
@@ -202,7 +202,7 @@ export default function LandingPage() {
             <div className="max-w-4xl mx-auto bg-white/5 backdrop-blur-xl border border-white/10 rounded-[40px] p-12 md:p-20 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
               <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-neon-cyan/20 blur-[100px] rounded-full mix-blend-screen pointer-events-none"></div>
               <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-neon-pink/20 blur-[100px] rounded-full mix-blend-screen pointer-events-none"></div>
-              
+
               <h2 className="text-2xl md:text-3xl font-bold mb-6 font-lexend text-white relative z-10 drop-shadow-lg">Ready to take control of your projects?</h2>
               <p className="text-lg text-gray-300 mb-10 max-w-2xl mx-auto relative z-10">
                 Join hundreds of construction firms scaling their operations with FieldOps.

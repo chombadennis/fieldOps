@@ -40,8 +40,24 @@ def get_rate_schedule_documents(
         query = query.filter(RateScheduleDocument.contract_id == contract_id)
 
     docs = query.order_by(RateScheduleDocument.created_at.desc()).all()
+    
+    integration_ids = [d.integration_id for d in docs if d.integration_id]
+    integrations_dict = {}
+    if integration_ids:
+        from ..models.project_integration import ProjectIntegration
+        integrations = db.query(ProjectIntegration).filter(ProjectIntegration.id.in_(integration_ids)).all()
+        integrations_dict = {i.id: i for i in integrations}
+
     result = []
     for d in docs:
+        uploaded_by = None
+        cloud_email = None
+        if d.integration_id and d.integration_id in integrations_dict:
+            integration = integrations_dict[d.integration_id]
+            uploaded_by = integration.user_id
+            if integration.meta_data:
+                cloud_email = integration.meta_data.get('cloud_email')
+
         result.append(
             platform_schemas.Document(
                 id=d.id,
@@ -58,6 +74,9 @@ def get_rate_schedule_documents(
                 is_linked=getattr(d, 'is_linked', True),
                 linked_at=getattr(d, 'linked_at', None),
                 unlinked_at=getattr(d, 'unlinked_at', None),
+                uploaded_by=uploaded_by,
+                cloud_email=cloud_email,
+                extracted_data=getattr(d, 'extracted_data', None),
                 created_at=getattr(d, 'created_at', None)
             )
         )
