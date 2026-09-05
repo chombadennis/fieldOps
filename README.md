@@ -1,13 +1,12 @@
-# FieldOps: Construction Cost and Revenue Analysis
+# FieldOps
 
-FieldOps is a web-based platform designed to streamline the analysis of Bill of Quantities (BOQ) documents for construction professionals. By leveraging AI, the application automates the process of data extraction, and cost and revenue analysis, enabling users to make faster and more informed decisions.
+FieldOps is a collaborative platform for infrastructure projects. It is built to pull scattered metrics, teams and insights into one organized hub. FieldOps brings order to projects by giving the team a clear overview of project health and performance, while ensuring the team collaborates from a position of understanding of the projects' needs and progress, while keeping the entire operation aligned from day one to handover.
 
 ## Key Features
 
-*   **Effortless BOQ Upload:** Upload your BOQ files in `.xls` or `.xlsx` format.
-*   **AI-Powered Analysis:** Our platform uses Google's Gemini AI model to automatically parse and analyze your documents.
-*   **Comprehensive Data Views:** View detailed analysis on cost and revenue, presented in a clear and understandable format.
-*   **Secure Authentication:** User authentication is handled securely via Firebase.
+*   **Everything In One Place:** Pulls scattered project data and summaries into one workspace, providing an understanding of project health.
+*   **Collaborative Project Health:** Understand the health of your operations through team coordination, communication, and automated reminders, keeping everyone aligned on objectives.
+*   **Corporate & Project History:** Establish a historical footprint that preserves the legacy of projects and the company, ensuring past context and collaboration inform future success.
 
 ## Tech Stack
 
@@ -105,7 +104,7 @@ In your terminal, run the following commands:
 
 ```bash
 cd backend
-uvicorn app.main:app --reload --port 8000
+python main.py
 ```
 
 This will start the FastAPI server on `http://localhost:8000`. You should leave this terminal running.

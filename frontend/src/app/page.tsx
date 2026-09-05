@@ -23,7 +23,7 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="text-lg text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Connect scattered data, teams and insights into one unified workspace. Give leadership total visibility, build a historical footprint and keep everyone on the same page from day one to handover.
+            Connect scattered data, teams and insights into a unified workspace. Preserve valuable project knowledge and keep the project team on the same page from day one to handover.
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
             <Link href="/dashboard" className="w-full sm:w-auto relative group">
@@ -58,7 +58,7 @@ export default function LandingPage() {
                 <div className="w-16 h-16 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center mb-6 animate-float shadow-inner group-hover:border-neon-purple/50 transition-colors" style={{ animationDelay: '0.5s' }}>
                   <Image src="/window.svg" alt="Project Management" width={32} height={32} className="opacity-80 group-hover:opacity-100 invert" />
                 </div>
-                <h3 className="text-xl font-bold mb-4 text-white group-hover:text-neon-purple transition-colors font-lexend">Historical Footprint</h3>
+                <h3 className="text-xl font-bold mb-4 text-white group-hover:text-neon-purple transition-colors font-lexend">Preserve Project Knowledge</h3>
                 <p className="text-gray-400 leading-relaxed text-sm">Create a living record of discussions, agreements, issues and progress. Learn from past successes and mistakes by reinforcing your team's experience.</p>
               </div>
               <div className="group p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl hover:border-neon-pink/50 hover:bg-white/10 transition-all duration-500 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(255,0,127,0.2)]">
@@ -189,7 +189,7 @@ export default function LandingPage() {
             <div className="max-w-3xl mx-auto">
               <h2 className="text-3xl font-bold mb-8 font-lexend text-white drop-shadow-md">A Living System of Record</h2>
               <p className="text-lg text-gray-400 leading-relaxed">
-                We built FieldOps because we were tired of losing project knowledge in disintegrated email chains and scattered folders. By bringing teams and data together, we give leadership total clarity, help teams work together and build a historical footprint of our projects.
+                We built FieldOps because we were tired of losing project knowledge in disintegrated cloud platforms and scattered folders. By bringing teams and data together, we help the project team work together and ensure valuable project knowledge is not lost but instead used to improve future projects.
               </p>
             </div>
           </div>

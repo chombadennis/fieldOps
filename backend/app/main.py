@@ -130,8 +130,8 @@ from app.models.document import Document
 from app.models.project_integration import ProjectIntegration
 from sqlalchemy.orm.attributes import flag_modified
 from datetime import datetime
-
-
-
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
 
 
