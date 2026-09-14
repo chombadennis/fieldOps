@@ -29,6 +29,7 @@ def get_db():
 def run_migrations():
     """Ensure newly added columns exist in PostgreSQL tables without requiring full Alembic migrations."""
     from sqlalchemy import text
+    from .database import Base # to get all tables
     with engine.connect() as conn:
         try:
             conn.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS revised_amount DOUBLE PRECISION;"))
@@ -64,6 +65,15 @@ def run_migrations():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
+            
+            # Automatically add created_by and last_updated_by to all tables that define them
+            import app.models # Ensure all models are registered in Base.metadata
+            for table_name, table in Base.metadata.tables.items():
+                if 'created_by' in table.c:
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS created_by VARCHAR;"))
+                if 'last_updated_by' in table.c:
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS last_updated_by VARCHAR;"))
+
             conn.commit()
         except Exception as e:
             print(f"Migration notice: {e}")

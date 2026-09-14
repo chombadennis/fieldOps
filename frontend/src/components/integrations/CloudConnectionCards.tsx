@@ -12,6 +12,7 @@ interface CloudConnectionCardsProps {
   handleOAuthInitiate: (provider: 'google' | 'onedrive') => void;
   formatGuidelines: string;
   onManualEntryClick?: () => void;
+  children?: React.ReactNode;
 }
 
 export default function CloudConnectionCards({
@@ -24,6 +25,7 @@ export default function CloudConnectionCards({
   handleOAuthInitiate,
   formatGuidelines,
   onManualEntryClick,
+  children,
 }: CloudConnectionCardsProps) {
   const isGeneralDrive = ['department', 'activity_schedule', 'milestone_payments'].includes(moduleContext);
 
@@ -78,7 +80,7 @@ export default function CloudConnectionCards({
         </p>
       </div>
 
-      <div className={`grid grid-cols-1 gap-4 ${onManualEntryClick ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+      <div className={`grid grid-cols-1 gap-4 ${onManualEntryClick || children ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         {/* Google Sheets Card */}
         <div className="bg-white/5 rounded-xl p-4 border border-white/10 flex flex-col justify-between hover:shadow-[0_0_30px_rgba(0,243,255,0.15)] hover:border-neon-cyan/50 transition-all duration-300 transform hover:-translate-y-0.5 group">
           <div>
@@ -158,6 +160,8 @@ export default function CloudConnectionCards({
             </button>
           </div>
         )}
+
+        {children}
       </div>
     </div>
   );

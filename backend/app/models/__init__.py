@@ -22,3 +22,12 @@ from .milestone_claim import MilestoneClaimDocument, MilestoneClaimItem
 from .rate_schedule import RateScheduleDocument, RateScheduleItem
 from .reimbursable_claim import ReimbursableClaimDocument, ReimbursableClaimItem
 from .program_of_works import ProgramOfWorksDocument, ProgramOfWorksItem
+from .decision import Decision
+from .action import Action
+
+# --- Collaboration System ---
+from .thread import Thread
+from .thread_reply import ThreadReply
+from .task import Task
+from .log_entry import LogEntry
+from .notification import Notification

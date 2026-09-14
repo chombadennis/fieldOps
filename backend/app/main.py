@@ -22,7 +22,7 @@ from slowapi.errors import RateLimitExceeded
 
 from .core.config import settings
 from .limiter import limiter
-from .routes import projects, activities, ai_parser, integrations, users, notes, documents, financials, contracts
+from .routes import projects, activities, ai_parser, integrations, users, notes, documents, financials, contracts, decisions, ai_assist
 from .routes import tech
 from .routes import field_ops
 from .routes import budget
@@ -32,6 +32,8 @@ from .routes import milestone_claims
 from .routes import rate_schedule
 from .routes import reimbursable_claims
 from .routes import program_of_works
+# Collaboration system
+from .routes import threads, tasks, log_entries, notifications
 
 # --- Configure Logging ---
 logging.basicConfig(level=logging.INFO)
@@ -79,6 +81,10 @@ origins = [
     # --- Local development ---
     "http://localhost:3000",
     "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://0.0.0.0:3001",
+    "http://0.0.0.0:3000",
     # --- Cloud Workstation development ---
     "https://3001-firebase-fieldops-1771239563342.cluster-fbfjltn375c6wqxlhoehbz44sk.cloudworkstations.dev",
 ]
@@ -104,6 +110,7 @@ app.include_router(ai_parser.router, prefix="/api", tags=["AI Parser"])
 app.include_router(integrations.router, prefix="/api", tags=["Integrations"])
 app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(notes.router, prefix="/api", tags=["Notes"])
+app.include_router(decisions.router, prefix="/api", tags=["Decisions & Actions"])
 app.include_router(documents.router, prefix="/api", tags=["Documents"])
 app.include_router(tech.router, prefix='/api', tags=['Tech Documents'])
 app.include_router(field_ops.router, prefix='/api', tags=['Field Ops Documents'])
@@ -115,6 +122,12 @@ app.include_router(rate_schedule.router, prefix='/api', tags=['Rate Schedule Doc
 app.include_router(reimbursable_claims.router, prefix='/api', tags=['Reimbursable Claim Documents'])
 app.include_router(program_of_works.router, prefix='/api', tags=['Program Of Works Documents'])
 app.include_router(financials.router, prefix="/api", tags=["Financials"])
+app.include_router(ai_assist.router, prefix="/api", tags=["AI Assist"])
+# --- Collaboration System ---
+app.include_router(threads.router, prefix="/api", tags=["Threads"])
+app.include_router(tasks.router, prefix="/api", tags=["Tasks"])
+app.include_router(log_entries.router, prefix="/api", tags=["Log Entries"])
+app.include_router(notifications.router, prefix="/api", tags=["Notifications"])
 
 # --- Root Endpoint ---
 @app.get("/")

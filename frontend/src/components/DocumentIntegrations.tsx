@@ -38,7 +38,7 @@ export default function DocumentIntegrations({
   const [ipcReExtractModalIntegration, setIpcReExtractModalIntegration] = useState<Integration | null>(null);
   const [dismissedNewSheets, setDismissedNewSheets] = useState<{ [id: number]: boolean }>({});
   const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
-  const [activeAuditIntegration, setActiveAuditIntegration] = useState<Integration | null>(null);
+  const [activeReviewIntegration, setActiveReviewIntegration] = useState<Integration | null>(null);
   const [availableAccounts, setAvailableAccounts] = useState<any[]>([]);
   const [showAccountSelector, setShowAccountSelector] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
@@ -961,7 +961,7 @@ export default function DocumentIntegrations({
     setLoading(true);
     setGlobalLoading(true);
     setSyncingId(integration.id);
-    setModalMessage({ type: 'info', text: 'Re-extracting IPC document data via AI...' });
+    setModalMessage({ type: 'info', text: 'Re-extracting IPC document data automatically...' });
     try {
       const selectedFile = {
         id: integration.spreadsheet_id,
@@ -1009,7 +1009,7 @@ export default function DocumentIntegrations({
 
     // Close preview/modal if open for this integration
     if (activeEditorId === id) setActiveEditorId(null);
-    if (activeAuditIntegration?.id === id) setActiveAuditIntegration(null);
+    if (activeReviewIntegration?.id === id) setActiveReviewIntegration(null);
 
     setLoading(true);
     setGlobalLoading(true);
@@ -1038,7 +1038,7 @@ export default function DocumentIntegrations({
     setDeletingId(id);
 
     if (activeEditorId === id) setActiveEditorId(null);
-    if (activeAuditIntegration?.id === id) setActiveAuditIntegration(null);
+    if (activeReviewIntegration?.id === id) setActiveReviewIntegration(null);
 
     setLoading(true);
     setGlobalLoading(true);
@@ -1352,7 +1352,7 @@ export default function DocumentIntegrations({
                           <button
                             disabled={isLoading || syncingId !== null || deletingId !== null}
                             onClick={() => handleOpenIpcReExtractModal(integration)}
-                            title="Edits detected in cloud! Click to re-extract IPC data via AI"
+                            title="Edits detected in cloud! Click to re-extract IPC data automatically"
                             className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 border border-amber-600 text-white hover:from-amber-600 hover:to-amber-700 rounded-xl shadow-sm text-xs font-bold flex items-center space-x-1 transition-all duration-200 animate-pulse active:scale-95 disabled:opacity-50"
                           >
                             {syncingId === integration.id ? (
@@ -1683,7 +1683,7 @@ export default function DocumentIntegrations({
         </div>
       )}
 
-      {/* Custom AI Re-Extraction Guidelines & Rate Limit Confirmation Modal */}
+      {/* Custom System Re-Extraction Guidelines & Rate Limit Confirmation Modal */}
       {ipcReExtractModalIntegration !== null && (() => {
         const logs = getIpcReExtractLogs(ipcReExtractModalIntegration);
         const usedCount = logs.length;
@@ -1705,7 +1705,7 @@ export default function DocumentIntegrations({
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white">
-                    {remainingCount > 0 ? 'AI Re-Extraction Guidelines' : 'Daily Re-Extraction Limit Reached'}
+                    {remainingCount > 0 ? 'System Re-Extraction Guidelines' : 'Daily Re-Extraction Limit Reached'}
                   </h3>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
                     remainingCount > 0 ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-red-100 text-red-900 border border-red-200'
@@ -1728,7 +1728,7 @@ export default function DocumentIntegrations({
                     <div className="bg-blue-50 border border-indigo-500/30 rounded-xl p-3 text-indigo-200">
                       <p className="font-semibold mb-1">Usage Policy:</p>
                       <p>
-                        IPC AI re-extraction is limited to a maximum of <strong>2 times per 24 hours</strong> for this document to maintain system stability and performance.
+                        IPC system re-extraction is limited to a maximum of <strong>2 times per 24 hours</strong> for this document to maintain system stability and performance.
                       </p>
                     </div>
                   </div>
@@ -1754,7 +1754,7 @@ export default function DocumentIntegrations({
                   <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-xs text-red-900 leading-relaxed space-y-2">
                     <p className="font-bold">Daily Rate Limit Exceeded:</p>
                     <p>
-                      You have already used your 2 allowed AI re-extractions for this document in the past 24 hours.
+                      You have already used your 2 allowed system re-extractions for this document in the past 24 hours.
                     </p>
                     <p className="text-[11px] text-red-800">
                       Please allow 24 hours before re-extracting again, or adjust valuation figures directly in the IPC Certificate Details sheet.
@@ -1774,11 +1774,11 @@ export default function DocumentIntegrations({
         );
       })()}
       {/* Structure Report Modal */}
-      {activeAuditIntegration !== null && (
+      {activeReviewIntegration !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 flex flex-col relative animate-scale-up max-h-[90vh] overflow-hidden">
             <button
-              onClick={() => setActiveAuditIntegration(null)}
+              onClick={() => setActiveReviewIntegration(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-slate-400 active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
@@ -1798,23 +1798,23 @@ export default function DocumentIntegrations({
             <div className="flex-1 overflow-y-auto min-h-0 pr-1.5 mb-6 space-y-5">
               {/* Score Gauge */}
               <div className="flex flex-col items-center justify-center py-5 bg-indigo-50/40 rounded-2xl border border-indigo-500/30/50">
-                <div className={`relative flex items-center justify-center w-24 h-24 rounded-full border-4 bg-slate-900 shadow-sm transition-colors ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'border-slate-700/50' :
-                  Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'border-emerald-500' :
-                    Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'border-amber-500' : 'border-red-500'
+                <div className={`relative flex items-center justify-center w-24 h-24 rounded-full border-4 bg-slate-900 shadow-sm transition-colors ${activeReviewIntegration.validation_score === null || activeReviewIntegration.validation_score === undefined ? 'border-slate-700/50' :
+                  Math.round(activeReviewIntegration.validation_score * 100) >= 90 ? 'border-emerald-500' :
+                    Math.round(activeReviewIntegration.validation_score * 100) >= 75 ? 'border-amber-500' : 'border-red-500'
                   }`}>
-                  <span className={`text-2xl font-extrabold ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'text-slate-400' :
-                    Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'text-emerald-600' :
-                      Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'text-amber-600' : 'text-red-650'
+                  <span className={`text-2xl font-extrabold ${activeReviewIntegration.validation_score === null || activeReviewIntegration.validation_score === undefined ? 'text-slate-400' :
+                    Math.round(activeReviewIntegration.validation_score * 100) >= 90 ? 'text-emerald-600' :
+                      Math.round(activeReviewIntegration.validation_score * 100) >= 75 ? 'text-amber-600' : 'text-red-650'
                     }`}>
-                    {activeAuditIntegration.validation_score !== null && activeAuditIntegration.validation_score !== undefined
-                      ? `${Math.round(activeAuditIntegration.validation_score * 100)}%`
+                    {activeReviewIntegration.validation_score !== null && activeReviewIntegration.validation_score !== undefined
+                      ? `${Math.round(activeReviewIntegration.validation_score * 100)}%`
                       : 'N/A'}
                   </span>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 mt-2.5">Structure Match Score</span>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-2 inline-block ${!activeAuditIntegration.preview_only ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-2 inline-block ${!activeReviewIntegration.preview_only ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
                   }`}>
-                  {!activeAuditIntegration.preview_only ? 'Valid Structure' : 'Preview Only'}
+                  {!activeReviewIntegration.preview_only ? 'Valid Structure' : 'Preview Only'}
                 </span>
               </div>
 
@@ -1823,14 +1823,14 @@ export default function DocumentIntegrations({
                 <div>
                   <span className="font-bold text-slate-200 block mb-1">Workbook Source:</span>
                   <span className="font-medium text-slate-400 bg-slate-800/50 px-2 py-1 rounded inline-block truncate max-w-full font-mono">
-                    {activeAuditIntegration.boq_name || 'Spreadsheet BOQ'}
+                    {activeReviewIntegration.boq_name || 'Spreadsheet BOQ'}
                   </span>
                 </div>
 
                 <div>
                   <span className="font-bold text-slate-200 block mb-1">Structure Scan Summary:</span>
                   <p className="text-gray-650">
-                    {activeAuditIntegration.validation_summary || (!activeAuditIntegration.preview_only ? (
+                    {activeReviewIntegration.validation_summary || (!activeReviewIntegration.preview_only ? (
                       "The system successfully scanned the spreadsheet contents. It confirmed that the row structure represents a valid Bill of Quantities (material descriptions, pricing rates, unit measures, and total amounts) with a high coverage of construction items."
                     ) : (
                       "The structure scan detected layout or content irregularities in the spreadsheet row descriptions that do not match the expected Bill of Quantities checklist structure."
@@ -1838,11 +1838,11 @@ export default function DocumentIntegrations({
                   </p>
                 </div>
 
-                {activeAuditIntegration.validation_issues && activeAuditIntegration.validation_issues.length > 0 ? (
+                {activeReviewIntegration.validation_issues && activeReviewIntegration.validation_issues.length > 0 ? (
                   <div>
                     <span className="font-bold text-slate-200 block mb-1.5">Discovered Issues & Observations:</span>
                     <ul className="space-y-1.5 pl-1.5">
-                      {activeAuditIntegration.validation_issues.map((issue: string, idx: number) => (
+                      {activeReviewIntegration.validation_issues.map((issue: string, idx: number) => (
                         <li key={idx} className="flex items-start space-x-2 text-slate-300">
                           <span className="text-amber-500 font-extrabold select-none">•</span>
                           <span>{issue}</span>
@@ -1865,7 +1865,7 @@ export default function DocumentIntegrations({
             </div>
 
             <button
-              onClick={() => setActiveAuditIntegration(null)}
+              onClick={() => setActiveReviewIntegration(null)}
               className="w-full py-2.5 bg-gray-850 hover:bg-gray-900 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-100 active:scale-[0.98] bg-gray-800 flex-shrink-0"
             >
               Close Report

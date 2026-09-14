@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Lock
+  FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Lock,
+  MessageCircle, History, FileText, RotateCw
 } from 'lucide-react';
 import {
-  getGoogleAuthUrl, getOneDriveAuthUrl, deleteIntegration, previewMilestoneClaimExtraction, commitMilestoneClaimExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateMilestoneClaim, convertGoogleCloudFile, getCurrentUser
+  getGoogleAuthUrl, getOneDriveAuthUrl, deleteIntegration, previewMilestoneClaimExtraction, commitMilestoneClaimExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateMilestoneClaim, convertGoogleCloudFile, getCurrentUser,
+  getDecoupledDocuments, updateProjectMilestoneClaim
 } from '@/services/api';
 import MilestoneExtractionPreviewModal from './integrations/MilestoneExtractionPreviewModal';
 import CloudConfigModal from './integrations/CloudConfigModal';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 import CloudConnectionCards from './integrations/CloudConnectionCards';
+import MilestoneClaimSheet from '@/components/MilestoneClaimSheet';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface Integration {
   id: number;
@@ -88,6 +92,18 @@ export default function MilestoneClaimsIntegrations({
   const [rejectedDocumentContext, setRejectedDocumentContext] = useState<string | null>(null);
   const [warningFileContext, setWarningFileContext] = useState<any>(null);
   const [modalMessage, setModalMessage] = useState<{ type: 'info' | 'success' | 'error' | 'warning'; text: string } | null>(null);
+
+  // Evolution features state
+  const [activeClaimsIntegrationId, setActiveClaimsIntegrationId] = useState<number | null>(null);
+  const [activeClaimsTitle, setActiveClaimsTitle] = useState<string>('');
+  const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: activeClaimsData = [], isLoading: loadingActiveClaims } = useQuery({
+    queryKey: ['milestone_claims_modal', projectId, activeClaimsIntegrationId],
+    queryFn: () => getDecoupledDocuments(projectId, 'milestone_claims'),
+    enabled: !!activeClaimsIntegrationId,
+  });
   
 
 
@@ -613,7 +629,7 @@ export default function MilestoneClaimsIntegrations({
         onedriveIntegration={integrations.find((i) => i.provider === 'onedrive')}
         isLoading={!!loadingProvider || !!globalLoading}
         handleOAuthInitiate={handleOpenSetup}
-        formatGuidelines="Link schedules in PDF, Word, or Excel format from your Cloud Storage for AI-powered extraction and audit."
+        formatGuidelines="Link schedules in PDF, Word, or Excel format from your Cloud Storage for system-powered extraction and review."
       />
 
       {/* Active Integrations List */}
@@ -666,7 +682,7 @@ export default function MilestoneClaimsIntegrations({
                       </div>
                     </div>
 
-                    {/* Action toolbar — matches Budget tab icon-only pill layout */}
+                    {/* Action toolbar — icon-only pill: inline preview + delete */}
                     <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={globalLoading || deletingId !== null}
@@ -701,6 +717,59 @@ export default function MilestoneClaimsIntegrations({
                     </div>
                   </div>
 
+                  {/* Evolution feature action buttons */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-white/10">
+                    {/* View Items — opens Active Milestone Claims modal */}
+                    <button
+                      disabled={globalLoading || deletingId !== null}
+                      onClick={() => {
+                        setActiveClaimsIntegrationId(integration.id);
+                        setActiveClaimsTitle(integration.boq_name || 'Active Milestone Claims');
+                      }}
+                      className="py-1.5 px-3 border border-emerald-500/50 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50 bg-emerald-500/10 shadow-[0_0_8px_rgba(16,185,129,0.15)] flex items-center space-x-1.5 text-xs font-semibold"
+                      title="View active milestone claims for this document"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                      </svg>
+                      <span>View Items</span>
+                    </button>
+
+                    <button
+                      disabled={globalLoading || deletingId !== null}
+                      onClick={() => {
+                        alert("Discussion board for linked claim workbooks is being initialized.");
+                      }}
+                      className="py-1.5 px-3 border rounded-lg bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold"
+                      title="Discuss Workbook"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Discuss</span>
+                    </button>
+
+                    <button
+                      disabled={globalLoading || deletingId !== null}
+                      onClick={() => {
+                        alert("Version history tracking for live cloud workbooks is currently active in the background.");
+                      }}
+                      className="py-1.5 px-3 border rounded-lg bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold"
+                      title="View Version History"
+                    >
+                      <History className="w-3.5 h-3.5" />
+                      <span>History</span>
+                    </button>
+
+                    <button
+                      disabled={globalLoading || deletingId !== null}
+                      onClick={() => handleOpenSetup(integration.provider as any)}
+                      className="py-1.5 px-3 border rounded-lg bg-neon-pink/10 border-neon-pink/30 text-neon-pink hover:bg-neon-pink/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold"
+                      title="Supersede with New Workbook"
+                    >
+                      <RotateCw className="w-3.5 h-3.5" />
+                      <span>Supersede</span>
+                    </button>
+                  </div>
+
                   {activeEditorId === integration.id && (
                     <div className="animate-fade-in">
                       <EmbeddedSheetEditor
@@ -716,6 +785,207 @@ export default function MilestoneClaimsIntegrations({
             })}
           </div>
         </div>
+      )}
+
+      {/* Active Milestone Claims Modal — opened via View Items button */}
+      {activeClaimsIntegrationId && (
+        <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#030305] rounded-3xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(16,185,129,0.1)] border border-white/10 relative overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-white/10 shrink-0 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-white font-lexend flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                  Active Milestone Claims
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">Source: <span className="text-white font-semibold">{activeClaimsTitle}</span></p>
+              </div>
+              <button
+                onClick={() => { setActiveClaimsIntegrationId(null); setSelectedClaim(null); }}
+                className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto grow space-y-6">
+              {loadingActiveClaims ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                  <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-gray-400 font-semibold">Loading milestone claims...</p>
+                </div>
+              ) : activeClaimsData.length === 0 ? (
+                <div className="bg-white/5 rounded-2xl p-10 text-center border border-dashed border-white/10">
+                  <FileSpreadsheet className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                  <h4 className="text-xs font-bold text-white mb-1">No Active Milestone Claims Found</h4>
+                  <p className="text-[11px] text-gray-400 max-w-sm mx-auto">
+                    No database records exist yet. The system may still be processing the document.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {activeClaimsData.map((doc: any) => {
+                    // Dynamic extra columns from items values_map
+                    const allItemKeys = Array.from(new Set(
+                      (doc.items || []).flatMap((item: any) => Object.keys(item.values_map || {}))
+                    )) as string[];
+
+                    return (
+                      <div key={doc.id} className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-[0_4px_15px_rgba(0,0,0,0.3)] overflow-hidden">
+                        {/* Claim Header */}
+                        <div className="p-5 flex items-center justify-between border-b border-white/10">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/20">
+                              <FileSpreadsheet className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold font-lexend text-white leading-tight">
+                                {doc.title || 'Milestone Claim Document'}
+                              </h4>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {doc.file_type?.toUpperCase() || 'Cloud Document'} • {doc.integration_id ? 'Linked' : 'Uploaded'} {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recently'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => setSelectedClaim(doc)}
+                              className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-extrabold shadow hover:-translate-y-0.5 transition-all duration-200"
+                            >
+                              View / Edit Claim
+                            </button>
+                            {doc.file_url && (
+                              <a
+                                href={doc.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 rounded-xl text-xs font-extrabold shadow hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-1"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Source
+                              </a>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Status / meta strip */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-white/5">
+                          {[
+                            { label: 'Claim No', value: doc.claim_number || '—', color: 'text-white' },
+                            { label: 'Status', value: doc.status || 'Draft', color: doc.status === 'Certified' ? 'text-emerald-400' : doc.status === 'Submitted' ? 'text-amber-400' : 'text-gray-400' },
+                            { label: 'Payment', value: doc.payment_status || 'UNPAID', color: doc.payment_status === 'PAID' ? 'text-emerald-400' : doc.payment_status === 'PARTIAL' ? 'text-blue-400' : 'text-red-400' },
+                            { label: 'Valuation Date', value: doc.valuation_date || '—', color: 'text-white' },
+                          ].map(({ label, value, color }) => (
+                            <div key={label} className="bg-black/20 p-3">
+                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">{label}</p>
+                              <p className={`text-sm font-bold ${color}`}>{value}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Financial totals */}
+                        <div className="grid grid-cols-3 gap-px bg-white/5">
+                          <div className="bg-black/20 p-4 text-center">
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Gross Claimed</p>
+                            <p className="text-base font-black text-white">${(doc.gross_amount_claimed || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          </div>
+                          <div className="bg-black/20 p-4 text-center">
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Retention Deducted</p>
+                            <p className="text-base font-black text-amber-400">${(doc.retention_deducted || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          </div>
+                          <div className="bg-emerald-950/40 p-4 text-center border-l border-emerald-500/20">
+                            <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-1">Net Amount Due</p>
+                            <p className="text-base font-black text-emerald-400">${(doc.net_amount_due || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          </div>
+                        </div>
+
+                        {/* Line Items Table */}
+                        {doc.items && doc.items.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="bg-black/40 border-b border-white/10">
+                                  <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500 w-16">ID</th>
+                                  <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Description</th>
+                                  <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">% Complete</th>
+                                  <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Amount Claimed</th>
+                                  {allItemKeys.map((key: string) => (
+                                    <th key={key} className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">
+                                      {key.replace(/_/g, ' ')}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {doc.items.map((item: any, idx: number) => (
+                                  <tr
+                                    key={item.id || idx}
+                                    className={`border-b border-white/5 transition-colors hover:bg-white/5 ${idx % 2 === 0 ? 'bg-black/10' : 'bg-transparent'}`}
+                                  >
+                                    <td className="px-4 py-2.5 text-gray-400 font-mono font-bold">{item.activity_id || idx + 1}</td>
+                                    <td className="px-4 py-2.5 text-gray-200 max-w-xs">
+                                      <span className="block truncate" title={item.description}>{item.description}</span>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right">
+                                      <span className={`font-bold ${(item.percentage_complete_this_period || 0) >= 100 ? 'text-emerald-400' : (item.percentage_complete_this_period || 0) > 0 ? 'text-amber-400' : 'text-gray-500'}`}>
+                                        {(item.percentage_complete_this_period || 0).toFixed(1)}%
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right font-bold text-white">
+                                      ${(item.amount_claimed_this_period || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                    {allItemKeys.map((key: string) => (
+                                      <td key={key} className="px-4 py-2.5 text-right text-gray-300">
+                                        {item.values_map?.[key] !== undefined && item.values_map?.[key] !== null ? String(item.values_map[key]) : '—'}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot>
+                                <tr className="bg-black/40 border-t border-white/10">
+                                  <td colSpan={2} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">{doc.items.length} Items</td>
+                                  <td className="px-4 py-3 text-right text-[10px] font-bold text-gray-400">—</td>
+                                  <td className="px-4 py-3 text-right font-black text-emerald-400">
+                                    ${doc.items.reduce((sum: number, item: any) => sum + (item.amount_claimed_this_period || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                  {allItemKeys.map((key: string) => <td key={key} />)}
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="px-5 py-6 text-center text-xs text-gray-500 border-t border-white/5">
+                            No line items extracted for this claim yet.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MilestoneClaimSheet modal — opened from View Items modal */}
+      {selectedClaim && (
+        <MilestoneClaimSheet
+          claim={selectedClaim}
+          onClose={() => setSelectedClaim(null)}
+          onSave={async (data) => {
+            try {
+              await updateProjectMilestoneClaim(projectId, selectedClaim.id, data);
+              setSelectedClaim(null);
+              queryClient.invalidateQueries({ queryKey: ['milestone_claims_modal', projectId, activeClaimsIntegrationId] });
+              queryClient.invalidateQueries({ queryKey: ['documents', projectId, 'milestone_claims'] });
+            } catch (err) {
+              console.error('Failed to update claim:', err);
+            }
+          }}
+        />
       )}
 
       {/* Delete integration warning modal — matches Budget pattern */}

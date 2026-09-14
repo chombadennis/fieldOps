@@ -22,6 +22,7 @@ def get_project_notes(
     project_id: int,
     contract_id: Optional[int] = None,
     department: Optional[str] = None,
+    document_id: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -41,7 +42,11 @@ def get_project_notes(
     query = db.query(Note).filter(Note.project_id == project_id)
     if contract_id is not None:
         query = query.filter(Note.contract_id == contract_id)
-    if department and department != "All":
+    if document_id is not None:
+        query = query.filter(Note.document_id == document_id)
+    elif department and department != "All":
+        # Usually, if we are filtering by document_id, we ignore department filter 
+        # or we might want to keep it. But explicitly document_id takes precedence or combines.
         query = query.filter(Note.department == department)
         
     return query.order_by(Note.created_at.desc()).all()
@@ -84,6 +89,7 @@ def create_project_note(
     new_note = Note(
         project_id=project_id,
         contract_id=contract_id,
+        document_id=note_in.document_id,
         content=sanitized_content,
         department=note_in.department,
         is_issue=note_in.is_issue,

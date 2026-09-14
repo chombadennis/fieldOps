@@ -1,6 +1,6 @@
 # FieldOps
 
-FieldOps is a collaborative platform for infrastructure projects. It is built to pull scattered metrics, teams and insights into one organized hub. FieldOps brings order to projects by giving the team a clear overview of project health and performance, while ensuring the team collaborates from a position of understanding of the projects' needs and progress, while keeping the entire operation aligned from day one to handover.
+FieldOps is a collaborative platform for infrastructure projects. It is built to pull scattered metrics, teams and insights into one organized hub. FieldOps brings order to projects by giving the team an overview of project health and performance, while ensuring the team collaborates from a position of understanding of the projects' needs and progress, while keeping the entire operation aligned from day one to handover.
 
 ## Key Features
 

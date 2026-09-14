@@ -112,54 +112,63 @@ export default function UploadBOQ({ projectId, contractId, onUploadSuccess, disa
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-      <h2 className="text-2xl font-bold font-lexend text-white mb-4 drop-shadow-md">Upload PDF BoQ</h2>
-
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-xs sm:text-sm text-amber-200 leading-relaxed mb-4 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-        <div className="flex items-center space-x-1.5 text-amber-400 font-bold mb-1">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span className="text-sm font-bold">PDF Upload Only</span>
+    <>
+    <div className="bg-white/5 rounded-xl p-4 border border-white/10 flex flex-col justify-between hover:shadow-[0_0_30px_rgba(0,243,255,0.15)] hover:border-neon-cyan/50 transition-all duration-300 transform hover:-translate-y-0.5 group h-full">
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="p-2 bg-neon-cyan/10 border border-neon-cyan/20 rounded-xl text-neon-cyan shadow-[0_0_10px_rgba(0,243,255,0.2)]">
+            <FileText className="w-5 h-5" />
+          </div>
         </div>
-        Upload scanned or digital <strong className="font-bold text-amber-400">PDF Bills of Quantities</strong> for AI extraction. (For Excel/Workbooks, please use the Cloud Linking tool below).
-      </div>
+        <h3 className="text-base font-bold font-lexend text-white mb-1.5 drop-shadow-md">Upload PDF BoQ</h3>
 
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="boq-file" className="block text-sm font-semibold text-gray-300">
-            BoQ File (PDF only)
-          </label>
-          <input
-            id="boq-file"
-            type="file"
-            disabled={disabled || uploading}
-            onChange={handleFileChange}
-            className="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 disabled:opacity-50 transition-colors file:cursor-pointer cursor-pointer focus:outline-none"
-            accept=".pdf"
-          />
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-[11px] text-amber-200 leading-relaxed mb-4 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+          <div className="flex items-center space-x-1.5 text-amber-400 font-bold mb-1">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="text-xs font-bold">PDF Upload Only</span>
+          </div>
+          Upload <strong className="font-bold text-amber-400">PDF BoQs</strong> for AI extraction. (For Excel, use Cloud Links).
         </div>
-        
-        {error && !rejectedRetry && <p className="text-red-400 text-sm font-medium drop-shadow-sm">{error}</p>}
-        
-        {success && <p className="text-neon-cyan text-sm font-bold drop-shadow-[0_0_8px_rgba(0,243,255,0.5)]">File parsed and saved successfully!</p>}
-        
-        {disabled && (
-          <p className="text-amber-400 text-sm font-semibold">
-            Upload is disabled because a spreadsheet sync/link operation is in progress.
-          </p>
-        )}
-        
-        <button
-          onClick={() => handleUpload(false)}
-          disabled={disabled || !file || uploading || rejectedRetry}
-          className={`w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl text-sm font-bold transition-all mt-2 ${
-            (!file || disabled || uploading || rejectedRetry) 
-            ? 'bg-white/10 text-gray-500 cursor-not-allowed' 
-            : 'text-black bg-neon-cyan hover:bg-white shadow-[0_0_20px_rgba(0,243,255,0.2)] active:scale-[0.98]'
-          }`}
-        >
-          Validate & Preview Data
-        </button>
+
+        <div className="space-y-3 mb-4">
+          <div>
+            <label htmlFor="boq-file" className="block text-xs font-semibold text-gray-400 mb-1">
+              BoQ File
+            </label>
+            <input
+              id="boq-file"
+              type="file"
+              disabled={disabled || uploading}
+              onChange={handleFileChange}
+              className="block w-full text-[11px] text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 disabled:opacity-50 transition-colors file:cursor-pointer cursor-pointer focus:outline-none"
+              accept=".pdf"
+            />
+          </div>
+          
+          {error && !rejectedRetry && <p className="text-red-400 text-[11px] font-medium drop-shadow-sm">{error}</p>}
+          
+          {success && <p className="text-neon-cyan text-[11px] font-bold drop-shadow-[0_0_8px_rgba(0,243,255,0.5)]">File parsed and saved successfully!</p>}
+          
+          {disabled && (
+            <p className="text-amber-400 text-[11px] font-semibold">
+              Upload disabled: Sync in progress.
+            </p>
+          )}
+        </div>
       </div>
+      
+      <button
+        onClick={() => handleUpload(false)}
+        disabled={disabled || !file || uploading || rejectedRetry}
+        className={`w-full flex justify-center py-2 px-4 border rounded-xl text-xs font-bold transition-all mt-auto ${
+          (!file || disabled || uploading || rejectedRetry) 
+          ? 'bg-white/10 text-gray-500 cursor-not-allowed border-transparent' 
+          : 'border-neon-cyan/50 text-neon-cyan bg-neon-cyan/10 hover:bg-neon-cyan hover:text-black shadow-[0_0_15px_rgba(0,243,255,0.1)] active:scale-[0.98]'
+        }`}
+      >
+        Validate & Preview
+      </button>
+    </div>
 
       {/* Floating Loading Modal */}
       {uploading && (
@@ -225,6 +234,6 @@ export default function UploadBOQ({ projectId, contractId, onUploadSuccess, disa
         isSaving={isSaving}
         error={commitError}
       />
-    </div>
+    </>
   );
 }

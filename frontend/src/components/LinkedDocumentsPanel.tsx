@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { getDocumentEmbedUrl, getDocumentStreamUrl, getCurrentUser } from '@/services/api';
+import { getDocumentEmbedUrl, getDocumentStreamUrl, getCurrentUser, updateDocumentContext, getProjectNotes, createProjectNote, createProjectDocument, analyzeDocument, suggestContext } from '@/services/api';
+import CollaborationPanel from '@/components/CollaborationPanel';
+import DecisionActionLog from '@/components/DecisionActionLog';
+import ArtifactIntelligencePanel from '@/components/ArtifactIntelligencePanel';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Folder,
   FileSpreadsheet,
@@ -12,7 +16,16 @@ import {
   Eye,
   RotateCw,
   Edit,
-  Trash2
+  Trash2,
+  MessageSquarePlus,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  MessageCircle,
+  ShieldCheck,
+  History,
+  ArrowRightCircle,
+  BrainCircuit
 } from 'lucide-react';
 
 interface Document {
@@ -27,10 +40,20 @@ interface Document {
   extracted_data?: any;
   uploaded_by?: number;
   cloud_email?: string;
+  context_description?: string;
+  link_reason?: string;
+  review_requested_from?: number[];
+  supersedes_id?: number;
+  revision_label?: string;
+  is_archived?: boolean;
+  ai_insights?: any;
+  metadata_map?: any;
+  name?: string;
 }
 
 interface LinkedDocumentsPanelProps {
   documents: Document[];
+  projectId?: string | number;
   onUnlink: (documentId: number) => Promise<void>;
   onDelete?: (documentId: number) => Promise<void>;
   unlinkingId?: number | null;
@@ -39,10 +62,12 @@ interface LinkedDocumentsPanelProps {
   emptyMessage?: string;
   docType?: string;
   onEnterData?: (doc: Document) => void;
+  onViewBoqItems?: (boqId: number, name: string) => void;
 }
 
 export default function LinkedDocumentsPanel({
   documents = [],
+  projectId,
   onUnlink,
   onDelete,
   unlinkingId = null,
@@ -50,7 +75,8 @@ export default function LinkedDocumentsPanel({
   title,
   emptyMessage = "No linked documents yet.",
   docType,
-  onEnterData
+  onEnterData,
+  onViewBoqItems
 }: LinkedDocumentsPanelProps) {
   const [activeDocPreview, setActiveDocPreview] = useState<Document | null>(null);
   const [docToDelete, setDocToDelete] = useState<Document | null>(null);
@@ -58,6 +84,64 @@ export default function LinkedDocumentsPanel({
   const [previewKey, setPreviewKey] = useState(0);
   const [fetchedEmbedUrl, setFetchedEmbedUrl] = useState<string | null>(null);
   const [loadingEmbedUrl, setLoadingEmbedUrl] = useState<boolean>(false);
+
+  // Context editing state — keyed by document ID
+  const [editingContextId, setEditingContextId] = useState<number | null>(null);
+  const [contextDraft, setContextDraft] = useState<{ description: string; reason: string }>({ description: '', reason: '' });
+  const [savingContextId, setSavingContextId] = useState<number | null>(null);
+  const [localContext, setLocalContext] = useState<Record<number, { context_description?: string; link_reason?: string }>>({});
+  const [suggestingContextId, setSuggestingContextId] = useState<number | null>(null);
+
+  // Phase 2 & 3: Discussion Board & Decision Log state
+  const [activeDiscussionDoc, setActiveDiscussionDoc] = useState<Document | null>(null);
+  const [activeModalTab, setActiveModalTab] = useState<'discussion' | 'decisions' | 'insights'>('discussion');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { data: discussionNotes = [], isLoading: loadingNotes } = useQuery({
+    queryKey: ['documentNotes', projectId, activeDiscussionDoc?.id],
+    queryFn: () => getProjectNotes(projectId!, undefined, activeDiscussionDoc!.id),
+    enabled: !!activeDiscussionDoc && !!projectId,
+  });
+
+  const handleAddDocumentNote = async (n: { content: string; department: string; is_issue: boolean; priority: string }) => {
+    if (!projectId || !activeDiscussionDoc) return;
+    await createProjectNote(projectId, {
+      ...n,
+      document_id: activeDiscussionDoc.id
+    });
+    queryClient.invalidateQueries({ queryKey: ['documentNotes', projectId, activeDiscussionDoc.id] });
+  };
+
+  // Phase 4: Revision Tracking
+  const [showHistory, setShowHistory] = useState(false);
+  const [supersedingDoc, setSupersedingDoc] = useState<Document | null>(null);
+  const [supersedeDraft, setSupersedeDraft] = useState({ title: '', file_url: '', revision_label: '' });
+  const [isSubmittingSupersede, setIsSubmittingSupersede] = useState(false);
+
+  const handleSupersede = async () => {
+    if (!projectId || !supersedingDoc || !supersedeDraft.title || !supersedeDraft.file_url) return;
+    setIsSubmittingSupersede(true);
+    try {
+      await createProjectDocument(projectId, {
+        title: supersedeDraft.title,
+        file_url: supersedeDraft.file_url,
+        file_type: 'link',
+        origin: 'link',
+        department: supersedingDoc.department,
+        supersedes_id: supersedingDoc.id,
+        revision_label: supersedeDraft.revision_label
+      });
+      // The parent relies on 'onUnlink' to trigger a refresh sometimes, but ideally we trigger a refetch
+      // If `onUnlink` triggers fetch, we can call a generic onRefresh if available, or just reload.
+      window.location.reload(); // Simple reload to get fresh data for now
+    } catch (err) {
+      console.error(err);
+      alert('Failed to supersede document.');
+    } finally {
+      setIsSubmittingSupersede(false);
+    }
+  };
 
   // State for current user to enforce smart conditional previews
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -213,6 +297,18 @@ export default function LinkedDocumentsPanel({
           <span className="text-[11px] font-bold text-neon-cyan bg-neon-cyan/20 px-2.5 py-0.5 rounded-full border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]">
             {documents.length} {documents.length === 1 ? 'file' : 'files'}
           </span>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${showHistory ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>View History</span>
+            </button>
+            <span className="text-[11px] font-bold text-neon-cyan bg-neon-cyan/20 px-2.5 py-0.5 rounded-full border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]">
+              {documents.length} {documents.length === 1 ? 'file' : 'files'}
+            </span>
+          </div>
         </div>
 
         {documents.length === 0 ? (
@@ -222,13 +318,14 @@ export default function LinkedDocumentsPanel({
           </div>
         ) : (
           <div className="space-y-4">
-            {documents.map((doc) => {
+            {documents.filter(d => showHistory || !d.is_archived).map((doc) => {
               const isPreviewActive = activeDocPreview?.id === doc.id;
               const isUnlinking = unlinkingId === doc.id;
               const isDeletingThis = deletingId === doc.id;
-              const isGoogle = doc.origin === 'google' || doc.file_url.includes('google.com');
-              const isOneDrive = doc.origin === 'onedrive' || doc.file_url.includes('onedrive.live.com') || doc.file_url.includes('sharepoint.com');
+              const isGoogle = doc.origin === 'google' || (doc.file_url && doc.file_url.includes('google.com'));
+              const isOneDrive = doc.origin === 'onedrive' || (doc.file_url && (doc.file_url.includes('onedrive.live.com') || doc.file_url.includes('sharepoint.com')));
               const isFolder = doc.file_type?.toLowerCase().includes('folder');
+              const newerDoc = documents.find(d => d.supersedes_id === doc.id);
 
               // File Icon class
               const isSpreadsheet = doc.file_type?.toLowerCase().includes('sheet') || doc.file_type?.toLowerCase().includes('spreadsheet') || doc.title.toLowerCase().endsWith('.xlsx') || doc.title.toLowerCase().endsWith('.xls');
@@ -236,12 +333,25 @@ export default function LinkedDocumentsPanel({
               return (
                 <div
                   key={doc.id}
-                  className={`rounded-xl p-5 border flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all duration-300 hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] ${isPreviewActive
+                  className={`group rounded-xl p-5 border flex flex-col transition-all duration-300 hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] ${isPreviewActive
                       ? 'border-neon-cyan ring-2 ring-neon-cyan/50 bg-neon-cyan/10 shadow-[0_0_15px_rgba(0,243,255,0.2)]'
-                      : 'border-white/10 bg-white/5 hover:border-neon-cyan/50 hover:bg-white/10'
+                      : doc.is_archived
+                        ? 'border-white/5 bg-black/20 opacity-70'
+                        : 'border-white/10 bg-white/5 hover:border-neon-cyan/50 hover:bg-white/10'
                     }`}
                 >
-                  <div className="flex items-start space-x-4 min-w-0 flex-1">
+                  {doc.is_archived && (
+                    <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-black/40 px-2 py-1 rounded">
+                      <span>Archived</span>
+                      {newerDoc && (
+                        <span className="flex items-center gap-1 text-indigo-400">
+                          Superseded by <ArrowRightCircle className="w-3 h-3" /> {newerDoc.revision_label || newerDoc.title}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-start space-x-4 mb-4">
                     <div className={`p-2.5 rounded-xl flex-shrink-0 transition-all duration-300 ${isPreviewActive
                         ? 'bg-neon-cyan text-black shadow-[0_0_10px_rgba(0,243,255,0.5)]'
                         : isSpreadsheet
@@ -261,68 +371,169 @@ export default function LinkedDocumentsPanel({
 
                     <div className="min-w-0 flex-1">
                       <h4 className="font-bold text-white text-sm truncate flex items-center space-x-2 flex-wrap gap-y-1">
-                        <a
-                          href={doc.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline text-white hover:text-neon-cyan transition-colors inline-flex items-center space-x-1 drop-shadow-md"
-                          title="Open document in cloud workspace (Login required)"
-                          onClick={(e) => {
-                            if (currentUser && doc.uploaded_by !== currentUser.id) {
-                              alert("You are opening a document linked by another user. If you do not have permission, Google/Microsoft will prompt you to request access.");
-                            }
-                          }}
-                        >
-                          <span className="truncate max-w-[150px] md:max-w-[200px] lg:max-w-[400px]">{doc.title}</span>
-                          <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                        </a>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded capitalize ${isGoogle
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
-                            : isOneDrive
-                              ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'
-                              : 'bg-white/10 text-gray-300 border border-white/20'
-                          }`}>
-                          {isGoogle ? 'Google Drive' : isOneDrive ? 'OneDrive' : 'Cloud File'}
-                        </span>
-                      </h4>
-                      <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold">
-                        {doc.file_type || 'PDF Document'}
-                      </p>
-                      {currentUser && doc.uploaded_by === currentUser.id && doc.cloud_email && (
-                        <p className="text-[10px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20 mt-1 inline-flex items-center gap-1 w-fit">
-                          <span className="opacity-70">Source:</span> {doc.cloud_email}
-                        </p>
-                      )}
-                      <p className="text-[10px] text-gray-400 hover:text-dark-teal-800 mt-0.5 font-medium transition-colors cursor-help" title="To modify contents, open file directly in cloud workspace.">
-                        Click name to edit in cloud (Login required)
-                      </p>
-                      {onEnterData && (!doc.extracted_data || !doc.extracted_data.items || doc.extracted_data.items.length === 0) ? (
-                        <div className="mt-2 flex items-center space-x-2">
-                          <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/50 px-2 py-0.5 rounded font-bold uppercase shadow-[0_0_8px_rgba(239,68,68,0.2)]">No Data Saved</span>
-                          <button
-                            disabled={isUnlinking || isDeletingThis}
-                            onClick={() => onEnterData(doc)}
-                            className="text-[10px] bg-neon-cyan/20 hover:bg-neon-cyan/30 text-neon-cyan border border-neon-cyan/50 px-2 py-0.5 rounded font-bold uppercase transition-colors active:scale-95 shadow-[0_0_8px_rgba(0,243,255,0.2)] disabled:opacity-50"
+                        {doc.file_url ? (
+                          <a
+                            href={doc.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline text-white hover:text-neon-cyan transition-colors inline-flex items-center space-x-1 drop-shadow-md"
+                            title="Open document in cloud workspace (Login required)"
+                            onClick={(e) => {
+                              if (currentUser && doc.uploaded_by !== currentUser.id) {
+                                alert("You are opening a document linked by another user. If you do not have permission, Google/Microsoft will prompt you to request access.");
+                              }
+                            }}
                           >
-                            Enter Data
-                          </button>
-                        </div>
-                      ) : onEnterData ? (
-                        <div className="mt-2 flex items-center space-x-2">
-                           <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-2 py-0.5 rounded font-bold uppercase shadow-[0_0_8px_rgba(16,185,129,0.2)]">Data Saved</span>
-                           <button
-                             disabled={isUnlinking || isDeletingThis}
-                             onClick={() => onEnterData(doc)}
-                             className="text-[10px] bg-white/10 hover:bg-white/20 text-gray-300 border border-white/20 px-2 py-0.5 rounded font-bold uppercase transition-colors active:scale-95 disabled:opacity-50"
-                           >
-                             Update Data
-                           </button>
-                        </div>
-                      ) : null}
+                            <span className="truncate max-w-[150px] md:max-w-[100px] lg:max-w-[200px]">{doc.title}</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          </a>
+                        ) : (
+                          <span className="text-white drop-shadow-md truncate max-w-[150px] md:max-w-[100px] lg:max-w-[200px]">{doc.title}</span>
+                        )}
+                      </h4>
+                      {doc.revision_label && (
+                        <span className="inline-block bg-white/10 border border-white/20 text-white text-[9px] font-bold uppercase px-1.5 py-0.5 rounded mt-1">
+                          {doc.revision_label}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end space-x-2 border-t lg:border-t-0 border-white/10 pt-3 lg:pt-0 w-full lg:w-auto">
+                  {/* --- Phase 1: Artifact Context Block --- */}
+                  {(() => {
+                    const saved = localContext[doc.id];
+                    const displayDesc = saved?.context_description ?? doc.context_description;
+                    const displayReason = saved?.link_reason ?? doc.link_reason;
+                    const isEditing = editingContextId === doc.id;
+                    const isSaving = savingContextId === doc.id;
+
+                    return (
+                      <div className="mt-auto mb-4">
+                        {!isEditing && (displayDesc || displayReason) && (
+                          <div className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 space-y-1">
+                            {displayReason && (
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-neon-cyan bg-neon-cyan/10 border border-neon-cyan/30 px-2 py-0.5 rounded-full">
+                                {displayReason}
+                              </span>
+                            )}
+                            {displayDesc && (
+                              <p className="text-xs text-gray-300 leading-relaxed mt-1">{displayDesc}</p>
+                            )}
+                            <button
+                              onClick={() => {
+                                setContextDraft({ description: displayDesc || '', reason: displayReason || '' });
+                                setEditingContextId(doc.id);
+                              }}
+                              className="text-[10px] text-gray-500 hover:text-neon-cyan transition-colors flex items-center gap-1 mt-1"
+                            >
+                              <Edit className="w-2.5 h-2.5" /> Edit context
+                            </button>
+                          </div>
+                        )}
+
+                        {isEditing && (
+                          <div className="bg-black/40 border border-neon-cyan/30 rounded-xl p-3 space-y-2 shadow-[0_0_12px_rgba(0,243,255,0.08)]">
+                            <div className="flex justify-between items-center">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-neon-cyan">Add Context</p>
+                              {projectId && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    setSuggestingContextId(doc.id);
+                                    try {
+                                      const suggestion = await suggestContext(projectId as number, doc.id);
+                                      setContextDraft({
+                                        description: suggestion.description || contextDraft.description,
+                                        reason: suggestion.reason || contextDraft.reason
+                                      });
+                                    } catch (e) {
+                                      console.error("Failed to suggest context", e);
+                                    } finally {
+                                      setSuggestingContextId(null);
+                                    }
+                                  }}
+                                  disabled={suggestingContextId === doc.id}
+                                  className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-fuchsia-400 hover:text-white bg-fuchsia-500/10 hover:bg-fuchsia-500/30 border border-fuchsia-500/30 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                >
+                                  {suggestingContextId === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <BrainCircuit className="w-3 h-3" />}
+                                  {suggestingContextId === doc.id ? 'Generating...' : 'Auto-Fill'}
+                                </button>
+                              )}
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-400 block mb-1">Why was this linked?</label>
+                              <input
+                                type="text"
+                                value={contextDraft.reason}
+                                onChange={(e) => setContextDraft(d => ({ ...d, reason: e.target.value }))}
+                                placeholder="e.g. Budget revision, New programme, Claim submitted"
+                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-neon-cyan/50 transition-colors"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-400 block mb-1">What is this document?</label>
+                              <textarea
+                                value={contextDraft.description}
+                                onChange={(e) => setContextDraft(d => ({ ...d, description: e.target.value }))}
+                                placeholder="Brief description of what this document represents..."
+                                rows={2}
+                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-neon-cyan/50 transition-colors resize-none"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                disabled={isSaving}
+                                onClick={async () => {
+                                  if (!projectId) return;
+                                  setSavingContextId(doc.id);
+                                  try {
+                                    await updateDocumentContext(projectId, doc.id, {
+                                      context_description: contextDraft.description || undefined,
+                                      link_reason: contextDraft.reason || undefined,
+                                    });
+                                    setLocalContext(prev => ({
+                                      ...prev,
+                                      [doc.id]: { context_description: contextDraft.description, link_reason: contextDraft.reason }
+                                    }));
+                                    setEditingContextId(null);
+                                  } catch (e) {
+                                    console.error('Failed to save context', e);
+                                  } finally {
+                                    setSavingContextId(null);
+                                  }
+                                }}
+                                className="text-[10px] bg-neon-cyan/20 hover:bg-neon-cyan/30 text-neon-cyan border border-neon-cyan/50 px-3 py-1 rounded-lg font-bold uppercase transition-colors active:scale-95 flex items-center gap-1 disabled:opacity-50"
+                              >
+                                {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                {isSaving ? 'Saving...' : 'Save'}
+                              </button>
+                              <button
+                                onClick={() => setEditingContextId(null)}
+                                className="text-[10px] text-gray-400 hover:text-white transition-colors px-2 py-1"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {!isEditing && !displayDesc && !displayReason && (
+                          <button
+                            onClick={() => {
+                              setContextDraft({ description: '', reason: '' });
+                              setEditingContextId(doc.id);
+                            }}
+                            className="py-1 px-2.5 text-[10px] font-bold uppercase tracking-wider text-neon-cyan border border-neon-cyan/30 rounded-lg hover:bg-neon-cyan/10 hover:shadow-[0_0_10px_rgba(0,243,255,0.15)] transition-all flex items-center gap-1.5 mt-2 w-max"
+                          >
+                            <MessageSquarePlus className="w-3.5 h-3.5" /> Add context
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  {/* --- End Phase 1 --- */}
+
+                  <div className="flex flex-wrap items-center gap-2 mt-auto pt-3 border-t border-white/5">
                     {(!currentUser || doc.uploaded_by === currentUser.id) && (
                       <button
                         disabled={isUnlinking || isDeletingThis}
@@ -337,8 +548,39 @@ export default function LinkedDocumentsPanel({
                         <span>{isPreviewActive ? 'Hide Preview' : 'Inline Preview'}</span>
                       </button>
                     )}
+                    
+                    {/* View BoQ/Schedule Items Button */}
+                    {(doc.department === 'boq' || doc.department === 'activity_schedule') && onViewBoqItems && (
+                      <button
+                        disabled={isUnlinking || isDeletingThis}
+                        onClick={() => onViewBoqItems(doc.extracted_data?.boq_id || doc.id, doc.title || doc.name || '')}
+                        className="py-1.5 px-3 border border-emerald-500/50 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50 bg-emerald-500/10 shadow-[0_0_8px_rgba(16,185,129,0.15)] flex items-center space-x-1.5 text-xs font-semibold"
+                        title={doc.department === 'boq' ? "View parsed BOQ items" : "View parsed Schedule items"}
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        <span>View Items</span>
+                      </button>
+                    )}
 
+                    {/* Discuss Button Removed per user request */}
 
+                    {/* Supersede Button */}
+                    {!doc.is_archived && (
+                      <button
+                        disabled={isUnlinking || isDeletingThis}
+                        onClick={() => {
+                          setSupersedingDoc(doc);
+                          setSupersedeDraft({ title: '', file_url: '', revision_label: '' });
+                        }}
+                        className="py-1.5 px-3 border border-amber-500/50 rounded-lg text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50 bg-amber-500/10 flex items-center space-x-1.5 text-xs font-semibold"
+                        title="Upload a new version of this document"
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>Supersede</span>
+                      </button>
+                    )}
 
                     {/* Delete Button */}
                     {(!currentUser || doc.uploaded_by === currentUser.id) && (
@@ -421,6 +663,171 @@ export default function LinkedDocumentsPanel({
                 ) : (
                   <span>Delete Permanently</span>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Discussion Modal */}
+      {activeDiscussionDoc && (
+        <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#030305] rounded-3xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-[0_0_50px_rgba(99,102,241,0.1)] border border-white/10 relative overflow-hidden">
+            <div className="p-6 border-b border-white/10 shrink-0 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-white font-lexend flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-indigo-400" />
+                  Artifact Operations Center
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">Artifact: <span className="text-white font-semibold">{activeDiscussionDoc.title}</span></p>
+                {/* Surface Context */}
+                {(() => {
+                  const saved = localContext[activeDiscussionDoc.id];
+                  const displayDesc = saved?.context_description ?? activeDiscussionDoc.context_description;
+                  const displayReason = saved?.link_reason ?? activeDiscussionDoc.link_reason;
+                  if (displayDesc || displayReason) {
+                    return (
+                      <div className="mt-3 bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-xl max-w-xl">
+                        {displayReason && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-full inline-block mb-1">
+                            {displayReason}
+                          </span>
+                        )}
+                        {displayDesc && <p className="text-xs text-gray-300">{displayDesc}</p>}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+              <button
+                onClick={() => setActiveDiscussionDoc(null)}
+                className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex px-6 pt-2 border-b border-white/5 space-x-6">
+              <button
+                onClick={() => setActiveModalTab('discussion')}
+                className={`py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 ${activeModalTab === 'discussion' ? 'border-indigo-400 text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+              >
+                <MessageCircle className="w-4 h-4" /> Discussion Thread
+              </button>
+              <button
+                onClick={() => setActiveModalTab('decisions')}
+                className={`py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 ${activeModalTab === 'decisions' ? 'border-emerald-400 text-emerald-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+              >
+                <ShieldCheck className="w-4 h-4" /> Decisions & Actions
+              </button>
+              <button
+                onClick={() => setActiveModalTab('insights')}
+                className={`py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 ${activeModalTab === 'insights' ? 'border-neon-cyan text-neon-cyan' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+              >
+                <BrainCircuit className="w-4 h-4" /> Context Insights
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto grow">
+                  <CollaborationPanel
+                    projectId={projectId as number}
+                    module={activeDiscussionDoc.department || 'General'}
+                    moduleName={activeDiscussionDoc.title}
+                  />
+
+              {activeModalTab === 'decisions' && projectId && (
+                <DecisionActionLog projectId={projectId as number} documentId={activeDiscussionDoc.id} />
+              )}
+
+              {activeModalTab === 'insights' && projectId && (
+                <div className="space-y-4">
+                  {!activeDiscussionDoc.ai_insights && (
+                    <div className="flex justify-end mb-2">
+                      <button
+                        disabled={isAnalyzing}
+                        onClick={async () => {
+                          setIsAnalyzing(true);
+                          try {
+                            const updatedDoc = await analyzeDocument(projectId, activeDiscussionDoc.id);
+                            setActiveDiscussionDoc(updatedDoc);
+                            queryClient.invalidateQueries({ queryKey: ['documents', projectId] });
+                          } catch (e) {
+                            console.error('Analysis failed', e);
+                            alert('Failed to analyze document');
+                          } finally {
+                            setIsAnalyzing(false);
+                          }
+                        }}
+                        className="py-2 px-4 bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 rounded-xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 hover:bg-neon-cyan hover:text-black transition-colors disabled:opacity-50"
+                      >
+                        {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
+                        {isAnalyzing ? 'Analyzing...' : 'Generate Context Insights'}
+                      </button>
+                    </div>
+                  )}
+                  <ArtifactIntelligencePanel document={activeDiscussionDoc} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Supersede Modal */}
+      {supersedingDoc && (
+        <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#030305] rounded-3xl max-w-md w-full shadow-[0_0_50px_rgba(245,158,11,0.1)] border border-white/10 p-6 relative overflow-hidden">
+            <h3 className="text-lg font-bold text-white font-lexend mb-4">Supersede Document</h3>
+            <p className="text-xs text-gray-400 mb-6">You are replacing <span className="font-bold text-white">{supersedingDoc.title}</span>. The old document will be archived and this new link will take its place.</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase">New Document Title</label>
+                <input
+                  type="text"
+                  placeholder="e.g. BoQ - Rev 2"
+                  value={supersedeDraft.title}
+                  onChange={e => setSupersedeDraft(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full mt-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase">Cloud Link (URL)</label>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={supersedeDraft.file_url}
+                  onChange={e => setSupersedeDraft(prev => ({ ...prev, file_url: e.target.value }))}
+                  className="w-full mt-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase">Revision Label (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. v2.0"
+                  value={supersedeDraft.revision_label}
+                  onChange={e => setSupersedeDraft(prev => ({ ...prev, revision_label: e.target.value }))}
+                  className="w-full mt-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-8">
+              <button
+                disabled={isSubmittingSupersede}
+                onClick={() => setSupersedingDoc(null)}
+                className="flex-1 py-2.5 px-4 border border-white/20 hover:bg-white/10 rounded-xl text-xs font-semibold text-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isSubmittingSupersede || !supersedeDraft.title || !supersedeDraft.file_url}
+                onClick={handleSupersede}
+                className="flex-1 py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-xs font-bold disabled:opacity-50 flex justify-center items-center"
+              >
+                {isSubmittingSupersede ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Supersede'}
               </button>
             </div>
           </div>

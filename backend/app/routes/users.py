@@ -37,3 +37,36 @@ def get_current_user(role: str = "admin", db: Session = Depends(get_db)):
             db.refresh(user)
             
     return user
+
+@router.get("/projects/{project_id}/team", response_model=list[platform_schemas.User])
+def get_project_team(project_id: int, db: Session = Depends(get_db)):
+    """
+    Returns all team members for the project. 
+    Seeds 5 mock users if they do not exist.
+    """
+    users = db.query(User).all()
+    
+    # If only the main user exists, seed the mock team
+    if len(users) <= 1:
+        mock_team = [
+            {"email": "sarah@fieldops.co", "name": "Sarah Miller", "role": "engineer"},
+            {"email": "mike@fieldops.co", "name": "Mike Johnson", "role": "admin"},
+            {"email": "jessica@fieldops.co", "name": "Jessica Williams", "role": "hr"},
+            {"email": "david@fieldops.co", "name": "David Brown", "role": "legal"},
+            {"email": "alex@fieldops.co", "name": "Alex Smith", "role": "field_officer"}
+        ]
+        
+        for mock_user in mock_team:
+            if not any(u.email == mock_user["email"] for u in users):
+                new_user = User(
+                    email=mock_user["email"],
+                    name=mock_user["name"],
+                    role=mock_user["role"],
+                    firebase_uid=f"mock_firebase_{mock_user['name'].split()[0].lower()}"
+                )
+                db.add(new_user)
+        
+        db.commit()
+        users = db.query(User).all()
+        
+    return users

@@ -200,7 +200,7 @@ export default function ActivityScheduleExtractionPreviewModal({
               <FileSpreadsheet className="w-6 h-6 text-emerald-400" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">AI Pre-Scan Validator</span>
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">System Pre-Scan Validator</span>
               <h3 className="text-base font-bold font-lexend mt-0.5">Validate Activity Schedule Extraction</h3>
             </div>
           </div>
@@ -286,12 +286,12 @@ export default function ActivityScheduleExtractionPreviewModal({
             </div>
           </div>
 
-          {/* AI Pre-scan Warnings & Notices */}
+          {/* System Pre-scan Warnings & Notices */}
           {validationStatus !== 'VALID' && validationIssues.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2 text-amber-900 font-medium">
               <div className="flex items-center space-x-2 text-xs font-bold text-amber-800">
                 <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <span>AI Validation Auditor Notice ({validationStatus}):</span>
+                <span>System Validation Reviewor Notice ({validationStatus}):</span>
               </div>
               <ul className="list-disc list-inside text-[11px] text-amber-900/90 space-y-1 pl-1">
                 {validationIssues.map((issue, idx) => (
@@ -351,7 +351,7 @@ export default function ActivityScheduleExtractionPreviewModal({
                 activeTab === 'json' ? 'border-indigo-600 text-indigo-200' : 'border-transparent text-slate-400 hover:text-slate-300'
               }`}
             >
-              AI Diagnostic Metadata
+              System Diagnostic Metadata
             </button>
             <button
               onClick={() => setActiveTab('dynamic_data')}
@@ -465,7 +465,7 @@ export default function ActivityScheduleExtractionPreviewModal({
                     </td>
                   </tr>
                   <tr className="hover:bg-slate-800/50/50">
-                    <td className="px-6 py-3 text-slate-400 font-bold">AI Validation Status</td>
+                    <td className="px-6 py-3 text-slate-400 font-bold">System Validation Status</td>
                     <td className="px-6 py-3">
                       <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
                         extractedData?.validation_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 
@@ -476,7 +476,7 @@ export default function ActivityScheduleExtractionPreviewModal({
                     </td>
                   </tr>
                   <tr className="hover:bg-slate-800/50/50">
-                    <td className="px-6 py-3 text-slate-400 font-bold">AI Confidence Score</td>
+                    <td className="px-6 py-3 text-slate-400 font-bold">System Confidence Score</td>
                     <td className="px-6 py-3">
                       {extractedData?.validation_score ? `${(extractedData.validation_score * 100).toFixed(0)}%` : 'N/A'}
                     </td>

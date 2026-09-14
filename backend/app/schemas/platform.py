@@ -101,7 +101,7 @@ class IPC(IPCBase):
 # --- Document Schema ---
 class DocumentBase(BaseModel):
     title: str
-    file_url: str
+    file_url: Optional[str] = None
     file_type: Optional[str] = "pdf"
     department: Optional[str] = "General"
     file_size: Optional[int] = 0
@@ -109,9 +109,19 @@ class DocumentBase(BaseModel):
     origin: Optional[str] = "file_upload"
     integration_id: Optional[int] = None  # FK to project_integrations — used for embed URL generation
     extracted_data: Optional[dict] = None
+    supersedes_id: Optional[int] = None
+    revision_label: Optional[str] = None
+    is_archived: Optional[bool] = False
+    ai_insights: Optional[dict] = None
 
 class DocumentUpdate(BaseModel):
     extracted_data: Optional[dict] = None
+    context_description: Optional[str] = None
+    link_reason: Optional[str] = None
+    review_requested_from: Optional[list] = None
+    supersedes_id: Optional[int] = None
+    revision_label: Optional[str] = None
+    is_archived: Optional[bool] = None
 
 class DocumentCreate(DocumentBase):
     note_id: Optional[int] = None
@@ -128,6 +138,10 @@ class Document(DocumentBase):
     unlinked_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     cloud_email: Optional[str] = None
+    context_description: Optional[str] = None
+    link_reason: Optional[str] = None
+    review_requested_from: Optional[list] = None
+    ai_insights: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -140,6 +154,7 @@ class NoteBase(BaseModel):
     priority: Optional[str] = "Normal"  # Low, Normal, High, Urgent
     follow_up_date: Optional[str] = None # Date string
     values_map: Optional[dict] = None
+    document_id: Optional[int] = None
 
 class NoteCreate(NoteBase):
     contract_id: Optional[int] = None
@@ -202,3 +217,204 @@ class FullMilestoneExtractionSchema(BaseModel):
     validation_status: str
     confidence_score: int
     validation_issues: List[str]
+
+# --- Decision Schema ---
+class DecisionBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    made_on: Optional[Any] = None
+    status: Optional[str] = "Approved"
+
+class DecisionCreate(DecisionBase):
+    document_id: Optional[int] = None
+    made_by_id: Optional[int] = None
+
+class DecisionUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+class Decision(DecisionBase):
+    id: int
+    project_id: int
+    document_id: Optional[int] = None
+    made_by_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Action Schema ---
+class ActionBase(BaseModel):
+    description: str
+    due_date: Optional[Any] = None
+    status: Optional[str] = "Pending"
+
+class ActionCreate(ActionBase):
+    document_id: Optional[int] = None
+    decision_id: Optional[int] = None
+    assignee_id: Optional[int] = None
+
+class ActionUpdate(BaseModel):
+    description: Optional[str] = None
+    due_date: Optional[Any] = None
+    status: Optional[str] = None
+    assignee_id: Optional[int] = None
+
+class Action(ActionBase):
+    id: int
+    project_id: int
+    document_id: Optional[int] = None
+    decision_id: Optional[int] = None
+    assignee_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Collaboration System Schemas ─────────────────────────────────────────────
+
+# --- ThreadReply ---
+class ThreadReplyBase(BaseModel):
+    content: str
+    is_issue: Optional[bool] = False
+    mentions_raw: Optional[str] = None  # comma-separated user ids
+
+class ThreadReplyCreate(ThreadReplyBase):
+    author_name: Optional[str] = None
+
+class ThreadReplyUpdate(BaseModel):
+    content: Optional[str] = None
+    is_issue: Optional[bool] = None
+
+class ThreadReply(ThreadReplyBase):
+    id: int
+    thread_id: int
+    author_id: Optional[int] = None
+    author_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# --- Thread ---
+class ThreadBase(BaseModel):
+    subject: str
+    module: str = "General"
+    status: Optional[str] = "open"
+
+class ThreadCreate(ThreadBase):
+    first_reply: Optional[str] = None  # Optional opening message body
+    created_by_name: Optional[str] = None
+    linked_document_ids: Optional[List[int]] = []
+
+class ThreadUpdate(BaseModel):
+    status: Optional[str] = None
+    subject: Optional[str] = None
+    linked_document_ids: Optional[List[int]] = None
+
+class Thread(ThreadBase):
+    id: int
+    project_id: int
+    created_by_id: Optional[int] = None
+    created_by_name: Optional[str] = None
+    replies: List[ThreadReply] = []
+    linked_document_ids: Optional[List[int]] = []
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# --- Task ---
+class TaskBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    module: Optional[str] = None
+    priority: Optional[str] = "Normal"
+    due_date: Optional[Any] = None
+    reminder_at: Optional[Any] = None
+
+class TaskCreate(TaskBase):
+    thread_id: Optional[int] = None
+    assigned_to_id: Optional[int] = None
+    assigned_to_name: Optional[str] = None
+    created_by_name: Optional[str] = None
+    linked_document_ids: Optional[List[int]] = []
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    due_date: Optional[Any] = None
+    reminder_at: Optional[Any] = None
+    assigned_to_id: Optional[int] = None
+    assigned_to_name: Optional[str] = None
+    resolution_note: Optional[str] = None
+    linked_document_ids: Optional[List[int]] = None
+
+class Task(TaskBase):
+    id: int
+    project_id: int
+    thread_id: Optional[int] = None
+    assigned_to_id: Optional[int] = None
+    assigned_to_name: Optional[str] = None
+    created_by_id: Optional[int] = None
+    created_by_name: Optional[str] = None
+    status: Optional[str] = "Open"
+    resolution_note: Optional[str] = None
+    completed_at: Optional[datetime] = None
+    linked_document_ids: Optional[List[int]] = []
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# --- LogEntry ---
+class LogEntryBase(BaseModel):
+    entry_type: str  # Decision, Success, Failure, Risk, Issue, Resolved
+    title: str
+    content: str
+    module: Optional[str] = None
+
+class LogEntryCreate(LogEntryBase):
+    task_id: Optional[int] = None
+    thread_id: Optional[int] = None
+    posted_by_name: Optional[str] = None
+
+class LogEntry(LogEntryBase):
+    id: int
+    project_id: int
+    task_id: Optional[int] = None
+    thread_id: Optional[int] = None
+    posted_by_id: Optional[int] = None
+    posted_by_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# --- Notification ---
+class NotificationBase(BaseModel):
+    notif_type: str
+    reference_id: Optional[int] = None
+    reference_type: Optional[str] = None
+    message: Optional[str] = None
+
+class Notification(NotificationBase):
+    id: int
+    user_id: int
+    is_read: bool = False
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

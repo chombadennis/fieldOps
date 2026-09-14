@@ -38,7 +38,7 @@ export default function RateScheduleIntegrations({
   const [ipcReExtractModalIntegration, setIpcReExtractModalIntegration] = useState<Integration | null>(null);
   const [dismissedNewSheets, setDismissedNewSheets] = useState<{ [id: number]: boolean }>({});
   const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
-  const [activeAuditIntegration, setActiveAuditIntegration] = useState<Integration | null>(null);
+  const [activeReviewIntegration, setActiveReviewIntegration] = useState<Integration | null>(null);
   const [availableAccounts, setAvailableAccounts] = useState<any[]>([]);
   const [showAccountSelector, setShowAccountSelector] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
@@ -961,7 +961,7 @@ export default function RateScheduleIntegrations({
     setLoading(true);
     setGlobalLoading(true);
     setSyncingId(integration.id);
-    setModalMessage({ type: 'info', text: 'Re-extracting IPC document data via AI...' });
+    setModalMessage({ type: 'info', text: 'Re-extracting IPC document data automatically...' });
     try {
       const selectedFile = {
         id: integration.spreadsheet_id,
@@ -1009,7 +1009,7 @@ export default function RateScheduleIntegrations({
 
     // Close preview/modal if open for this integration
     if (activeEditorId === id) setActiveEditorId(null);
-    if (activeAuditIntegration?.id === id) setActiveAuditIntegration(null);
+    if (activeReviewIntegration?.id === id) setActiveReviewIntegration(null);
 
     setLoading(true);
     setGlobalLoading(true);
@@ -1038,7 +1038,7 @@ export default function RateScheduleIntegrations({
     setDeletingId(id);
 
     if (activeEditorId === id) setActiveEditorId(null);
-    if (activeAuditIntegration?.id === id) setActiveAuditIntegration(null);
+    if (activeReviewIntegration?.id === id) setActiveReviewIntegration(null);
 
     setLoading(true);
     setGlobalLoading(true);
@@ -1352,7 +1352,7 @@ export default function RateScheduleIntegrations({
                           <button
                             disabled={isLoading || syncingId !== null || deletingId !== null}
                             onClick={() => handleOpenIpcReExtractModal(integration)}
-                            title="Edits detected in cloud! Click to re-extract IPC data via AI"
+                            title="Edits detected in cloud! Click to re-extract IPC data automatically"
                             className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 border border-amber-600 text-white hover:from-amber-600 hover:to-amber-700 rounded-xl shadow-sm text-xs font-bold flex items-center space-x-1 transition-all duration-200 animate-pulse active:scale-95 disabled:opacity-50"
                           >
                             {syncingId === integration.id ? (

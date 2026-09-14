@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Lock
+  FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Lock, MessageCircle, History
 } from 'lucide-react';
 import {
   getGoogleAuthUrl, getOneDriveAuthUrl, deleteIntegration, previewActivityScheduleExtraction, commitActivityScheduleExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateActivitySchedule, getCurrentUser
@@ -9,6 +9,7 @@ import ActivityScheduleExtractionPreviewModal from './integrations/ActivitySched
 import CloudConfigModal from './integrations/CloudConfigModal';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 import CloudConnectionCards from './integrations/CloudConnectionCards';
+import ActivityScheduleInlineEditor from '@/components/integrations/ActivityScheduleInlineEditor';
 
 interface Integration {
   id: number;
@@ -88,6 +89,7 @@ export default function ActivityScheduleIntegrations({
   const [rejectedDocumentContext, setRejectedDocumentContext] = useState<string | null>(null);
   const [warningFileContext, setWarningFileContext] = useState<any>(null);
   const [modalMessage, setModalMessage] = useState<{ type: 'info' | 'success' | 'error' | 'warning'; text: string } | null>(null);
+  const [activeScheduleIdToView, setActiveScheduleIdToView] = useState<{ id: number; title: string } | null>(null);
 
 
 
@@ -688,6 +690,61 @@ export default function ActivityScheduleIntegrations({
                     </div>
                   </div>
 
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-white/10">
+                    <button
+                      disabled={globalLoading || deletingId !== null}
+                      onClick={() => {
+                        const doc = documents.find(d => d.integration_id === integration.id || d.title === integration.boq_name);
+                        if (doc) {
+                          setActiveScheduleIdToView({ id: doc.id, title: doc.title || doc.name || 'Activity Schedule' });
+                        } else {
+                          alert("Database document for this schedule not found. Please wait for extraction to finish.");
+                        }
+                      }}
+                      className="py-1.5 px-3 border border-emerald-500/50 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50 bg-emerald-500/10 shadow-[0_0_8px_rgba(16,185,129,0.15)] flex items-center space-x-1.5 text-xs font-semibold"
+                      title="View parsed Schedule items"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                      </svg>
+                      <span>View Items</span>
+                    </button>
+
+                    <button
+                      disabled={globalLoading || deletingId !== null}
+                      onClick={() => {
+                        alert("Discussion board for linked workbooks is being initialized.");
+                      }}
+                      className="py-1.5 px-3 border rounded-lg bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold"
+                      title="Discuss Workbook"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Discuss</span>
+                    </button>
+
+                    <button
+                      disabled={globalLoading || deletingId !== null}
+                      onClick={() => {
+                        alert("Version history tracking for live cloud workbooks is currently active in the background.");
+                      }}
+                      className="py-1.5 px-3 border rounded-lg bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold"
+                      title="View Version History"
+                    >
+                      <History className="w-3.5 h-3.5" />
+                      <span>History</span>
+                    </button>
+
+                    <button
+                      disabled={globalLoading || deletingId !== null}
+                      onClick={() => handleOpenSetup(integration.provider as any)}
+                      className="py-1.5 px-3 border rounded-lg bg-neon-pink/10 border-neon-pink/30 text-neon-pink hover:bg-neon-pink/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold"
+                      title="Supersede with New Workbook"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Supersede</span>
+                    </button>
+                  </div>
+
                   {activeEditorId === integration.id && (
                     <div className="animate-fade-in">
                       <EmbeddedSheetEditor
@@ -1040,6 +1097,15 @@ export default function ActivityScheduleIntegrations({
           </div>
         </div>
       )}
+
+      <ActivityScheduleInlineEditor
+        projectId={projectId}
+        documentId={activeScheduleIdToView?.id || 0}
+        documentTitle={activeScheduleIdToView?.title || ''}
+        isOpen={!!activeScheduleIdToView}
+        onClose={() => setActiveScheduleIdToView(null)}
+        onRefresh={onRefresh}
+      />
 </div>
   );
 }

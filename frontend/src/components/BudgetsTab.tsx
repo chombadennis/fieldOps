@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageSquare, Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info, Edit3, Check, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, AlertTriangle, TrendingUp, Tag, FileSpreadsheet, Layers, Info, Edit3, Check, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import BudgetIntegrations from '@/components/BudgetIntegrations';
-import DiscussionNoteInput from '@/components/DiscussionNoteInput';
-import { getProjectBudgets, updateBudgetWorkbookMatrix, updateProjectBudget } from '@/services/api';
-import { renderSafeHtml } from '@/lib/sanitize';
+import CollaborationPanel from '@/components/CollaborationPanel';
+import { getProjectBudgets, updateBudgetWorkbookMatrix, updateProjectBudget, unlinkDecoupledDocument, unlinkProjectDocument, deleteDecoupledDocument, deleteProjectDocument } from '@/services/api';
+import LinkedDocumentsPanel from '@/components/LinkedDocumentsPanel';
 
 interface Note {
   id: number;
@@ -57,12 +57,14 @@ export default function BudgetsTab({
   const [isIssue, setIsIssue] = useState(false);
   const [priority, setPriority] = useState('Normal');
   const [posting, setPosting] = useState(false);
-    const [editingHeaderKey, setEditingHeaderKey] = useState<string | null>(null);
+  const [editingHeaderKey, setEditingHeaderKey] = useState<string | null>(null);
   const [headerInput, setHeaderInput] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [isMasterCategoriesOpen, setIsMasterCategoriesOpen] = useState(false);
   const [isEditingMasterMetrics, setIsEditingMasterMetrics] = useState(false);
   const [savingMasterMetrics, setSavingMasterMetrics] = useState(false);
+  const [unlinkingId, setUnlinkingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [masterMetricsInput, setMasterMetricsInput] = useState({
     original: 0,
     appraised: 0,
@@ -180,17 +182,49 @@ export default function BudgetsTab({
     }
   };
 
+  const handleUnlinkDocument = async (documentId: number) => {
+    if (!onRefresh) return;
+    setUnlinkingId(documentId);
+    if (setGlobalLoading) setGlobalLoading(true);
+    try {
+      await unlinkDecoupledDocument(projectId, 'budget', documentId).catch(() => unlinkProjectDocument(projectId, documentId));
+      await onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to unlink document.');
+    } finally {
+      setUnlinkingId(null);
+      if (setGlobalLoading) setGlobalLoading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: number) => {
+    if (!onRefresh) return;
+    setDeletingId(documentId);
+    if (setGlobalLoading) setGlobalLoading(true);
+    try {
+      await deleteDecoupledDocument(projectId, 'budget', documentId).catch(() => deleteProjectDocument(projectId, documentId));
+      await onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete document data.');
+    } finally {
+      setDeletingId(null);
+      if (setGlobalLoading) setGlobalLoading(false);
+    }
+  };
+
   const isAppraised = !!valuesMap.is_appraised || (appraisedBudget !== null && appraisedBudget !== undefined && appraisedBudget !== originalSum);
   const effectiveBudget = (appraisedBudget !== null && appraisedBudget !== undefined && Number(appraisedBudget) > 0)
     ? Number(appraisedBudget)
     : originalSum;
-  
-  const displayPercentUsed = isEditingMasterMetrics 
-    ? ((masterMetricsInput.appraised > 0 ? masterMetricsInput.appraised : masterMetricsInput.original) > 0 
-        ? Math.min(100, (masterMetricsInput.ev / (masterMetricsInput.appraised > 0 ? masterMetricsInput.appraised : masterMetricsInput.original)) * 100) 
-        : 0)
+
+  const displayPercentUsed = isEditingMasterMetrics
+    ? ((masterMetricsInput.appraised > 0 ? masterMetricsInput.appraised : masterMetricsInput.original) > 0
+      ? Math.min(100, (masterMetricsInput.ev / (masterMetricsInput.appraised > 0 ? masterMetricsInput.appraised : masterMetricsInput.original)) * 100)
+      : 0)
     : (effectiveBudget > 0 ? Math.min(100, (earnedValue / effectiveBudget) * 100) : 0);
-    
+
   const categories: any[] = (masterCleaned.categories && masterCleaned.categories.length > 0) ? masterCleaned.categories : (masterCleaned.reconciled_categories || valuesMap.summary_breakdown || []);
   const detectedOverlaps: string[] = masterCleaned.detected_overlaps || [];
 
@@ -216,7 +250,9 @@ export default function BudgetsTab({
         </div>
       </div>
 
-      {/* Cloud Integration Manager Component with Inline Preview Drawers */}
+      <div className="flex flex-col xl:flex-row gap-6">
+        <div className="flex-1 space-y-6 min-w-0">
+          {/* Cloud Integration Manager Component with Inline Preview Drawers */}
       {integrations && onRefresh && setGlobalLoading && (
         <BudgetIntegrations
           projectId={projectId}
@@ -246,11 +282,10 @@ export default function BudgetsTab({
                   <button
                     key={tab.key}
                     onClick={() => setInternalTab(tab.key as any)}
-                    className={`px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all duration-300 flex-1 min-w-[140px] text-center ${
-                      internalTab === tab.key 
-                        ? 'bg-white/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] transform scale-[1.02] border border-emerald-500/30 font-lexend' 
+                    className={`px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all duration-300 flex-1 min-w-[140px] text-center ${internalTab === tab.key
+                        ? 'bg-white/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] transform scale-[1.02] border border-emerald-500/30 font-lexend'
                         : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
-                    }`}
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -337,7 +372,7 @@ export default function BudgetsTab({
                 type="number"
                 step="any"
                 value={masterMetricsInput.original}
-                onChange={(e) => setMasterMetricsInput({...masterMetricsInput, original: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setMasterMetricsInput({ ...masterMetricsInput, original: parseFloat(e.target.value) || 0 })}
                 className="w-full p-1.5 bg-white/5 border border-white/10 rounded font-bold text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
               />
             ) : (
@@ -355,7 +390,7 @@ export default function BudgetsTab({
                 type="number"
                 step="any"
                 value={masterMetricsInput.appraised}
-                onChange={(e) => setMasterMetricsInput({...masterMetricsInput, appraised: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setMasterMetricsInput({ ...masterMetricsInput, appraised: parseFloat(e.target.value) || 0 })}
                 className="w-full p-1.5 bg-white/5 border border-indigo-500/30 rounded font-bold text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
               />
             ) : (
@@ -372,7 +407,7 @@ export default function BudgetsTab({
                 type="number"
                 step="any"
                 value={masterMetricsInput.ev}
-                onChange={(e) => setMasterMetricsInput({...masterMetricsInput, ev: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setMasterMetricsInput({ ...masterMetricsInput, ev: parseFloat(e.target.value) || 0 })}
                 className="w-full p-1.5 bg-white/5 border border-emerald-500/30 rounded font-bold text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
               />
             ) : (
@@ -437,7 +472,7 @@ export default function BudgetsTab({
 
           return (
             <div className="pt-4 border-t border-white/10 space-y-3">
-              <div 
+              <div
                 className="flex items-center justify-between cursor-pointer bg-black/40 hover:bg-black/60 p-3 rounded-xl border border-white/10 transition-colors backdrop-blur-md"
                 onClick={() => setIsMasterCategoriesOpen(!isMasterCategoriesOpen)}
               >
@@ -457,192 +492,156 @@ export default function BudgetsTab({
 
               {isMasterCategoriesOpen && (
                 <div className="overflow-x-auto border border-white/10 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] animate-fade-in bg-black/40 backdrop-blur-md">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-white/5 text-gray-400 font-bold uppercase tracking-wider text-[10px] border-b border-white/10">
-                    <tr>
-                      <th className="px-4 py-3">Category Component / Trade Header</th>
-                      <th className="px-4 py-3 text-right">Original ($)</th>
-                      <th className="px-4 py-3 text-right">Appraised ($)</th>
-                      <th className="px-4 py-3 text-right">Earned Value ($)</th>
-                      <th className="px-4 py-3 text-right">Variance (Delta)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 font-medium text-gray-200">
-                    {groupEntries.map(([groupKey, group]) => {
-                      const groupItems = group.items;
-                      const isEditingThis = editingHeaderKey === groupKey;
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-white/5 text-gray-400 font-bold uppercase tracking-wider text-[10px] border-b border-white/10">
+                      <tr>
+                        <th className="px-4 py-3">Category Component / Trade Header</th>
+                        <th className="px-4 py-3 text-right">Original ($)</th>
+                        <th className="px-4 py-3 text-right">Appraised ($)</th>
+                        <th className="px-4 py-3 text-right">Earned Value ($)</th>
+                        <th className="px-4 py-3 text-right">Variance (Delta)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 font-medium text-gray-200">
+                      {groupEntries.map(([groupKey, group]) => {
+                        const groupItems = group.items;
+                        const isEditingThis = editingHeaderKey === groupKey;
 
-                      const sumOrig = groupItems.reduce((acc, c) => acc + (Number(c.original_amount) || 0), 0);
-                      const sumAppr = groupItems.reduce((acc, c) => {
-                        const a = c.appraised_amount !== undefined && c.appraised_amount !== null ? Number(c.appraised_amount) : Number(c.original_amount);
-                        return acc + (a || 0);
-                      }, 0);
-                      const sumEv = groupItems.reduce((acc, c) => acc + (Number(c.earned_value_to_date) || 0), 0);
-                      const sumDelta = sumAppr - sumOrig;
-                      const isGroupAppraised = groupItems.some((c) => (c.appraised_amount !== undefined && c.appraised_amount !== null && Number(c.appraised_amount) !== Number(c.original_amount)) || c.is_appraised);
+                        const sumOrig = groupItems.reduce((acc, c) => acc + (Number(c.original_amount) || 0), 0);
+                        const sumAppr = groupItems.reduce((acc, c) => {
+                          const a = c.appraised_amount !== undefined && c.appraised_amount !== null ? Number(c.appraised_amount) : Number(c.original_amount);
+                          return acc + (a || 0);
+                        }, 0);
+                        const sumEv = groupItems.reduce((acc, c) => acc + (Number(c.earned_value_to_date) || 0), 0);
+                        const sumDelta = sumAppr - sumOrig;
+                        const isGroupAppraised = groupItems.some((c) => (c.appraised_amount !== undefined && c.appraised_amount !== null && Number(c.appraised_amount) !== Number(c.original_amount)) || c.is_appraised);
 
-                      return (
-                        <React.Fragment key={groupKey}>
-                          {/* Group Section Header Row */}
-                          <tr className="bg-white/5 border-t border-b border-white/10">
-                            <td colSpan={5} className="px-4 py-2.5">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2.5">
-                                  <span className="px-2 py-0.5 rounded-md bg-emerald-900/50 text-emerald-300 border border-emerald-500/30 font-extrabold text-[10px] uppercase tracking-wider">
-                                    Source Table / Trade
+                        return (
+                          <React.Fragment key={groupKey}>
+                            {/* Group Section Header Row */}
+                            <tr className="bg-white/5 border-t border-b border-white/10">
+                              <td colSpan={5} className="px-4 py-2.5">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2.5">
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-900/50 text-emerald-300 border border-emerald-500/30 font-extrabold text-[10px] uppercase tracking-wider">
+                                      Source Table / Trade
+                                    </span>
+
+                                    {isEditingThis ? (
+                                      <div className="flex items-center space-x-2">
+                                        <input
+                                          type="text"
+                                          value={headerInput}
+                                          onChange={(e) => setHeaderInput(e.target.value)}
+                                          onKeyDown={(e) => { if (e.key === 'Enter') handleSaveHeader(groupKey); }}
+                                          className="p-2 px-3 bg-black/50 border border-emerald-500/50 rounded-xl text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[260px] shadow-inner"
+                                          autoFocus
+                                        />
+                                        <button
+                                          onClick={() => handleSaveHeader(groupKey)}
+                                          disabled={savingHeader}
+                                          className="p-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition"
+                                          title="Save Header Title"
+                                        >
+                                          {savingHeader ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingHeaderKey(null)}
+                                          className="p-1 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition"
+                                          title="Cancel"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div
+                                        onClick={() => {
+                                          setEditingHeaderKey(groupKey);
+                                          setHeaderInput(group.label);
+                                        }}
+                                        className="flex items-center space-x-2 group cursor-pointer"
+                                        title="Click to edit group header title"
+                                      >
+                                        <h5 className="text-xs font-extrabold font-lexend text-white group-hover:text-emerald-400 transition">
+                                          {group.label}
+                                        </h5>
+                                        <Edit3 className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-400 transition opacity-70 group-hover:opacity-100" />
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <span className="text-[10px] font-bold text-gray-400 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
+                                    {groupItems.length} {groupItems.length === 1 ? 'component' : 'components'}
                                   </span>
-                                  
-                                  {isEditingThis ? (
-                                    <div className="flex items-center space-x-2">
-                                      <input
-                                        type="text"
-                                        value={headerInput}
-                                        onChange={(e) => setHeaderInput(e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveHeader(groupKey); }}
-                                        className="p-2 px-3 bg-black/50 border border-emerald-500/50 rounded-xl text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[260px] shadow-inner"
-                                        autoFocus
-                                      />
-                                      <button
-                                        onClick={() => handleSaveHeader(groupKey)}
-                                        disabled={savingHeader}
-                                        className="p-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition"
-                                        title="Save Header Title"
-                                      >
-                                        {savingHeader ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                                      </button>
-                                      <button
-                                        onClick={() => setEditingHeaderKey(null)}
-                                        className="p-1 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition"
-                                        title="Cancel"
-                                      >
-                                        <X className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div
-                                      onClick={() => {
-                                        setEditingHeaderKey(groupKey);
-                                        setHeaderInput(group.label);
-                                      }}
-                                      className="flex items-center space-x-2 group cursor-pointer"
-                                      title="Click to edit group header title"
-                                    >
-                                      <h5 className="text-xs font-extrabold font-lexend text-white group-hover:text-emerald-400 transition">
-                                        {group.label}
-                                      </h5>
-                                      <Edit3 className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-400 transition opacity-70 group-hover:opacity-100" />
-                                    </div>
-                                  )}
                                 </div>
+                              </td>
+                            </tr>
 
-                                <span className="text-[10px] font-bold text-gray-400 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
-                                  {groupItems.length} {groupItems.length === 1 ? 'component' : 'components'}
+                            {/* Component Rows */}
+                            {groupItems.map((cat, idx) => {
+                              const orig = Number(cat.original_amount) || 0;
+                              const appr = cat.appraised_amount !== undefined && cat.appraised_amount !== null ? Number(cat.appraised_amount) : orig;
+                              const delta = cat.appraisal_delta ?? (appr - orig);
+                              const isCatAppraised = cat.is_appraised || appr !== orig;
+
+                              return (
+                                <tr key={idx} className="hover:bg-white/5 transition">
+                                  <td className="px-4 py-3 font-bold text-gray-200 pl-8 flex items-center space-x-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                    <span>{cat.category_name}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-gray-400 font-semibold">{formatCurrency(orig)}</td>
+                                  <td className="px-4 py-3 text-right font-bold text-indigo-300">
+                                    {formatCurrency(appr)}
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-bold text-emerald-300">{formatCurrency(cat.earned_value_to_date || 0)}</td>
+                                  <td className="px-4 py-3 text-right font-bold">
+                                    <span className={delta > 0 ? 'text-indigo-400' : delta < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                      {delta > 0 ? '+' : ''}{formatCurrency(delta)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+
+                            {/* Group Subtotal Autosum Row */}
+                            <tr className="bg-emerald-900/20 font-bold border-t border-b border-emerald-500/20 text-emerald-100">
+                              <td className="px-4 py-2.5 pl-8 font-lexend text-xs flex items-center space-x-2">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-700/50 text-white font-mono text-[10px] border border-emerald-500/30">∑ Subtotal</span>
+                                <span className="font-extrabold text-white">{group.label}</span>
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-gray-300 font-extrabold">{formatCurrency(sumOrig)}</td>
+                              <td className="px-4 py-2.5 text-right text-indigo-300 font-extrabold">
+                                {formatCurrency(sumAppr)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-emerald-300 font-extrabold">{formatCurrency(sumEv)}</td>
+                              <td className="px-4 py-2.5 text-right font-extrabold">
+                                <span className={sumDelta > 0 ? 'text-indigo-400' : sumDelta < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                  {sumDelta > 0 ? '+' : ''}{formatCurrency(sumDelta)}
                                 </span>
-                              </div>
-                            </td>
-                          </tr>
-
-                          {/* Component Rows */}
-                          {groupItems.map((cat, idx) => {
-                            const orig = Number(cat.original_amount) || 0;
-                            const appr = cat.appraised_amount !== undefined && cat.appraised_amount !== null ? Number(cat.appraised_amount) : orig;
-                            const delta = cat.appraisal_delta ?? (appr - orig);
-                            const isCatAppraised = cat.is_appraised || appr !== orig;
-
-                            return (
-                              <tr key={idx} className="hover:bg-white/5 transition">
-                                <td className="px-4 py-3 font-bold text-gray-200 pl-8 flex items-center space-x-2">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                                  <span>{cat.category_name}</span>
-                                </td>
-                                <td className="px-4 py-3 text-right text-gray-400 font-semibold">{formatCurrency(orig)}</td>
-                                <td className="px-4 py-3 text-right font-bold text-indigo-300">
-                                  {formatCurrency(appr)}
-                                </td>
-                                <td className="px-4 py-3 text-right font-bold text-emerald-300">{formatCurrency(cat.earned_value_to_date || 0)}</td>
-                                <td className="px-4 py-3 text-right font-bold">
-                                  <span className={delta > 0 ? 'text-indigo-400' : delta < 0 ? 'text-red-400' : 'text-gray-500'}>
-                                    {delta > 0 ? '+' : ''}{formatCurrency(delta)}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-
-                          {/* Group Subtotal Autosum Row */}
-                          <tr className="bg-emerald-900/20 font-bold border-t border-b border-emerald-500/20 text-emerald-100">
-                            <td className="px-4 py-2.5 pl-8 font-lexend text-xs flex items-center space-x-2">
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-700/50 text-white font-mono text-[10px] border border-emerald-500/30">∑ Subtotal</span>
-                              <span className="font-extrabold text-white">{group.label}</span>
-                            </td>
-                            <td className="px-4 py-2.5 text-right text-gray-300 font-extrabold">{formatCurrency(sumOrig)}</td>
-                            <td className="px-4 py-2.5 text-right text-indigo-300 font-extrabold">
-                              {formatCurrency(sumAppr)}
-                            </td>
-                            <td className="px-4 py-2.5 text-right text-emerald-300 font-extrabold">{formatCurrency(sumEv)}</td>
-                            <td className="px-4 py-2.5 text-right font-extrabold">
-                              <span className={sumDelta > 0 ? 'text-indigo-400' : sumDelta < 0 ? 'text-red-400' : 'text-gray-500'}>
-                                {sumDelta > 0 ? '+' : ''}{formatCurrency(sumDelta)}
-                              </span>
-                            </td>
-                          </tr>
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                              </td>
+                            </tr>
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           );
         })()}
       </div>
 
-      {/* Discussion & Note Form */}
-      <DiscussionNoteInput 
-        onAddNote={onAddNote}
-        departmentKey="BUDGET"
-        placeholder="Share a budget update or log an allocation issue..."
-      />
-
-      {/* Discussion Feed */}
-      <div className="space-y-4">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-inter">Discussion Feed</h4>
-        {filteredNotes.length === 0 ? (
-          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-            <MessageSquare className="w-8 h-8 text-gray-600 drop-shadow-sm mx-auto mb-2" />
-            <p className="text-xs text-gray-400 font-medium">No notes recorded for budgets yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredNotes.map((note) => (
-              <div
-                key={note.id}
-                className={`bg-white/5 backdrop-blur-xl rounded-3xl p-6 border shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition ${
-                  note.is_issue ? 'border-red-500/30 bg-red-900/10' : 'border-white/10'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold font-lexend text-white">{note.author_name || 'Team Member'}</span>
-                    <span className="text-xs text-gray-400">• {note.created_at ? new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}</span>
-                  </div>
-
-                  {note.is_issue && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-900/30 text-red-400 border border-red-500/30">
-                      <AlertTriangle className="w-3 h-3 mr-1" /> {note.priority || 'High'} Issue
-                    </span>
-                  )}
-                </div>
-
-                <div 
-                  className="text-xs text-gray-300 leading-relaxed font-medium note-content-html"
-                  dangerouslySetInnerHTML={{ __html: renderSafeHtml(note.content) }}
-                />
-              </div>
-            ))}
-          </div>
-        )}
+        </div>
+        <div className="shrink-0">
+          {/* Collaboration Panel — Threads / Tasks / Log */}
+          <CollaborationPanel
+            projectId={projectId}
+            module="Budget"
+            moduleName="Budgets"
+          />
+        </div>
       </div>
     </div>
   );

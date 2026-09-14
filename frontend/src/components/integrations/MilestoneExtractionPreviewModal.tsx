@@ -322,7 +322,7 @@ export default function MilestoneExtractionPreviewModal({
             </div>
           </div>
 
-          {/* AI Pre-scan Warnings & Notices */}
+          {/* System Pre-scan Warnings & Notices */}
           {validationStatus !== 'VALID' && validationIssues.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2 text-amber-900 font-medium">
               <div className="flex items-center space-x-2 text-xs font-bold text-amber-800">

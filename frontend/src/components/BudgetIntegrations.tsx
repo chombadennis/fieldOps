@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Layers, Lock
+  FileSpreadsheet, Sparkles, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Link2, Unlink, Trash2, Eye, Shield, Loader2, X, Layers, Lock, MessageCircle, History
 } from 'lucide-react';
 import {
   getGoogleAuthUrl, getOneDriveAuthUrl, listActiveIntegrationSheets, deleteIntegration, previewBudgetExtraction, commitBudgetExtraction, getGlobalAuthToken, listCloudFiles, listCloudSheets, saveIntegration, validateBudget, updateIntegrationModule, getCurrentUser
@@ -110,6 +110,7 @@ export default function BudgetIntegrations({
   const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
   const [rejectedDocumentContext, setRejectedDocumentContext] = useState<string | null>(null);
   const [warningFileContext, setWarningFileContext] = useState<any>(null);
+  const [activePreviewWorkbookId, setActivePreviewWorkbookId] = useState<number | null>(null);
 
 
 
@@ -669,70 +670,120 @@ export default function BudgetIntegrations({
 
               return (
                 <div key={integration.id} className="space-y-2">
-                  <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_20px_rgba(0,243,255,0.2)] hover:border-neon-cyan/60 transition-all duration-300 flex flex-col sm:flex-row items-start justify-between gap-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-3 bg-neon-cyan/20 rounded-xl text-neon-cyan border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]">
-                        <FileSpreadsheet className="w-5 h-5" />
-                      </div>
-                      <div className="space-y-1">
-                        <h4 className="text-xs font-bold font-lexend text-white drop-shadow-md leading-tight">
-                          {integration.boq_name || 'Master Budget Sheet'}
-                        </h4>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span className="text-[10px] text-gray-400 font-medium capitalize">
-                            Provider: {integration.provider.replace('_', ' ')} • Tab: {integration.sheet_name}
-                          </span>
-                          <span className="text-slate-400 drop-shadow-sm hidden sm:inline">•</span>
-                          <div className="flex items-center space-x-1">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">Tag:</span>
-                            <select
-                              value={integration.module === 'progress' ? 'progress' : 'budget'}
-                              onChange={(e) => handleUpdateModule(integration.id, e.target.value)}
-                              disabled={globalLoading}
-                              className="p-1 px-1.5 bg-black/40 border border-white/20 rounded-lg text-[10px] font-bold text-white hover:bg-black/60 focus:border-neon-cyan transition focus:outline-none cursor-pointer"
-                            >
-                              <option value="budget">Project Budget</option>
-                              <option value="progress">Work Progress</option>
-                            </select>
-                          </div>
+                  <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_20px_rgba(0,243,255,0.2)] hover:border-neon-cyan/60 transition-all duration-300 flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-3 bg-neon-cyan/20 rounded-xl text-neon-cyan border border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.2)]">
+                          <FileSpreadsheet className="w-5 h-5" />
                         </div>
-                        {currentUser && integration.user_id === currentUser.id && integration.meta_data?.cloud_email && (
-                          <p className="text-xs text-gray-400 mt-1 truncate"><span className="font-semibold text-slate-400">Source:</span> {integration.meta_data.cloud_email}</p>
-                        )}
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-bold font-lexend text-white drop-shadow-md leading-tight">
+                            {integration.boq_name || 'Master Budget Sheet'}
+                          </h4>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-[10px] text-gray-400 font-medium capitalize">
+                              Provider: {integration.provider.replace('_', ' ')} • Tab: {integration.sheet_name}
+                            </span>
+                            <span className="text-slate-400 drop-shadow-sm hidden sm:inline">•</span>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">Tag:</span>
+                              <select
+                                value={integration.module === 'progress' ? 'progress' : 'budget'}
+                                onChange={(e) => handleUpdateModule(integration.id, e.target.value)}
+                                disabled={globalLoading}
+                                className="p-1 px-1.5 bg-black/40 border border-white/20 rounded-lg text-[10px] font-bold text-white hover:bg-black/60 focus:border-neon-cyan transition focus:outline-none cursor-pointer"
+                              >
+                                <option value="budget">Project Budget</option>
+                                <option value="progress">Work Progress</option>
+                              </select>
+                            </div>
+                          </div>
+                          {currentUser && integration.user_id === currentUser.id && integration.meta_data?.cloud_email && (
+                            <p className="text-xs text-gray-400 mt-1 truncate"><span className="font-semibold text-slate-400">Source:</span> {integration.meta_data.cloud_email}</p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Action toolbar — matches Budget tab icon-only pill layout */}
+                      <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
+                        <button
+                          disabled={globalLoading || deletingId !== null}
+                          onClick={() => {
+                            if (currentUser && integration.user_id !== currentUser.id) {
+                              alert("You cannot inline preview because you are not the owner, but you can open the document in a new tab and request viewing access from the owner.");
+                            } else {
+                              setActiveEditorId(activeEditorId === integration.id ? null : integration.id);
+                            }
+                          }}
+                          className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 hover:shadow-sm ${activeEditorId === integration.id
+                            ? 'bg-neon-purple text-white shadow-[0_0_10px_rgba(188,19,254,0.4)]'
+                            : 'hover:bg-neon-purple hover:text-white text-gray-400 hover:shadow-[0_0_10px_rgba(188,19,254,0.4)]'
+                            }`}
+                          title={activeEditorId === integration.id ? 'Hide inline preview' : 'Open inline preview'}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          disabled={globalLoading || deletingId !== null}
+                          onClick={() => setIntegrationToDelete(integration)}
+                          className="p-2 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_10px_rgba(239,68,68,0.4)] flex items-center justify-center"
+                          title="Delete document data permanently from database"
+                        >
+                          {deletingId === integration.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
+                    <div className="flex flex-wrap items-center gap-2 pt-1 border-white/10">
+                      <button
+                        disabled={globalLoading || deletingId !== null}
+                        onClick={() => setActivePreviewWorkbookId(integration.id)}
+                        className="py-1.5 px-3 border border-emerald-500/50 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50 bg-emerald-500/10 shadow-[0_0_8px_rgba(16,185,129,0.15)] flex items-center space-x-1.5 text-xs font-semibold"
+                        title="View parsed Workbook items"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        <span>View Items</span>
+                      </button>
+
                       <button
                         disabled={globalLoading || deletingId !== null}
                         onClick={() => {
-                          if (currentUser && integration.user_id !== currentUser.id) {
-                            alert("You cannot inline preview because you are not the owner, but you can open the document in a new tab and request viewing access from the owner.");
-                          } else {
-                            setActiveEditorId(activeEditorId === integration.id ? null : integration.id);
-                          }
+                          alert("Discussion board for linked workbooks is being initialized.");
                         }}
-                        className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 ${activeEditorId === integration.id
-                          ? 'bg-neon-purple text-white shadow-[0_0_10px_rgba(188,19,254,0.4)]'
-                          : 'hover:bg-neon-purple hover:text-white text-gray-400 hover:shadow-[0_0_10px_rgba(188,19,254,0.4)]'
-                          }`}
-                        title={activeEditorId === integration.id ? 'Hide inline preview' : 'Open inline preview'}
+                        className="py-1.5 px-3 border rounded-lg bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold"
+                        title="Discuss Workbook"
                       >
-                        <Eye className="w-4 h-4" />
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>Discuss</span>
                       </button>
-
 
                       <button
                         disabled={globalLoading || deletingId !== null}
-                        onClick={() => setIntegrationToDelete(integration)}
-                        className="p-2 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_10px_rgba(239,68,68,0.4)] flex items-center justify-center"
-                        title="Delete workbook data permanently from database"
+                        onClick={() => {
+                          alert("Version history tracking for live cloud workbooks is currently active in the background.");
+                        }}
+                        className="py-1.5 px-3 border rounded-lg bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold"
+                        title="View Version History"
                       >
-                        {deletingId === integration.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-red-400" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
+                        <History className="w-3.5 h-3.5" />
+                        <span>History</span>
+                      </button>
+
+                      <button
+                        disabled={globalLoading || deletingId !== null}
+                        onClick={() => handleOpenSetup(integration.provider as any)}
+                        className="py-1.5 px-3 border rounded-lg bg-neon-pink/10 border-neon-pink/30 text-neon-pink hover:bg-neon-pink/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold"
+                        title="Supersede with New Workbook"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Supersede</span>
                       </button>
                     </div>
                   </div>
@@ -753,6 +804,8 @@ export default function BudgetIntegrations({
                     projectId={projectId}
                     onRefresh={onRefresh}
                     workbookData={matchedMatrix}
+                    isOpen={activePreviewWorkbookId === integration.id}
+                    onClose={() => setActivePreviewWorkbookId(null)}
                   />
                 </div>
               );

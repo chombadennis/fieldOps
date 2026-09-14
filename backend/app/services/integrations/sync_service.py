@@ -3,7 +3,6 @@ import pandas as pd
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from datetime import datetime
-
 from ...models.project_integration import ProjectIntegration
 from ...models.boq_item import BoqItem
 from ...models.project import Project
@@ -199,6 +198,26 @@ async def run_initial_import(request_db: Session, integration_id: int):
             )
             db.add(boq_doc)
             db.flush()  # obtain boq_doc.id
+            
+        from ...models.document import Document
+        central_doc = db.query(Document).filter(Document.integration_id == integration.id, Document.department == "boq").first()
+        if not central_doc:
+            central_doc = db.query(Document).filter(Document.metadata_map.contains({"boq_id": boq_doc.id})).first()   
+        if central_doc:
+            central_doc.name = boq_name
+            central_doc.integration_id = integration.id
+        else:
+            central_doc = Document(
+                project_id=integration.project_id,
+                contract_id=integration.contract_id,
+                name=boq_name,
+                origin=integration.provider,
+                department="boq",
+                integration_id=integration.id,
+                metadata_map={"boq_id": boq_doc.id}
+            )
+            db.add(central_doc)
+            db.flush()
             
         # 3. Parse and import each selected sheet
         for cs in configured_sheets:

@@ -15,31 +15,31 @@ export const ROLES_CONFIG: Record<UserRole, { label: string; icon: any; color: s
     label: 'Company Admin',
     icon: Shield,
     color: 'bg-crimson-violet-50 text-crimson-violet-700 border-crimson-violet-200',
-    visibleTabs: ['pmo', 'tech', 'field_ops', 'hr', 'legal'],
+    visibleTabs: ['activity', 'pmo', 'tech', 'field_ops', 'hr', 'legal'],
   },
   engineer: {
     label: 'Engineer / Tech',
     icon: HardHat,
     color: 'bg-dark-teal-50 text-dark-teal-700 border-dark-teal-200',
-    visibleTabs: ['pmo', 'tech', 'field_ops'],
+    visibleTabs: ['activity', 'pmo', 'tech', 'field_ops'],
   },
   hr: {
     label: 'HR Department',
     icon: Users,
     color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    visibleTabs: ['pmo', 'hr'],
+    visibleTabs: ['activity', 'pmo', 'hr'],
   },
   legal: {
     label: 'Legal Counsel',
     icon: Scale,
     color: 'bg-amber-50 text-amber-700 border-amber-200',
-    visibleTabs: ['pmo', 'legal'],
+    visibleTabs: ['activity', 'pmo', 'legal'],
   },
   field_officer: {
     label: 'Field Officer',
     icon: Wrench,
     color: 'bg-princeton-orange-50 text-princeton-orange-700 border-princeton-orange-200',
-    visibleTabs: ['pmo', 'field_ops'],
+    visibleTabs: ['activity', 'pmo', 'field_ops'],
   },
 };
 

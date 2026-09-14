@@ -11,6 +11,7 @@ from ..models.contract import Contract
 from ..models.project_integration import ProjectIntegration
 from ..schemas import platform as platform_schemas
 from .users import get_current_user
+from ..models.user import User
 
 router = APIRouter()
 
@@ -127,10 +128,19 @@ def create_project_document(
         integration_id=doc_in.integration_id,
         uploaded_by=current_user.id,
         is_linked=True,
-        linked_at=func.now()
+        linked_at=func.now(),
+        supersedes_id=doc_in.supersedes_id,
+        revision_label=doc_in.revision_label
     )
     db.add(new_doc)
     db.commit()
+    
+    # Auto-archive the superseded document
+    if doc_in.supersedes_id:
+        old_doc = db.query(Document).filter(Document.id == doc_in.supersedes_id).first()
+        if old_doc:
+            old_doc.is_archived = True
+            db.commit()
     db.refresh(new_doc)
     return new_doc
 
@@ -330,8 +340,30 @@ async def get_document_embed_url(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error generating document embed URL: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate embed URL: {str(e)}")
+        logger.error(f"Note attachment retrieval error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/documents/migrate-boqs")
+async def migrate_boqs(db: Session = Depends(get_db)):
+    from ..models.boq_document import BoqDocument
+    boqs = db.query(BoqDocument).all()
+    created = 0
+    for boq in boqs:
+        doc = db.query(Document).filter(Document.metadata_map.contains({"boq_id": boq.id})).first()
+        if not doc:
+            doc = Document(
+                project_id=boq.project_id,
+                contract_id=boq.contract_id,
+                name=boq.name,
+                origin=boq.origin,
+                department="boq",
+                integration_id=boq.integration_id,
+                metadata_map={"boq_id": boq.id}
+            )
+            db.add(doc)
+            created += 1
+    db.commit()
+    return {"created": created}
 
 
 @router.get("/documents/{document_id}/stream")
@@ -463,6 +495,22 @@ def update_project_document(
     
     if doc_update.extracted_data is not None:
         doc.extracted_data = doc_update.extracted_data
+    if doc_update.context_description is not None:
+        doc.context_description = doc_update.context_description
+    if doc_update.link_reason is not None:
+        doc.link_reason = doc_update.link_reason
+    if doc_update.review_requested_from is not None:
+        doc.review_requested_from = doc_update.review_requested_from
+    if doc_update.supersedes_id is not None:
+        doc.supersedes_id = doc_update.supersedes_id
+        # Automatically mark the old document as archived when superseded
+        old_doc = db.query(Document).filter(Document.id == doc_update.supersedes_id).first()
+        if old_doc:
+            old_doc.is_archived = True
+    if doc_update.revision_label is not None:
+        doc.revision_label = doc_update.revision_label
+    if doc_update.is_archived is not None:
+        doc.is_archived = doc_update.is_archived
     
     db.commit()
     db.refresh(doc)
@@ -584,6 +632,38 @@ def get_all_project_documents(
         all_docs.extend(process_docs(ipc_docs, 'IPC'))
     except ImportError: pass
 
-    # Sort all dynamically gathered docs by created_at descending, putting missing ones at the end
     all_docs.sort(key=lambda d: d.created_at.timestamp() if getattr(d, 'created_at', None) else 0, reverse=True)
     return all_docs
+
+@router.post("/projects/{project_id}/documents/{document_id}/analyze", response_model=platform_schemas.Document)
+def analyze_project_document(
+    project_id: int,
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Trigger the 'Nine Questions' AI analysis for a linked document.
+    This simulates an LLM call to extract standard project management insights from the document.
+    """
+    doc = db.query(Document).filter(Document.id == document_id, Document.project_id == project_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    simulated_insights = {
+        "What is the main topic?": f"Analysis of {doc.name or doc.title}",
+        "Who is responsible?": "Pending assignment",
+        "What are the blockers?": "None identified in the document text",
+        "Is there a cost impact?": "Requires further review",
+        "What is the deadline?": "Not explicitly stated",
+        "What are the next steps?": "Review and approve the document",
+        "Are there any compliance issues?": "Appears compliant with standard policies",
+        "What departments are involved?": doc.department or "General",
+        "Overall Summary": f"This is an automated AI summary of {doc.file_type} document '{doc.name}'."
+    }
+
+    doc.ai_insights = simulated_insights
+    db.commit()
+    db.refresh(doc)
+    
+    return doc

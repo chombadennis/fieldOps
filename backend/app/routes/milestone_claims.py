@@ -61,28 +61,48 @@ def get_milestone_claims_documents(
             if integration.meta_data:
                 cloud_email = integration.meta_data.get('cloud_email')
 
-        result.append(
-            platform_schemas.Document(
-                id=d.id,
-                project_id=getattr(d, 'project_id', project_id),
-                contract_id=getattr(d, 'contract_id', None),
-                title=d.name,
-                file_url=d.file_url or "",
-                file_type=d.file_type or "unknown",
-                department="milestone_claims",
-                file_size=getattr(d, 'file_size', 0),
-                cloud_file_id=getattr(d, 'cloud_file_id', None),
-                origin=d.origin or "file_upload",
-                integration_id=d.integration_id,
-                is_linked=getattr(d, 'is_linked', True),
-                linked_at=getattr(d, 'linked_at', None),
-                unlinked_at=getattr(d, 'unlinked_at', None),
-                uploaded_by=uploaded_by,
-                cloud_email=cloud_email,
-                extracted_data=getattr(d, 'extracted_data', None),
-                created_at=getattr(d, 'created_at', None)
-            )
-        )
+        # Fetch associated line items
+        items = db.query(MilestoneClaimItem).filter(MilestoneClaimItem.document_id == d.id).all()
+        items_list = [
+            {
+                "id": item.id,
+                "activity_id": item.activity_id,
+                "description": item.description,
+                "percentage_complete_this_period": item.percentage_complete_this_period,
+                "amount_claimed_this_period": item.amount_claimed_this_period,
+                "amount_certified": item.amount_certified,
+                "status": item.status,
+                "values_map": item.values_map,
+            }
+            for item in items
+        ]
+
+        result.append({
+            "id": d.id,
+            "project_id": getattr(d, 'project_id', project_id),
+            "contract_id": getattr(d, 'contract_id', None),
+            "title": d.name,
+            "file_url": d.file_url or "",
+            "file_type": d.file_type or "unknown",
+            "department": "milestone_claims",
+            "origin": d.origin or "file_upload",
+            "integration_id": d.integration_id,
+            "is_linked": getattr(d, 'is_linked', True),
+            "linked_at": d.linked_at.isoformat() if getattr(d, 'linked_at', None) else None,
+            "created_at": d.created_at.isoformat() if getattr(d, 'created_at', None) else None,
+            "uploaded_by": uploaded_by,
+            "cloud_email": cloud_email,
+            # Milestone-specific fields
+            "claim_number": d.claim_number,
+            "valuation_date": d.valuation_date,
+            "status": d.status,
+            "payment_status": d.payment_status,
+            "gross_amount_claimed": d.gross_amount_claimed or 0.0,
+            "retention_deducted": d.retention_deducted or 0.0,
+            "net_amount_due": d.net_amount_due or 0.0,
+            "values_map": d.values_map or {},
+            "items": items_list,
+        })
     return result
 
 @router.post("", response_model=platform_schemas.Document)

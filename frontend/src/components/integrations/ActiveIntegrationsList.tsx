@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileSpreadsheet, Loader2, AlertTriangle, ExternalLink, X, Unlink, Trash2, Eye } from 'lucide-react';
+import { FileSpreadsheet, Loader2, AlertTriangle, ExternalLink, X, Unlink, Trash2, Eye, MessageCircle, History, RotateCw } from 'lucide-react';
 import EmbeddedSheetEditor from '@/components/EmbeddedSheetEditor';
 import { Integration } from './types';
 import { getCurrentUser } from '@/services/api';
@@ -242,15 +242,15 @@ export default function ActiveIntegrationsList({
                     <button
                       disabled={isLoading || syncingId !== null || deletingId !== null}
                       onClick={() => {
-                          if (currentUser && integration.user_id !== currentUser.id) {
-                            alert("You cannot inline preview because you are not the owner, but you can open the document in a new tab and request viewing access from the owner.");
-                          } else {
-                            setActiveEditorId(activeEditorId === integration.id ? null : integration.id);
-                          }
-                        }}
+                        if (currentUser && integration.user_id !== currentUser.id) {
+                          alert("You cannot inline preview because you are not the owner, but you can open the document in a new tab and request viewing access from the owner.");
+                        } else {
+                          setActiveEditorId(activeEditorId === integration.id ? null : integration.id);
+                        }
+                      }}
                       className={`py-2 px-3 border rounded-lg shadow-sm text-xs font-semibold flex items-center space-x-1.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${activeEditorId === integration.id
-                          ? 'bg-neon-cyan border-neon-cyan text-black hover:bg-slate-900 shadow-[0_0_10px_rgba(0,243,255,0.5)]'
-                          : 'border-white/20 hover:border-neon-cyan/50 text-gray-300 bg-black/40 hover:bg-neon-cyan/10 hover:text-neon-cyan'
+                        ? 'bg-neon-cyan border-neon-cyan text-black hover:bg-slate-900 shadow-[0_0_10px_rgba(0,243,255,0.5)]'
+                        : 'border-white/20 hover:border-neon-cyan/50 text-gray-300 bg-black/40 hover:bg-neon-cyan/10 hover:text-neon-cyan'
                         }`}
                       title={activeEditorId === integration.id ? 'Hide inline spreadsheet preview' : 'Open inline spreadsheet preview'}
                     >
@@ -280,11 +280,45 @@ export default function ActiveIntegrationsList({
                   )}
                 </div>
               </div>
+              
+              {/* Evolution feature action buttons */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 pb-1">
+                <button
+                  disabled={isLoading || syncingId !== null || deletingId !== null}
+                  onClick={() => alert("Discussion board is being initialized.")}
+                  className="py-1.5 px-3 border rounded-lg bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold shadow-sm"
+                  title="Discuss Document"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Discuss</span>
+                </button>
+
+                <button
+                  disabled={isLoading || syncingId !== null || deletingId !== null}
+                  onClick={() => alert("Version history tracking is active in the background.")}
+                  className="py-1.5 px-3 border rounded-lg bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold shadow-sm"
+                  title="View Version History"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>History</span>
+                </button>
+
+                <button
+                  disabled={isLoading || syncingId !== null || deletingId !== null}
+                  onClick={() => alert("Supersede flow requires OAuth initialization.")}
+                  className="py-1.5 px-3 border rounded-lg bg-neon-pink/10 border-neon-pink/30 text-neon-pink hover:bg-neon-pink/20 transition-colors flex items-center space-x-1.5 text-xs font-semibold shadow-sm"
+                  title="Supersede with New Document"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                  <span>Supersede</span>
+                </button>
+              </div>
+
               {/* Per-card sync result */}
               {syncResultMap[integration.id] && (
                 <div className={`mt-1 rounded-xl px-4 py-3 flex items-start space-x-3 text-sm ${syncResultMap[integration.id]?.type === 'success'
-                    ? 'bg-green-50 border border-green-100 text-green-800'
-                    : 'bg-red-50 border border-red-100 text-red-800'
+                  ? 'bg-green-50 border border-green-100 text-green-800'
+                  : 'bg-red-50 border border-red-100 text-red-800'
                   }`}>
                   {syncResultMap[integration.id]?.type === 'success' ? (
                     <svg className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

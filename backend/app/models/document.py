@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime, Text, ARRAY, JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -27,13 +27,35 @@ class Document(Base, CustomBase):
     linked_at = Column(DateTime, default=func.now(), nullable=True)
     unlinked_at = Column(DateTime, nullable=True)
 
+    # Phase 1: Artifact context — editable on the linked document card after linking
+    context_description = Column(Text, nullable=True)       # What is this document?
+    link_reason = Column(String(255), nullable=True)        # Why was it linked? e.g. "Budget revision"
+    review_requested_from = Column(ARRAY(Integer), nullable=True)  # User IDs to review
+
     note_id = Column(Integer, ForeignKey('notes.id', ondelete="SET NULL"), nullable=True)
     metadata_map = Column(JSONB, nullable=True)
+
+    # Phase 4: Revision Tracking
+    supersedes_id = Column(Integer, ForeignKey('documents.id', ondelete="SET NULL"), nullable=True)
+    revision_label = Column(String(50), nullable=True) # e.g. "v2.0", "Revised BoQ"
+    is_archived = Column(Boolean, default=False, nullable=False)
+    
+    # Phase 6: Nine Questions Panel
+    ai_insights = Column(JSON, nullable=True)
 
     # Relationships
     project = relationship("Project", back_populates="documents")
     contract = relationship("Contract", back_populates="documents")
-    note = relationship("Note", back_populates="documents")
+    
+    # The note this document was uploaded with
+    note = relationship("Note", back_populates="documents", foreign_keys=[note_id])
+    
+    # Phase 2: Discussions specifically scoped to this artifact
+    notes = relationship("Note", back_populates="document_ref", foreign_keys="[Note.document_id]", cascade="all, delete-orphan")
+    
+    # Phase 4: Self-referential relationship for supersession chain
+    supersedes = relationship("Document", remote_side=[id], backref="superseded_by")
+
     uploader = relationship("User")
     integration = relationship("ProjectIntegration")
 

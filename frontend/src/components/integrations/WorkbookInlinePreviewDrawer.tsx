@@ -20,14 +20,17 @@ interface WorkbookInlinePreviewDrawerProps {
     };
     categories?: any[];
   };
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export default function WorkbookInlinePreviewDrawer({
   projectId,
   onRefresh,
   workbookData,
+  isOpen,
+  onClose
 }: WorkbookInlinePreviewDrawerProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
@@ -40,6 +43,8 @@ export default function WorkbookInlinePreviewDrawer({
     setTradeLabel(workbookData.trade_label || 'Trade Workbook');
     setCategories(workbookData.categories ? JSON.parse(JSON.stringify(workbookData.categories)) : []);
   }, [workbookData]);
+
+  if (!isOpen) return null;
 
   const orig = categories.reduce((sum, c) => sum + (parseFloat(c.original_amount) || 0), 0);
   const appr = categories.reduce((sum, c) => {
@@ -123,47 +128,31 @@ export default function WorkbookInlinePreviewDrawer({
   };
 
   return (
-    <div className="border border-slate-700/50 rounded-2xl bg-slate-900 overflow-hidden shadow-sm transition">
-      {/* Drawer Header Toggle Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-3.5 px-4 bg-slate-800/50/80 hover:bg-slate-800/80 transition flex items-center justify-between text-left"
-      >
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-slate-900 rounded-xl text-dark-teal-800 border border-slate-700/50 shadow-xs">
-            <FileSpreadsheet className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-[10px] uppercase font-extrabold tracking-wider text-dark-teal-800 font-inter">
-                {tradeLabel || 'Trade Workbook Summary'}
-              </span>
-              {appr && appr !== orig && (
-                <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-500/40">
-                  Appraised
-                </span>
-              )}
+    <div className="fixed inset-0 bg-[#030305]/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-[#030305] rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/10 animate-scale-up relative">
+        {/* Modal Header */}
+        <div className="flex justify-between items-center p-6 border-b border-white/10">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-indigo-500/20 border border-indigo-500/30 rounded-xl flex items-center justify-center text-indigo-400">
+              <FileSpreadsheet className="w-5 h-5" />
             </div>
-            <p className="text-xs font-bold font-lexend text-white leading-tight">
-              {workbookData.title || 'Workbook Summary Table'}
-            </p>
+            <div>
+              <h2 className="text-xl font-bold font-lexend text-white drop-shadow-md">
+                Workbook Items: {workbookData.title || 'Summary'}
+              </h2>
+              <p className="text-sm text-gray-400 mt-0.5">{tradeLabel || 'Trade Workbook'}</p>
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-500 hover:text-white rounded-xl hover:bg-white/5 active:scale-95 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-[10px] font-bold text-gray-400 uppercase">Effective Budget / EV</p>
-            <p className="text-xs font-bold text-slate-200">{formatCurrency(eff)} / {formatCurrency(ev)}</p>
-          </div>
-          <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-700/50 text-slate-400">
-            {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </div>
-      </button>
-
-      {/* Expandable Drawer Body */}
-      {isOpen && (
-        <div className="p-5 space-y-4 border-t border-slate-700/50 bg-slate-800/50/30 animate-fade-in">
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto space-y-4">
           {/* Top Feedback Banners */}
           {saveSuccess && (
             <div className="p-3 bg-emerald-900/20 border border-emerald-200 rounded-xl text-xs text-emerald-900 font-bold flex items-center space-x-2">
@@ -374,7 +363,7 @@ export default function WorkbookInlinePreviewDrawer({
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

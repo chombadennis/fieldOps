@@ -318,6 +318,7 @@ async def commit_upload_boq(req: CommitBoqRequest):
     from ..db.database import SessionLocal
     from ..models.boq_document import BoqDocument
     from ..models.contract import Contract
+    from ..models.document import Document
 
     with SessionLocal() as db:
         try:
@@ -348,6 +349,18 @@ async def commit_upload_boq(req: CommitBoqRequest):
                 validation_status="approved"
             )
             db.add(boq_doc)
+            db.flush()
+            
+            # Create the central Document record to enable discussions & evolution
+            central_doc = Document(
+                project_id=req.project_id,
+                contract_id=req.contract_id,
+                name=req.title,
+                origin="file_upload",
+                department="boq",
+                metadata_map={"boq_id": boq_doc.id}
+            )
+            db.add(central_doc)
             db.flush()
             
             id_map = {}

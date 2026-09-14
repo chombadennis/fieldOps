@@ -32,6 +32,7 @@ interface BoqIntegrationsProps {
   onRefresh: () => void;
   globalLoading: boolean;
   setGlobalLoading: (loading: boolean) => void;
+  children?: React.ReactNode;
 }
 
 export default function BoqIntegrations({
@@ -42,6 +43,7 @@ export default function BoqIntegrations({
   onRefresh,
   globalLoading,
   setGlobalLoading,
+  children,
 }: BoqIntegrationsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export default function BoqIntegrations({
   const [integrationToDelete, setIntegrationToDelete] = useState<Integration | null>(null);
   const [dismissedNewSheets, setDismissedNewSheets] = useState<{ [id: number]: boolean }>({});
   const [activeEditorId, setActiveEditorId] = useState<number | null>(null);
-  const [activeAuditIntegration, setActiveAuditIntegration] = useState<Integration | null>(null);
+  const [activeReviewIntegration, setActiveReviewIntegration] = useState<Integration | null>(null);
   const [availableAccounts, setAvailableAccounts] = useState<any[]>([]);
   const [showAccountSelector, setShowAccountSelector] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
@@ -621,7 +623,7 @@ export default function BoqIntegrations({
 
     // Close preview/modal if open for this integration
     if (activeEditorId === id) setActiveEditorId(null);
-    if (activeAuditIntegration?.id === id) setActiveAuditIntegration(null);
+    if (activeReviewIntegration?.id === id) setActiveReviewIntegration(null);
 
     setLoading(true);
     setGlobalLoading(true);
@@ -650,7 +652,7 @@ export default function BoqIntegrations({
     setDeletingId(id);
 
     if (activeEditorId === id) setActiveEditorId(null);
-    if (activeAuditIntegration?.id === id) setActiveAuditIntegration(null);
+    if (activeReviewIntegration?.id === id) setActiveReviewIntegration(null);
 
     setLoading(true);
     setGlobalLoading(true);
@@ -763,7 +765,9 @@ export default function BoqIntegrations({
           isLoading={isLoading}
           handleOAuthInitiate={handleOpenSetup}
           formatGuidelines="To sync successfully, your cloud spreadsheets must use standard BOQ structures (columns for Description, Qty, Rate, and Amount). Avoid connecting progress tracking spreadsheets, weighted task matrices, or draft scratchpads."
-        />
+        >
+          {children}
+        </CloudConnectionCards>
       )}
 
       {/* Config Modal after successful OAuth Callback */}
@@ -1032,7 +1036,7 @@ export default function BoqIntegrations({
                             {sheet.has_headers ? (
                               <span className="text-[10px] text-emerald-600 font-medium">✓ Valid BOQ headers found</span>
                             ) : (
-                              <span className="text-[10px] text-amber-600 font-medium">⚠️ No headers found (Force check to import)</span>
+                              <span className="text-[10px] text-amber-600 font-medium"> No headers found (Force check to import)</span>
                             )}
                           </div>
                         </label>
@@ -1242,7 +1246,7 @@ export default function BoqIntegrations({
                     <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 p-1.5 rounded-2xl flex-shrink-0 shadow-inner">
                       <button
                         disabled={isLoading || syncingId !== null || deletingId !== null}
-                        onClick={() => setActiveAuditIntegration(integration)}
+                        onClick={() => setActiveReviewIntegration(integration)}
                         className="p-2 hover:bg-neon-cyan text-neon-cyan hover:text-black rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_10px_rgba(0,243,255,0.4)]"
                         title="Structure Report (Format Assessment)"
                       >
@@ -1504,11 +1508,11 @@ export default function BoqIntegrations({
         </div>
       )}
       {/* Structure Report Modal */}
-      {activeAuditIntegration !== null && (
+      {activeReviewIntegration !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-700/50 flex flex-col relative animate-scale-up max-h-[90vh] overflow-hidden">
             <button
-              onClick={() => setActiveAuditIntegration(null)}
+              onClick={() => setActiveReviewIntegration(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-slate-400 active:scale-95 transition-all duration-100"
             >
               <X className="w-5 h-5" />
@@ -1528,23 +1532,23 @@ export default function BoqIntegrations({
             <div className="flex-1 overflow-y-auto min-h-0 pr-1.5 mb-6 space-y-5">
               {/* Score Gauge */}
               <div className="flex flex-col items-center justify-center py-5 bg-indigo-50/40 rounded-2xl border border-indigo-500/30/50">
-                <div className={`relative flex items-center justify-center w-24 h-24 rounded-full border-4 bg-slate-900 shadow-sm transition-colors ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'border-slate-700/50' :
-                  Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'border-emerald-500' :
-                    Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'border-amber-500' : 'border-red-500'
+                <div className={`relative flex items-center justify-center w-24 h-24 rounded-full border-4 bg-slate-900 shadow-sm transition-colors ${activeReviewIntegration.validation_score === null || activeReviewIntegration.validation_score === undefined ? 'border-slate-700/50' :
+                  Math.round(activeReviewIntegration.validation_score * 100) >= 90 ? 'border-emerald-500' :
+                    Math.round(activeReviewIntegration.validation_score * 100) >= 75 ? 'border-amber-500' : 'border-red-500'
                   }`}>
-                  <span className={`text-2xl font-extrabold ${activeAuditIntegration.validation_score === null || activeAuditIntegration.validation_score === undefined ? 'text-slate-400' :
-                    Math.round(activeAuditIntegration.validation_score * 100) >= 90 ? 'text-emerald-600' :
-                      Math.round(activeAuditIntegration.validation_score * 100) >= 75 ? 'text-amber-600' : 'text-red-650'
+                  <span className={`text-2xl font-extrabold ${activeReviewIntegration.validation_score === null || activeReviewIntegration.validation_score === undefined ? 'text-slate-400' :
+                    Math.round(activeReviewIntegration.validation_score * 100) >= 90 ? 'text-emerald-600' :
+                      Math.round(activeReviewIntegration.validation_score * 100) >= 75 ? 'text-amber-600' : 'text-red-650'
                     }`}>
-                    {activeAuditIntegration.validation_score !== null && activeAuditIntegration.validation_score !== undefined
-                      ? `${Math.round(activeAuditIntegration.validation_score * 100)}%`
+                    {activeReviewIntegration.validation_score !== null && activeReviewIntegration.validation_score !== undefined
+                      ? `${Math.round(activeReviewIntegration.validation_score * 100)}%`
                       : 'N/A'}
                   </span>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 mt-2.5">Structure Match Score</span>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-2 inline-block ${!activeAuditIntegration.preview_only ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-2 inline-block ${!activeReviewIntegration.preview_only ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
                   }`}>
-                  {!activeAuditIntegration.preview_only ? 'Valid Structure' : 'Preview Only'}
+                  {!activeReviewIntegration.preview_only ? 'Valid Structure' : 'Preview Only'}
                 </span>
               </div>
 
@@ -1553,14 +1557,14 @@ export default function BoqIntegrations({
                 <div>
                   <span className="font-bold text-slate-200 block mb-1">Workbook Source:</span>
                   <span className="font-medium text-slate-400 bg-slate-800/50 px-2 py-1 rounded inline-block truncate max-w-full font-mono">
-                    {activeAuditIntegration.boq_name || 'Spreadsheet BOQ'}
+                    {activeReviewIntegration.boq_name || 'Spreadsheet BOQ'}
                   </span>
                 </div>
 
                 <div>
                   <span className="font-bold text-slate-200 block mb-1">Structure Scan Summary:</span>
                   <p className="text-gray-650">
-                    {activeAuditIntegration.validation_summary || (!activeAuditIntegration.preview_only ? (
+                    {activeReviewIntegration.validation_summary || (!activeReviewIntegration.preview_only ? (
                       "The system successfully scanned the spreadsheet contents. It confirmed that the row structure represents a valid Bill of Quantities (material descriptions, pricing rates, unit measures, and total amounts) with a high coverage of construction items."
                     ) : (
                       "The structure scan detected layout or content irregularities in the spreadsheet row descriptions that do not match the expected Bill of Quantities checklist structure."
@@ -1568,11 +1572,11 @@ export default function BoqIntegrations({
                   </p>
                 </div>
 
-                {activeAuditIntegration.validation_issues && activeAuditIntegration.validation_issues.length > 0 ? (
+                {activeReviewIntegration.validation_issues && activeReviewIntegration.validation_issues.length > 0 ? (
                   <div>
                     <span className="font-bold text-slate-200 block mb-1.5">Discovered Issues & Observations:</span>
                     <ul className="space-y-1.5 pl-1.5">
-                      {activeAuditIntegration.validation_issues.map((issue: string, idx: number) => (
+                      {activeReviewIntegration.validation_issues.map((issue: string, idx: number) => (
                         <li key={idx} className="flex items-start space-x-2 text-slate-300">
                           <span className="text-amber-500 font-extrabold select-none">•</span>
                           <span>{issue}</span>
@@ -1595,7 +1599,7 @@ export default function BoqIntegrations({
             </div>
 
             <button
-              onClick={() => setActiveAuditIntegration(null)}
+              onClick={() => setActiveReviewIntegration(null)}
               className="w-full py-2.5 bg-gray-850 hover:bg-gray-900 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-100 active:scale-[0.98] bg-gray-800 flex-shrink-0"
             >
               Close Report

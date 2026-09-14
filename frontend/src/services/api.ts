@@ -41,11 +41,13 @@ apiClient.interceptors.response.use(
   }
 );
 
-export const uploadFile = async (file: File, projectId: string | number, contractId?: number) => {
+export const uploadFile = async (file: File, projectId: string | number, contractId?: number, department: string = 'boq', supersedesId?: number, revisionLabel?: string) => {
   const formData = new FormData();
   formData.append('title', file.name);
   formData.append('file_type', file.type || 'unknown');
-  formData.append('department', 'boq');
+  formData.append('department', department);
+  if (supersedesId) formData.append('supersedes_id', String(supersedesId));
+  if (revisionLabel) formData.append('revision_label', revisionLabel);
   if (contractId) formData.append('contract_id', String(contractId));
 
   // The 'file' field will be used if the backend expects a file upload
@@ -85,6 +87,11 @@ export const getProject = async (projectId: string) => {
 
 export const getProjects = async () => {
   const response = await apiClient.get('/projects');
+  return response.data;
+};
+
+export const getTeamMembers = async (projectId: string | number) => {
+  const response = await apiClient.get(`/projects/${projectId}/team`);
   return response.data;
 };
 
@@ -257,14 +264,14 @@ export const getCurrentUser = async (role: string = 'admin') => {
   return response.data;
 };
 
-export const getProjectNotes = async (projectId: string | number, department?: string) => {
+export const getProjectNotes = async (projectId: string | number, department?: string, documentId?: number) => {
   const response = await apiClient.get(`/projects/${projectId}/notes`, {
-    params: { department }
+    params: { department, document_id: documentId }
   });
   return response.data;
 };
 
-export const createProjectNote = async (projectId: string | number, note: { content: string; department: string; is_issue?: boolean; priority?: string; values_map?: any; document_ids?: number[] }) => {
+export const createProjectNote = async (projectId: string | number, note: { content: string; department: string; is_issue?: boolean; priority?: string; values_map?: any; document_ids?: number[]; document_id?: number }) => {
   const response = await apiClient.post(`/projects/${projectId}/notes`, note);
   return response.data;
 };
@@ -276,6 +283,62 @@ export const updateProjectNote = async (projectId: string | number, noteId: stri
 
 export const deleteProjectNote = async (projectId: string | number, noteId: string | number) => {
   const response = await apiClient.delete(`/projects/${projectId}/notes/${noteId}`);
+  return response.data;
+};
+
+// --- Decisions & Actions (Phase 3) ---
+
+export const getProjectActivityFeed = async (projectId: string | number) => {
+  const response = await apiClient.get(`/projects/${projectId}/activity-feed`);
+  return response.data;
+};
+
+export const analyzeDocument = async (projectId: string | number, documentId: number) => {
+  const response = await apiClient.post(`/projects/${projectId}/documents/${documentId}/analyze`);
+  return response.data;
+};
+
+export const suggestContext = async (projectId: string | number, documentId: number) => {
+  const response = await apiClient.post(`/projects/${projectId}/ai/suggest-context`, { document_id: documentId });
+  return response.data;
+};
+
+export const suggestAssignee = async (projectId: string | number, actionDescription: string, documentId: number) => {
+  const response = await apiClient.post(`/projects/${projectId}/ai/suggest-assignee`, { action_description: actionDescription, document_id: documentId });
+  return response.data;
+};
+
+export const getProjectDecisions = async (projectId: string | number, documentId?: number) => {
+  const response = await apiClient.get(`/projects/${projectId}/decisions`, {
+    params: { document_id: documentId }
+  });
+  return response.data;
+};
+
+export const createProjectDecision = async (projectId: string | number, decision: any) => {
+  const response = await apiClient.post(`/projects/${projectId}/decisions`, decision);
+  return response.data;
+};
+
+export const updateProjectDecision = async (projectId: string | number, decisionId: string | number, decision: any) => {
+  const response = await apiClient.patch(`/projects/${projectId}/decisions/${decisionId}`, decision);
+  return response.data;
+};
+
+export const getProjectActions = async (projectId: string | number, documentId?: number, decisionId?: number) => {
+  const response = await apiClient.get(`/projects/${projectId}/actions`, {
+    params: { document_id: documentId, decision_id: decisionId }
+  });
+  return response.data;
+};
+
+export const createProjectAction = async (projectId: string | number, action: any) => {
+  const response = await apiClient.post(`/projects/${projectId}/actions`, action);
+  return response.data;
+};
+
+export const updateProjectAction = async (projectId: string | number, actionId: string | number, action: any) => {
+  const response = await apiClient.patch(`/projects/${projectId}/actions/${actionId}`, action);
   return response.data;
 };
 
@@ -293,7 +356,7 @@ export const updateProjectDocument = async (projectId: string | number, document
 
 export const createProjectDocument = async (
   projectId: string | number,
-  doc: { title: string; file_url: string; department?: string; note_id?: number; file_type?: string; file_size?: number; cloud_file_id?: string; origin?: string; integration_id?: number }
+  doc: { title: string; file_url: string; department?: string; note_id?: number; file_type?: string; file_size?: number; cloud_file_id?: string; origin?: string; integration_id?: number; supersedes_id?: number; revision_label?: string; context_description?: string; link_reason?: string; review_requested_from?: number[] }
 ) => {
   const response = await apiClient.post(`/projects/${projectId}/documents`, doc);
   return response.data;
@@ -507,5 +570,158 @@ export const commitMilestoneClaimExtraction = async (projectId: string | number,
 
 export const getAllProjectDocuments = async (projectId: string) => {
   const response = await apiClient.get(`/projects/${projectId}/documents/all`);
+  return response.data;
+};
+
+export const updateDocumentContext = async (
+  projectId: string | number,
+  documentId: number,
+  data: {
+    context_description?: string;
+    link_reason?: string;
+    review_requested_from?: number[];
+  }
+) => {
+  const response = await apiClient.patch(`/projects/${projectId}/documents/${documentId}`, data);
+  return response.data;
+};
+
+// ─── Collaboration: Threads ────────────────────────────────────────────────────
+
+export const getThreads = async (projectId: string | number, module?: string, status?: string) => {
+  const response = await apiClient.get(`/projects/${projectId}/threads`, {
+    params: { module, status },
+  });
+  return response.data;
+};
+
+export const createThread = async (
+  projectId: string | number,
+  data: { subject: string; module: string; first_reply?: string; created_by_name?: string; linked_document_ids?: number[] }
+) => {
+  const response = await apiClient.post(`/projects/${projectId}/threads`, data);
+  return response.data;
+};
+
+export const updateThread = async (
+  projectId: string | number,
+  threadId: number,
+  data: { status?: string; subject?: string }
+) => {
+  const response = await apiClient.patch(`/projects/${projectId}/threads/${threadId}`, data);
+  return response.data;
+};
+
+export const getThreadReplies = async (projectId: string | number, threadId: number) => {
+  const response = await apiClient.get(`/projects/${projectId}/threads/${threadId}/replies`);
+  return response.data;
+};
+
+export const createThreadReply = async (
+  projectId: string | number,
+  threadId: number,
+  data: { content: string; author_name?: string; is_issue?: boolean; mentions_raw?: string }
+) => {
+  const response = await apiClient.post(`/projects/${projectId}/threads/${threadId}/replies`, data);
+  return response.data;
+};
+
+// ─── Collaboration: Tasks ─────────────────────────────────────────────────────
+
+export const getProjectTasks = async (
+  projectId: string | number,
+  module?: string,
+  status?: string,
+  assigned_to_id?: number
+) => {
+  const response = await apiClient.get(`/projects/${projectId}/tasks`, {
+    params: { module, status, assigned_to_id },
+  });
+  return response.data;
+};
+
+export const createProjectTask = async (
+  projectId: string | number,
+  data: {
+    title: string;
+    description?: string;
+    module?: string;
+    thread_id?: number;
+    assigned_to_id?: number;
+    assigned_to_name?: string;
+    created_by_name?: string;
+    priority?: string;
+    due_date?: string;
+    linked_document_ids?: number[];
+  }
+) => {
+  const response = await apiClient.post(`/projects/${projectId}/tasks`, data);
+  return response.data;
+};
+
+export const updateProjectTask = async (
+  projectId: string | number,
+  taskId: number,
+  data: {
+    title?: string;
+    description?: string;
+    status?: string;
+    priority?: string;
+    due_date?: string;
+    assigned_to_id?: number;
+    assigned_to_name?: string;
+    resolution_note?: string;
+  }
+) => {
+  const response = await apiClient.patch(`/projects/${projectId}/tasks/${taskId}`, data);
+  return response.data;
+};
+
+export const deleteProjectTask = async (projectId: string | number, taskId: number) => {
+  const response = await apiClient.delete(`/projects/${projectId}/tasks/${taskId}`);
+  return response.data;
+};
+
+// ─── Collaboration: Log Entries ────────────────────────────────────────────────
+
+export const getLogEntries = async (projectId: string | number, module?: string, entry_type?: string) => {
+  const response = await apiClient.get(`/projects/${projectId}/log-entries`, {
+    params: { module, entry_type },
+  });
+  return response.data;
+};
+
+export const createLogEntry = async (
+  projectId: string | number,
+  data: {
+    entry_type: string;
+    title: string;
+    content: string;
+    module?: string;
+    task_id?: number;
+    thread_id?: number;
+    posted_by_name?: string;
+  }
+) => {
+  const response = await apiClient.post(`/projects/${projectId}/log-entries`, data);
+  return response.data;
+};
+
+// ─── Collaboration: Notifications ─────────────────────────────────────────────
+
+export const getUserNotifications = async (userId: number, unread_only = false) => {
+  const response = await apiClient.get(`/users/${userId}/notifications`, {
+    params: { unread_only },
+  });
+  return response.data;
+};
+
+export const markAllNotificationsRead = async (userId: number) => {
+  const response = await apiClient.patch(`/users/${userId}/notifications/mark-read`);
+  return response.data;
+};
+
+export const markNotificationRead = async (userId: number, notifId: number) => {
+  const response = await apiClient.patch(`/users/${userId}/notifications/${notifId}/read`);
   return response.data;
 };
