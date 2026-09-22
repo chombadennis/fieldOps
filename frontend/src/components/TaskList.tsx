@@ -30,18 +30,18 @@ interface Task {
 }
 
 const PRIORITY_STYLES: Record<string, string> = {
-  Low:      'text-gray-400  bg-gray-500/10  border-gray-500/20',
-  Normal:   'text-blue-400  bg-blue-500/10  border-blue-500/20',
-  High:     'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  Low: 'text-gray-400  bg-gray-500/10  border-gray-500/20',
+  Normal: 'text-blue-400  bg-blue-500/10  border-blue-500/20',
+  High: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
   Critical: 'text-rose-400  bg-rose-500/10  border-rose-500/20',
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  Open:        'text-gray-400  bg-gray-500/10  border-gray-500/20',
+  Open: 'text-gray-400  bg-gray-500/10  border-gray-500/20',
   'In Progress': 'text-blue-400  bg-blue-500/10  border-blue-500/20',
-  Blocked:     'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  Done:        'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  Failed:      'text-rose-400  bg-rose-500/10  border-rose-500/20',
+  Blocked: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  Done: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+  Failed: 'text-rose-400  bg-rose-500/10  border-rose-500/20',
 };
 
 const AUTHOR_NAME = 'You';
@@ -195,13 +195,13 @@ export default function TaskList({ projectId, module, documents = [] }: TaskList
                 onChange={(e) => setForm({ ...form, assigned_to_name: e.target.value })}
                 className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500/60 transition appearance-none cursor-pointer"
               >
-                <option value="unassigned">Unassigned</option>
+                <option value="unassigned" className="bg-gray-900 text-white">Unassigned</option>
                 {team.map((member: any) => (
-                  <option key={member.id} value={member.id}>{member.name}</option>
+                  <option key={member.id} value={member.id} className="bg-gray-900 text-white">{member.name}</option>
                 ))}
               </select>
             </div>
-            
+
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Priority</label>
               <select
@@ -209,10 +209,10 @@ export default function TaskList({ projectId, module, documents = [] }: TaskList
                 onChange={(e) => setForm({ ...form, priority: e.target.value })}
                 className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500/60 transition appearance-none cursor-pointer"
               >
-                <option>Low</option>
-                <option>Normal</option>
-                <option>High</option>
-                <option value="Critical">Critical</option>
+                <option className="bg-gray-900 text-white">Low</option>
+                <option className="bg-gray-900 text-white">Normal</option>
+                <option className="bg-gray-900 text-white">High</option>
+                <option value="Critical" className="bg-gray-900 text-white">Critical</option>
               </select>
             </div>
           </div>
@@ -230,11 +230,10 @@ export default function TaskList({ projectId, module, documents = [] }: TaskList
                           isSelected ? prev.filter((id) => id !== doc.id) : [...prev, doc.id]
                         );
                       }}
-                      className={`px-2.5 py-1 text-[10px] rounded-lg border transition-all ${
-                        isSelected
+                      className={`px-2.5 py-1 text-[10px] rounded-lg border transition-all ${isSelected
                           ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
                           : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
-                      }`}
+                        }`}
                     >
                       {doc.title || doc.name}
                     </button>
@@ -278,12 +277,11 @@ export default function TaskList({ projectId, module, documents = [] }: TaskList
             const isExpanded = expandedId === task.id;
 
             return (
-              <div key={task.id} className={`rounded-2xl border transition-all overflow-hidden ${
-                isDone ? 'border-emerald-500/10 bg-white/[0.02]' :
-                isFailed ? 'border-rose-500/10 bg-white/[0.02]' :
-                isOverdue ? 'border-amber-500/20 bg-amber-500/5' :
-                'border-white/10 bg-white/[0.04] hover:border-white/20'
-              }`}>
+              <div key={task.id} className={`rounded-2xl border transition-all overflow-hidden ${isDone ? 'border-emerald-500/10 bg-white/[0.02]' :
+                  isFailed ? 'border-rose-500/10 bg-white/[0.02]' :
+                    isOverdue ? 'border-amber-500/20 bg-amber-500/5' :
+                      'border-white/10 bg-white/[0.04] hover:border-white/20'
+                }`}>
                 <div
                   className="flex items-center gap-3 px-4 py-3 cursor-pointer"
                   onClick={() => setExpandedId(isExpanded ? null : task.id)}
@@ -293,10 +291,9 @@ export default function TaskList({ projectId, module, documents = [] }: TaskList
                     {isDone && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                     {isFailed && <XCircle className="w-4 h-4 text-rose-500" />}
                     {!isDone && !isFailed && (
-                      <div className={`w-4 h-4 rounded-full border-2 ${
-                        task.status === 'In Progress' ? 'border-blue-400' :
-                        task.status === 'Blocked' ? 'border-amber-400' : 'border-gray-500'
-                      }`} />
+                      <div className={`w-4 h-4 rounded-full border-2 ${task.status === 'In Progress' ? 'border-blue-400' :
+                          task.status === 'Blocked' ? 'border-amber-400' : 'border-gray-500'
+                        }`} />
                     )}
                   </div>
 

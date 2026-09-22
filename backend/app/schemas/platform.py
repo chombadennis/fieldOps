@@ -5,7 +5,7 @@ from datetime import datetime
 # --- User Schema ---
 class UserBase(BaseModel):
     email: str
-    full_name: Optional[str] = None
+    name: Optional[str] = None
     role: str = "engineer"  # admin, engineer, hr, legal, field_officer
     department: Optional[str] = "Tech"
     avatar_url: Optional[str] = None
