@@ -1,9 +1,12 @@
+import os
 import time
 from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
+
+load_dotenv()
 
 urls = {
-    "Direct Endpoint": "postgresql://neondb_owner:npg_yZDWMBw1aPE7@ep-royal-river-aho0hk2j.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require",
-    "Pooler Endpoint": "postgresql://neondb_owner:npg_yZDWMBw1aPE7@ep-royal-river-aho0hk2j-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+    "Configured Endpoint": os.environ.get("DATABASE_URL")
 }
 
 for label, url in urls.items():
